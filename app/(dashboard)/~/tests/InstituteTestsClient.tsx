@@ -4,11 +4,11 @@
 // app/~/tests/InstituteTestsClient.tsx
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useMemo, useCallback, useEffect, useTransition } from "react"
+import { useState, useMemo, useCallback, useEffect, useTransition, useRef } from "react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -119,7 +119,7 @@ function TestCard({ test }: { test: InstituteTest }) {
   return (
     <Card className="border overflow-hidden p-0">
       <div className="flex flex-col md:flex-row md:items-center justify-between p-4 gap-4">
-        
+
         {/* Left: Title, Description, Status */}
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center gap-2.5 flex-wrap">
@@ -140,9 +140,7 @@ function TestCard({ test }: { test: InstituteTest }) {
             <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground/80">Duration</span>
             <span className="flex items-center gap-1.5 font-medium text-foreground">
               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-              {test.time_limit_seconds
-                ? formatDuration(test.time_limit_seconds)
-                : "Untimed"}
+              {test.time_limit_seconds ? formatDuration(test.time_limit_seconds) : "Untimed"}
             </span>
           </div>
 
@@ -150,9 +148,7 @@ function TestCard({ test }: { test: InstituteTest }) {
             <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground/80">Questions</span>
             <span className="flex items-center gap-1.5 font-medium text-foreground">
               <ListCheck className="h-3.5 w-3.5 text-muted-foreground" />
-              {test.question_count > 0
-                ? `${test.question_count} Qs`
-                : "0 Qs"}
+              {test.question_count > 0 ? `${test.question_count} Qs` : "0 Qs"}
             </span>
           </div>
 
@@ -187,8 +183,7 @@ function TestCard({ test }: { test: InstituteTest }) {
 
           <div className="flex flex-col gap-0.5 min-w-[150px] justify-center">
             <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground/80">Access & Status</span>
-            
-            {/* Results visibility (past only) */}
+
             {test.derived_status === "past" && (
               <span className={cn(
                 "flex items-center gap-1.5 font-medium text-xs",
@@ -201,7 +196,6 @@ function TestCard({ test }: { test: InstituteTest }) {
               </span>
             )}
 
-            {/* Upcoming note */}
             {test.derived_status === "upcoming" && (
               <span className="font-medium text-foreground text-xs">
                 {test.available_from
@@ -211,14 +205,12 @@ function TestCard({ test }: { test: InstituteTest }) {
               </span>
             )}
 
-            {/* Draft note */}
             {test.derived_status === "draft" && (
               <span className="font-medium text-muted-foreground text-xs italic">
                 Draft (Not published)
               </span>
             )}
 
-            {/* Live note/other cases */}
             {test.derived_status === "live" && (
               <span className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400 text-xs">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -299,35 +291,44 @@ export function InstituteTestsClient({
   // Local state for search input text
   const [searchInput, setSearchInput] = useState(initialSearch)
 
-  // Sync external search updates (e.g. forward/back navigation)
+  // Tracks whether the last URL change was triggered by our own debounce (not external navigation)
+  const isOwnUpdateRef = useRef(false)
+
+  // Sync search input ONLY on external navigation (back/forward), skip our own debounce-triggered updates
   useEffect(() => {
+    if (isOwnUpdateRef.current) {
+      isOwnUpdateRef.current = false
+      return
+    }
     setSearchInput(initialSearch)
   }, [initialSearch])
 
   // Helper to push updated search parameters to the URL
-  const updateParams = (newParams: Partial<Record<string, string | number>>) => {
-    const params = new URLSearchParams(window.location.search)
-    Object.entries(newParams).forEach(([key, val]) => {
-      if (val === undefined || val === "" || val === null) {
-        params.delete(key)
-      } else {
-        params.set(key, String(val))
-      }
-    })
-    startTransition(() => {
-      router.push(`${pathname}?${params.toString()}`)
-    })
-  }
+  const updateParams = useCallback(
+    (newParams: Partial<Record<string, string | number>>) => {
+      const params = new URLSearchParams(window.location.search)
+      Object.entries(newParams).forEach(([key, val]) => {
+        if (val === undefined || val === "" || val === null) {
+          params.delete(key)
+        } else {
+          params.set(key, String(val))
+        }
+      })
+      startTransition(() => {
+        router.push(`${pathname}?${params.toString()}`)
+      })
+    },
+    [pathname, router]
+  )
 
-  // Debounce search input to avoid database throttling on every keystroke
+  // Debounce search input — no early-return guard, no initialSearch dependency
   useEffect(() => {
-    if (searchInput === initialSearch) return
-
     const timer = setTimeout(() => {
+      isOwnUpdateRef.current = true
       updateParams({ search: searchInput, page: 1 })
     }, 400)
     return () => clearTimeout(timer)
-  }, [searchInput, initialSearch])
+  }, [searchInput]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeTab = (initialTab || "all") as Tab
 
@@ -340,18 +341,23 @@ export function InstituteTestsClient({
     return new Date(Date.now() + serverTimeOffset)
   }, [serverTimeOffset])
 
-  const [now, setNow] = useState(getNowOnServer())
+  const [now, setNow] = useState(getNowOnServer)
 
   useEffect(() => {
-    const id = setInterval(() => setNow(getNowOnServer()), 10000) // update every 10s
+    const id = setInterval(() => setNow(getNowOnServer()), 10000)
     return () => clearInterval(id)
   }, [getNowOnServer])
 
-  // Dynamically re-derive status matching the server logic but on the client with synced time
+  // Dynamically re-derive status on the client with synced server time
   const enrichedTests = useMemo(() => {
-    return tests.map(t => ({
+    return tests.map((t) => ({
       ...t,
-      current_derived_status: deriveStatus(t.status, t.available_from, t.available_until, now) as DerivedInstituteStatus
+      current_derived_status: deriveStatus(
+        t.status,
+        t.available_from,
+        t.available_until,
+        now
+      ) as DerivedInstituteStatus,
     }))
   }, [tests, now])
 
@@ -394,7 +400,7 @@ export function InstituteTestsClient({
       <Tabs value={activeTab} onValueChange={(v) => updateParams({ tab: v, page: 1 })}>
         <div className="space-y-4">
 
-          {/* Search (left) + Tabs (right) — mirrors ~/students */}
+          {/* Search (left) + Tabs (right) */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="relative w-full sm:max-w-xs">
               {isPending ? (
@@ -411,6 +417,7 @@ export function InstituteTestsClient({
               {searchInput && (
                 <button
                   onClick={() => {
+                    isOwnUpdateRef.current = true
                     setSearchInput("")
                     updateParams({ search: "", page: 1 })
                   }}
@@ -446,7 +453,6 @@ export function InstituteTestsClient({
           </div>
 
           <div className={cn("space-y-4 transition-opacity duration-200", isPending && "opacity-50 pointer-events-none")}>
-            {/* Tab Contents with pagination */}
             {tabConfig.map(({ value }) => {
               if (value !== activeTab) {
                 return <TabsContent key={value} value={value} className="mt-0 outline-none" />
@@ -462,16 +468,18 @@ export function InstituteTestsClient({
                         {enrichedTests.map((t) => (
                           <TestCard
                             key={t.id}
-                            test={{...t, derived_status: t.current_derived_status as DerivedInstituteStatus}}
+                            test={{ ...t, derived_status: t.current_derived_status as DerivedInstituteStatus }}
                           />
                         ))}
                       </div>
 
-                      {/* Pagination Footer — identical to ~/students */}
+                      {/* Pagination Footer */}
                       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-1 px-1">
                         <div className="text-xs text-muted-foreground">
                           Showing{" "}
-                          <span className="font-medium">{totalCount === 0 ? 0 : Math.min(totalCount, (activePage - 1) * initialPageSize + 1)}</span>
+                          <span className="font-medium">
+                            {totalCount === 0 ? 0 : Math.min(totalCount, (activePage - 1) * initialPageSize + 1)}
+                          </span>
                           {" "}to{" "}
                           <span className="font-medium">{Math.min(totalCount, activePage * initialPageSize)}</span>
                           {" "}of{" "}

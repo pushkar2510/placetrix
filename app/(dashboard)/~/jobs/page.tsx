@@ -8,14 +8,12 @@ export default async function JobsPage() {
   const profile = await getUserProfile()
   if (!profile) redirect("/auth/login")
 
-  // This page is meant for candidates
   if (profile.account_type !== "candidate") {
     redirect("/~/home")
   }
 
   const supabase = await createClient()
 
-  // Fetch active jobs and join with profiles -> recruiter_profiles for company info
   // @ts-ignore
   const { data: jobsData, error: jobsError } = await supabase
     .from("job_postings" as any)
@@ -36,9 +34,6 @@ export default async function JobsPage() {
     console.error("Error fetching jobs:", jobsError)
   }
 
-  require("fs").writeFileSync("debug_jobs.json", JSON.stringify(jobsData, null, 2));
-
-  // Fetch jobs this candidate has already applied to
   // @ts-ignore
   const { data: applicationsData } = await supabase
     .from("job_applications" as any)
@@ -48,9 +43,8 @@ export default async function JobsPage() {
   const appliedJobIds = new Set((applicationsData ?? []).map((a: any) => a.job_id))
 
   const jobs: CandidateJobPosting[] = (jobsData ?? []).map((row: any) => {
-    // PostgREST might return the one-to-one join as an array or object
-    const rpArray = row.profiles?.recruiter_profiles;
-    const rp = Array.isArray(rpArray) ? rpArray[0] : rpArray;
+    const rpArray = row.profiles?.recruiter_profiles
+    const rp = Array.isArray(rpArray) ? rpArray[0] : rpArray
 
     return {
       id: row.id,
@@ -66,8 +60,6 @@ export default async function JobsPage() {
       skills: row.skills ?? [],
       application_deadline: row.application_deadline,
       created_at: row.created_at,
-      
-      // Joined data
       company_name: rp?.company_name ?? "Unknown Company",
       industry: rp?.industry,
       company_logo_path: rp?.company_logo_path,

@@ -9,14 +9,12 @@ export default async function ApplicationsPage() {
     redirect("/auth/login")
   }
 
-  // Only students/candidates should see this view
   if (profile.account_type === "recruiter") {
     redirect("/~/postings")
   }
 
   const supabase = await createClient()
 
-  // Fetch applications for the candidate, joining job details and recruiter profile
   const { data: apps, error } = await supabase
     // @ts-ignore
     .from("job_applications" as any)
@@ -42,13 +40,9 @@ export default async function ApplicationsPage() {
     console.error("Error fetching my applications:", error)
   }
 
-  require("fs").writeFileSync("debug_apps.json", JSON.stringify(apps, null, 2));
-
-  // Map the nested data to match our component's type
   const applications: MyJobApplication[] = (apps ?? []).map((row: any) => {
-    // Navigate the Supabase nested response structure
     const jobData = Array.isArray(row.job_postings) ? row.job_postings[0] : row.job_postings
-    
+
     let companyName = "Unknown Company"
     if (jobData?.profiles) {
       const p = Array.isArray(jobData.profiles) ? jobData.profiles[0] : jobData.profiles

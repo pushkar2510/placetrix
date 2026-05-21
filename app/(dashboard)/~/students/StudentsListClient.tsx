@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useTransition } from "react"
+import { useState, useEffect, useTransition, useRef, useCallback } from "react"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -46,6 +46,7 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 
+
 export interface Student {
   profile_id: string
   display_name: string
@@ -59,7 +60,9 @@ export interface Student {
   created_at: string
 }
 
+
 type SortColumn = "name" | "course" | "passout" | "cgpa" | "status" | "created"
+
 
 interface Props {
   students: Student[]
@@ -71,6 +74,7 @@ interface Props {
   initialSortCol: SortColumn
   initialSortDir: "asc" | "desc"
 }
+
 
 function SortableHead<T extends string>({
   label,
@@ -111,6 +115,7 @@ function SortableHead<T extends string>({
   )
 }
 
+
 export function StudentsListClient({
   students,
   totalCount,
@@ -131,35 +136,44 @@ export function StudentsListClient({
   // Local state for toggling loader
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
-  // Sync external search updates (e.g. forward/back navigation)
+  // Tracks whether the last URL change was triggered by our own debounce (not external navigation)
+  const isOwnUpdateRef = useRef(false)
+
+  // Sync search input ONLY on external navigation (back/forward), skip our own debounce-triggered updates
   useEffect(() => {
+    if (isOwnUpdateRef.current) {
+      isOwnUpdateRef.current = false
+      return
+    }
     setSearchInput(initialSearch)
   }, [initialSearch])
 
   // Helper to push updated search parameters to the URL
-  const updateParams = (newParams: Partial<Record<string, string | number>>) => {
-    const params = new URLSearchParams(window.location.search)
-    Object.entries(newParams).forEach(([key, val]) => {
-      if (val === undefined || val === "" || val === null) {
-        params.delete(key)
-      } else {
-        params.set(key, String(val))
-      }
-    })
-    startTransition(() => {
-      router.push(`${pathname}?${params.toString()}`)
-    })
-  }
+  const updateParams = useCallback(
+    (newParams: Partial<Record<string, string | number>>) => {
+      const params = new URLSearchParams(window.location.search)
+      Object.entries(newParams).forEach(([key, val]) => {
+        if (val === undefined || val === "" || val === null) {
+          params.delete(key)
+        } else {
+          params.set(key, String(val))
+        }
+      })
+      startTransition(() => {
+        router.push(`${pathname}?${params.toString()}`)
+      })
+    },
+    [pathname, router]
+  )
 
-  // Debounce search input to avoid database throttling on every keystroke
+  // Debounce search input — no early-return guard, no initialSearch dependency
   useEffect(() => {
-    if (searchInput === initialSearch) return
-
     const timer = setTimeout(() => {
+      isOwnUpdateRef.current = true
       updateParams({ search: searchInput, page: 1 })
     }, 400)
     return () => clearTimeout(timer)
-  }, [searchInput, initialSearch])
+  }, [searchInput]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleStatusFilterChange = (filter: "all" | "verified" | "pending") => {
     updateParams({ status: filter, page: 1 })
@@ -222,6 +236,7 @@ export function StudentsListClient({
           {searchInput && (
             <button
               onClick={() => {
+                isOwnUpdateRef.current = true
                 setSearchInput("")
                 updateParams({ search: "", page: 1 })
               }}
@@ -252,278 +267,280 @@ export function StudentsListClient({
 
       {/* Results Content Area */}
       <div className={cn("space-y-4 transition-opacity duration-200", isPending && "opacity-50 pointer-events-none")}>
+
         {/* Desktop Table View */}
         <div className="hidden md:block rounded-md border bg-card overflow-hidden">
-        <Table className="table-fixed w-full min-w-[800px]">
-          <colgroup>
-            <col className="w-[28%]" />
-            <col className="w-[26%]" />
-            <col className="w-[11%]" />
-            <col className="w-[11%]" />
-            <col className="w-[12%]" />
-            <col className="w-[12%]" />
-          </colgroup>
-          <TableHeader>
-            <TableRow>
-              <SortableHead label="Student" col="name" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
-              <SortableHead label="Course" col="course" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
-              <SortableHead label="Passout" col="passout" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
-              <SortableHead label="CGPA" col="cgpa" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
-              <SortableHead label="Status" col="status" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
-              <TableHead className="text-right text-xs font-semibold select-none pr-4">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedStudents.length > 0 ? (
-              paginatedStudents.map((student) => (
-                <TableRow key={student.profile_id}>
-                  <TableCell className="overflow-hidden text-ellipsis">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Avatar className="h-8 w-8 shrink-0">
-                        <AvatarImage src={student.profile_image_path || undefined} />
-                        <AvatarFallback className="text-[10px]">
-                          {student.display_name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-medium truncate">{student.display_name}</span>
-                        <span className="text-[11px] text-muted-foreground truncate">{student.email}</span>
+          <Table className="table-fixed w-full min-w-[800px]">
+            <colgroup>
+              <col className="w-[28%]" />
+              <col className="w-[26%]" />
+              <col className="w-[11%]" />
+              <col className="w-[11%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
+            </colgroup>
+            <TableHeader>
+              <TableRow>
+                <SortableHead label="Student" col="name" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
+                <SortableHead label="Course" col="course" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
+                <SortableHead label="Passout" col="passout" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
+                <SortableHead label="CGPA" col="cgpa" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
+                <SortableHead label="Status" col="status" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
+                <TableHead className="text-right text-xs font-semibold select-none pr-4">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedStudents.length > 0 ? (
+                paginatedStudents.map((student) => (
+                  <TableRow key={student.profile_id}>
+                    <TableCell className="overflow-hidden text-ellipsis">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="h-8 w-8 shrink-0">
+                          <AvatarImage src={student.profile_image_path || undefined} />
+                          <AvatarFallback className="text-[10px]">
+                            {student.display_name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-medium truncate">{student.display_name}</span>
+                          <span className="text-[11px] text-muted-foreground truncate">{student.email}</span>
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="overflow-hidden text-ellipsis">
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-sm truncate">{student.course_name || "—"}</span>
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-tight font-mono truncate">
-                        {student.university_prn || "No PRN"}
+                    </TableCell>
+                    <TableCell className="overflow-hidden text-ellipsis">
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm truncate">{student.course_name || "—"}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-tight font-mono truncate">
+                          {student.university_prn || "No PRN"}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm truncate overflow-hidden">
+                      {student.passout_year || "—"}
+                    </TableCell>
+                    <TableCell className="truncate overflow-hidden">
+                      <span className="text-sm font-medium">
+                        {student.cgpa ? student.cgpa.toFixed(2) : "—"}
                       </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm truncate overflow-hidden">
-                    {student.passout_year || "—"}
-                  </TableCell>
-                  <TableCell className="truncate overflow-hidden">
-                    <span className="text-sm font-medium">
-                      {student.cgpa ? student.cgpa.toFixed(2) : "—"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="truncate overflow-hidden">
-                    {student.institute_verified ? (
-                      <Badge variant="secondary" className="font-normal text-[10px]">
-                        Verified
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="font-normal text-[10px]">
-                        Pending
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right shrink-0 pr-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={loadingId === student.profile_id}>
-                          {loadingId === student.profile_id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <MoreHorizontal className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/~/students/${student.profile_id}`} className="cursor-pointer">
-                            View Profile
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer">Report</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          className={cn("cursor-pointer", student.institute_verified ? "text-destructive" : "text-emerald-600")}
-                          onClick={() => handleToggleVerification(student.profile_id, student.institute_verified || false)}
-                        >
-                          {student.institute_verified ? "Revoke Verification" : "Verify Student"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    </TableCell>
+                    <TableCell className="truncate overflow-hidden">
+                      {student.institute_verified ? (
+                        <Badge variant="secondary" className="font-normal text-[10px]">
+                          Verified
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="font-normal text-[10px]">
+                          Pending
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right shrink-0 pr-4">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" disabled={loadingId === student.profile_id}>
+                            {loadingId === student.profile_id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <MoreHorizontal className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/~/students/${student.profile_id}`} className="cursor-pointer">
+                              View Profile
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="cursor-pointer">Report</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className={cn("cursor-pointer", student.institute_verified ? "text-destructive" : "text-emerald-600")}
+                            onClick={() => handleToggleVerification(student.profile_id, student.institute_verified || false)}
+                          >
+                            {student.institute_verified ? "Revoke Verification" : "Verify Student"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-32 text-center text-sm text-muted-foreground">
+                    No students found.
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center text-sm text-muted-foreground">
-                  No students found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-      {/* Mobile Card List View */}
-      {paginatedStudents.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 md:hidden">
-          {paginatedStudents.map((student) => (
-            <div key={student.profile_id} className="rounded-lg border bg-card p-4 shadow-sm space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarImage src={student.profile_image_path || undefined} />
-                    <AvatarFallback className="text-xs">
-                      {student.display_name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-semibold truncate">{student.display_name}</span>
-                    <span className="text-xs text-muted-foreground truncate">{student.email}</span>
+        {/* Mobile Card List View */}
+        {paginatedStudents.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 md:hidden">
+            {paginatedStudents.map((student) => (
+              <div key={student.profile_id} className="rounded-lg border bg-card p-4 shadow-sm space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="h-10 w-10 shrink-0">
+                      <AvatarImage src={student.profile_image_path || undefined} />
+                      <AvatarFallback className="text-xs">
+                        {student.display_name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-semibold truncate">{student.display_name}</span>
+                      <span className="text-xs text-muted-foreground truncate">{student.email}</span>
+                    </div>
+                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled={loadingId === student.profile_id}>
+                        {loadingId === student.profile_id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <MoreHorizontal className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                        <Link href={`/~/students/${student.profile_id}`} className="cursor-pointer">
+                          View Profile
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer">Report</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className={cn("cursor-pointer", student.institute_verified ? "text-destructive" : "text-emerald-600")}
+                        onClick={() => handleToggleVerification(student.profile_id, student.institute_verified || false)}
+                      >
+                        {student.institute_verified ? "Revoke Verification" : "Verify Student"}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-3 border-t text-xs">
+                  <div className="min-w-0">
+                    <span className="text-muted-foreground block text-[10px] uppercase font-semibold tracking-wider">Course</span>
+                    <span className="font-medium text-foreground truncate block mt-0.5">{student.course_name || "—"}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-muted-foreground block text-[10px] uppercase font-semibold tracking-wider">University PRN</span>
+                    <span className="font-mono text-foreground truncate block mt-0.5 uppercase">{student.university_prn || "No PRN"}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[10px] uppercase font-semibold tracking-wider">Passout Year</span>
+                    <span className="font-medium text-foreground block mt-0.5">{student.passout_year || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[10px] uppercase font-semibold tracking-wider">CGPA</span>
+                    <span className="font-medium text-foreground block mt-0.5">{student.cgpa ? student.cgpa.toFixed(2) : "—"}</span>
                   </div>
                 </div>
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled={loadingId === student.profile_id}>
-                      {loadingId === student.profile_id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <MoreHorizontal className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem asChild>
-                      <Link href={`/~/students/${student.profile_id}`} className="cursor-pointer">
-                        View Profile
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer">Report</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      className={cn("cursor-pointer", student.institute_verified ? "text-destructive" : "text-emerald-600")}
-                      onClick={() => handleToggleVerification(student.profile_id, student.institute_verified || false)}
-                    >
-                      {student.institute_verified ? "Revoke Verification" : "Verify Student"}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 pt-3 border-t text-xs">
-                <div className="min-w-0">
-                  <span className="text-muted-foreground block text-[10px] uppercase font-semibold tracking-wider">Course</span>
-                  <span className="font-medium text-foreground truncate block mt-0.5">{student.course_name || "—"}</span>
-                </div>
-                <div className="min-w-0">
-                  <span className="text-muted-foreground block text-[10px] uppercase font-semibold tracking-wider">University PRN</span>
-                  <span className="font-mono text-foreground truncate block mt-0.5 uppercase">{student.university_prn || "No PRN"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-[10px] uppercase font-semibold tracking-wider">Passout Year</span>
-                  <span className="font-medium text-foreground block mt-0.5">{student.passout_year || "—"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-[10px] uppercase font-semibold tracking-wider">CGPA</span>
-                  <span className="font-medium text-foreground block mt-0.5">{student.cgpa ? student.cgpa.toFixed(2) : "—"}</span>
+                <div className="flex items-center justify-between pt-3 border-t">
+                  <span className="text-xs text-muted-foreground font-medium">Verification Status</span>
+                  {student.institute_verified ? (
+                    <Badge variant="secondary" className="font-normal text-[10px] px-2.5 py-0.5">
+                      Verified
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="font-normal text-[10px] px-2.5 py-0.5">
+                      Pending
+                    </Badge>
+                  )}
                 </div>
               </div>
-
-              <div className="flex items-center justify-between pt-3 border-t">
-                <span className="text-xs text-muted-foreground font-medium">Verification Status</span>
-                {student.institute_verified ? (
-                  <Badge variant="secondary" className="font-normal text-[10px] px-2.5 py-0.5">
-                    Verified
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="font-normal text-[10px] px-2.5 py-0.5">
-                    Pending
-                  </Badge>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="md:hidden rounded-md border bg-card p-8 text-center text-sm text-muted-foreground">
-          No students found.
-        </div>
-      )}
-
-      {totalCount > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-1 px-1">
-          <div className="text-xs text-muted-foreground">
-            Showing <span className="font-medium">{Math.min(totalCount, (activePage - 1) * initialPageSize + 1)}</span> to{" "}
-            <span className="font-medium">{Math.min(totalCount, activePage * initialPageSize)}</span> of{" "}
-            <span className="font-medium">{totalCount}</span> students
+            ))}
           </div>
+        ) : (
+          <div className="md:hidden rounded-md border bg-card p-8 text-center text-sm text-muted-foreground">
+            No students found.
+          </div>
+        )}
 
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">Rows per page</span>
-              <Select
-                value={initialPageSize.toString()}
-                onValueChange={(val) => handlePageSizeChange(val)}
-              >
-                <SelectTrigger className="h-8 w-[70px] text-xs">
-                  <SelectValue placeholder={initialPageSize.toString()} />
-                </SelectTrigger>
-                <SelectContent>
-                  {[5, 10, 20, 50, 100].map((size) => (
-                    <SelectItem key={size} value={size.toString()} className="text-xs">
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        {totalCount > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-1 px-1">
+            <div className="text-xs text-muted-foreground">
+              Showing <span className="font-medium">{Math.min(totalCount, (activePage - 1) * initialPageSize + 1)}</span> to{" "}
+              <span className="font-medium">{Math.min(totalCount, activePage * initialPageSize)}</span> of{" "}
+              <span className="font-medium">{totalCount}</span> students
             </div>
 
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => updateParams({ page: 1 })}
-                disabled={activePage === 1}
-              >
-                <ChevronsLeft className="h-4 w-4" />
-                <span className="sr-only">First page</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => updateParams({ page: Math.max(1, activePage - 1) })}
-                disabled={activePage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="sr-only">Previous page</span>
-              </Button>
-              
-              <div className="flex items-center justify-center text-xs font-medium min-w-[80px]">
-                Page {activePage} of {totalPages}
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">Rows per page</span>
+                <Select
+                  value={initialPageSize.toString()}
+                  onValueChange={(val) => handlePageSizeChange(val)}
+                >
+                  <SelectTrigger className="h-8 w-[70px] text-xs">
+                    <SelectValue placeholder={initialPageSize.toString()} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[5, 10, 20, 50, 100].map((size) => (
+                      <SelectItem key={size} value={size.toString()} className="text-xs">
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => updateParams({ page: Math.min(totalPages, activePage + 1) })}
-                disabled={activePage === totalPages || totalPages === 0}
-              >
-                <ChevronRight className="h-4 w-4" />
-                <span className="sr-only">Next page</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => updateParams({ page: totalPages })}
-                disabled={activePage === totalPages || totalPages === 0}
-              >
-                <ChevronsRight className="h-4 w-4" />
-                <span className="sr-only">Last page</span>
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => updateParams({ page: 1 })}
+                  disabled={activePage === 1}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                  <span className="sr-only">First page</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => updateParams({ page: Math.max(1, activePage - 1) })}
+                  disabled={activePage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="sr-only">Previous page</span>
+                </Button>
+
+                <div className="flex items-center justify-center text-xs font-medium min-w-[80px]">
+                  Page {activePage} of {totalPages}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => updateParams({ page: Math.min(totalPages, activePage + 1) })}
+                  disabled={activePage === totalPages || totalPages === 0}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                  <span className="sr-only">Next page</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => updateParams({ page: totalPages })}
+                  disabled={activePage === totalPages || totalPages === 0}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                  <span className="sr-only">Last page</span>
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
       </div>
     </div>
   )
