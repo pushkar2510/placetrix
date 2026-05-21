@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useTransition } from "react"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -23,6 +23,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -123,6 +124,8 @@ export function StudentsListClient({
   const router = useRouter()
   const pathname = usePathname()
 
+  const [isPending, startTransition] = useTransition()
+
   // Local state for search input text
   const [searchInput, setSearchInput] = useState(initialSearch)
   // Local state for toggling loader
@@ -143,15 +146,17 @@ export function StudentsListClient({
         params.set(key, String(val))
       }
     })
-    router.push(`${pathname}?${params.toString()}`)
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`)
+    })
   }
 
   // Debounce search input to avoid database throttling on every keystroke
   useEffect(() => {
+    if (searchInput === initialSearch) return
+
     const timer = setTimeout(() => {
-      if (searchInput !== initialSearch) {
-        updateParams({ search: searchInput, page: 1 })
-      }
+      updateParams({ search: searchInput, page: 1 })
     }, 400)
     return () => clearTimeout(timer)
   }, [searchInput, initialSearch])
@@ -203,13 +208,29 @@ export function StudentsListClient({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          {isPending ? (
+            <Loader2 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground animate-spin" />
+          ) : (
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          )}
           <Input
             placeholder="Search students..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="pl-9"
+            className="pl-9 pr-9"
           />
+          {searchInput && (
+            <button
+              onClick={() => {
+                setSearchInput("")
+                updateParams({ search: "", page: 1 })
+              }}
+              className="absolute right-2.5 top-2.5 h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              title="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
         <div className="flex items-center border rounded-md p-1 bg-muted/50">
           {(["all", "verified", "pending"] as const).map((filter) => (
@@ -229,16 +250,18 @@ export function StudentsListClient({
         </div>
       </div>
 
-      {/* Desktop Table View */}
-      <div className="hidden md:block rounded-md border bg-card overflow-hidden">
+      {/* Results Content Area */}
+      <div className={cn("space-y-4 transition-opacity duration-200", isPending && "opacity-50 pointer-events-none")}>
+        {/* Desktop Table View */}
+        <div className="hidden md:block rounded-md border bg-card overflow-hidden">
         <Table className="table-fixed w-full min-w-[800px]">
           <colgroup>
-            <col className="w-[30%]" />
             <col className="w-[28%]" />
-            <col className="w-[14%]" />
+            <col className="w-[26%]" />
+            <col className="w-[11%]" />
+            <col className="w-[11%]" />
             <col className="w-[12%]" />
             <col className="w-[12%]" />
-            <col className="w-[4%]" />
           </colgroup>
           <TableHeader>
             <TableRow>
@@ -247,7 +270,7 @@ export function StudentsListClient({
               <SortableHead label="Passout" col="passout" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
               <SortableHead label="CGPA" col="cgpa" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
               <SortableHead label="Status" col="status" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-right text-xs font-semibold select-none pr-4">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -295,7 +318,7 @@ export function StudentsListClient({
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right shrink-0">
+                  <TableCell className="text-right shrink-0 pr-4">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8" disabled={loadingId === student.profile_id}>
@@ -501,6 +524,7 @@ export function StudentsListClient({
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

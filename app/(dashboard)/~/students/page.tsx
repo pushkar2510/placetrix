@@ -63,7 +63,21 @@ export default async function StudentsPage(props: {
   // Search Filter
   if (search.trim()) {
     const s = search.trim()
-    query = query.or(`course_name.ilike.%${s}%,university_prn.ilike.%${s}%,profiles.display_name.ilike.%${s}%,profiles.email.ilike.%${s}%`)
+    
+    // First, search profiles table for matching display_name or email
+    const { data: matchedProfiles } = await supabase
+      .from("profiles")
+      .select("id")
+      .or(`display_name.ilike.%${s}%,email.ilike.%${s}%`)
+      
+    const matchedProfileIds = (matchedProfiles || []).map((p: any) => p.id)
+    
+    if (matchedProfileIds.length === 0) {
+      // Force empty result if no profile matches
+      query = query.eq("profile_id", "00000000-0000-0000-0000-000000000000")
+    } else {
+      query = query.in("profile_id", matchedProfileIds)
+    }
   }
 
   // Sorting

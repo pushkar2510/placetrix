@@ -11,6 +11,7 @@ import {
   IconUsers, IconUsersGroup, IconCreditCard, IconCalendarEvent, IconSchool,
   IconBriefcase2, IconFileAnalytics, IconTargetArrow,
   IconSun, IconMoon, IconDeviceLaptop, IconCheck, IconChevronRight, IconTools,
+  IconCode,
 } from "@tabler/icons-react"
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
@@ -62,6 +63,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "My Applications", url: "/~/applications", icon: IconClipboardList },
     { title: "Tests", url: "/~/tests", icon: IconChartBar },
     { title: "Events", url: "/~/events", icon: IconCalendarEvent },
+    { title: "LogicLab", url: "/~/logiclab", icon: IconCode },
     {
       title: "Tools",
       url: "#",
