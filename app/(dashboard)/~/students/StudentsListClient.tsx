@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -12,7 +12,18 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, MoreHorizontal, Loader2 } from "lucide-react"
+import {
+  Search,
+  MoreHorizontal,
+  Loader2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -21,10 +32,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { toggleStudentVerification } from "./actions"
 import { toast } from "sonner"
 import Link from "next/link"
+import { useRouter, usePathname } from "next/navigation"
 
 export interface Student {
   profile_id: string
@@ -39,31 +58,133 @@ export interface Student {
   created_at: string
 }
 
+type SortColumn = "name" | "course" | "passout" | "cgpa" | "status" | "created"
+
 interface Props {
   students: Student[]
+  totalCount: number
+  initialPage: number
+  initialPageSize: number
+  initialSearch: string
+  initialStatus: "all" | "verified" | "pending"
+  initialSortCol: SortColumn
+  initialSortDir: "asc" | "desc"
 }
 
-export function StudentsListClient({ students }: Props) {
-  const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<"all" | "verified" | "pending">("all")
+function SortableHead<T extends string>({
+  label,
+  col,
+  sortCol,
+  sortDir,
+  onSort,
+  className,
+}: {
+  label: string
+  col: T
+  sortCol: T
+  sortDir: "asc" | "desc"
+  onSort: (col: T) => void
+  className?: string
+}) {
+  return (
+    <TableHead
+      className={cn(
+        "text-xs font-semibold select-none cursor-pointer hover:bg-muted/60 transition-colors",
+        className
+      )}
+      onClick={() => onSort(col)}
+    >
+      <div className="flex items-center gap-1.5">
+        {label}
+        {sortCol === col ? (
+          sortDir === "asc" ? (
+            <ArrowUp className="h-3.5 w-3.5 text-foreground" />
+          ) : (
+            <ArrowDown className="h-3.5 w-3.5 text-foreground" />
+          )
+        ) : (
+          <ArrowUpDown className="h-3.5 w-3.5 opacity-30 hover:opacity-100 transition-opacity" />
+        )}
+      </div>
+    </TableHead>
+  )
+}
+
+export function StudentsListClient({
+  students,
+  totalCount,
+  initialPage,
+  initialPageSize,
+  initialSearch,
+  initialStatus,
+  initialSortCol,
+  initialSortDir,
+}: Props) {
+  const router = useRouter()
+  const pathname = usePathname()
+
+  // Local state for search input text
+  const [searchInput, setSearchInput] = useState(initialSearch)
+  // Local state for toggling loader
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
-  const filteredStudents = useMemo(() => {
-    return students.filter((s) => {
-      const matchesSearch =
-        s.display_name.toLowerCase().includes(search.toLowerCase()) ||
-        s.email.toLowerCase().includes(search.toLowerCase()) ||
-        (s.university_prn?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
-        (s.course_name?.toLowerCase().includes(search.toLowerCase()) ?? false)
+  // Sync external search updates (e.g. forward/back navigation)
+  useEffect(() => {
+    setSearchInput(initialSearch)
+  }, [initialSearch])
 
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "verified" && s.institute_verified) ||
-        (statusFilter === "pending" && !s.institute_verified)
-
-      return matchesSearch && matchesStatus
+  // Helper to push updated search parameters to the URL
+  const updateParams = (newParams: Partial<Record<string, string | number>>) => {
+    const params = new URLSearchParams(window.location.search)
+    Object.entries(newParams).forEach(([key, val]) => {
+      if (val === undefined || val === "" || val === null) {
+        params.delete(key)
+      } else {
+        params.set(key, String(val))
+      }
     })
-  }, [students, search, statusFilter])
+    router.push(`${pathname}?${params.toString()}`)
+  }
+
+  // Debounce search input to avoid database throttling on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInput !== initialSearch) {
+        updateParams({ search: searchInput, page: 1 })
+      }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchInput, initialSearch])
+
+  const handleStatusFilterChange = (filter: "all" | "verified" | "pending") => {
+    updateParams({ status: filter, page: 1 })
+  }
+
+  const handlePageSizeChange = (val: string) => {
+    updateParams({ size: val, page: 1 })
+  }
+
+  const handleSort = (col: SortColumn) => {
+    let nextDir: "asc" | "desc" = "desc"
+    let nextCol = col
+
+    if (initialSortCol === col) {
+      if (initialSortDir === "asc") {
+        nextDir = "desc"
+      } else {
+        nextCol = "created"
+        nextDir = "desc"
+      }
+    } else {
+      nextDir = col === "name" || col === "course" ? "asc" : "desc"
+    }
+
+    updateParams({ sortBy: nextCol, sortOrder: nextDir, page: 1 })
+  }
+
+  const totalPages = Math.ceil(totalCount / initialPageSize)
+  const activePage = Math.min(initialPage, Math.max(1, totalPages))
+  const paginatedStudents = students
 
   const handleToggleVerification = async (studentId: string, currentStatus: boolean) => {
     try {
@@ -85,8 +206,8 @@ export function StudentsListClient({ students }: Props) {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search students..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="pl-9"
           />
         </div>
@@ -94,10 +215,10 @@ export function StudentsListClient({ students }: Props) {
           {(["all", "verified", "pending"] as const).map((filter) => (
             <button
               key={filter}
-              onClick={() => setStatusFilter(filter)}
+              onClick={() => handleStatusFilterChange(filter)}
               className={cn(
                 "px-3 py-1 text-xs font-medium rounded-sm transition-all capitalize",
-                statusFilter === filter
+                initialStatus === filter
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
@@ -108,53 +229,62 @@ export function StudentsListClient({ students }: Props) {
         </div>
       </div>
 
-      <div className="rounded-md border bg-card">
-        <Table>
+      {/* Desktop Table View */}
+      <div className="hidden md:block rounded-md border bg-card overflow-hidden">
+        <Table className="table-fixed w-full min-w-[800px]">
+          <colgroup>
+            <col className="w-[30%]" />
+            <col className="w-[28%]" />
+            <col className="w-[14%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[4%]" />
+          </colgroup>
           <TableHeader>
             <TableRow>
-              <TableHead>Student</TableHead>
-              <TableHead>Course</TableHead>
-              <TableHead>Passout</TableHead>
-              <TableHead>CGPA</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableHead label="Student" col="name" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
+              <SortableHead label="Course" col="course" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
+              <SortableHead label="Passout" col="passout" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
+              <SortableHead label="CGPA" col="cgpa" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
+              <SortableHead label="Status" col="status" sortCol={initialSortCol} sortDir={initialSortDir} onSort={handleSort} />
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredStudents.length > 0 ? (
-              filteredStudents.map((student) => (
+            {paginatedStudents.length > 0 ? (
+              paginatedStudents.map((student) => (
                 <TableRow key={student.profile_id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
+                  <TableCell className="overflow-hidden text-ellipsis">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar className="h-8 w-8 shrink-0">
                         <AvatarImage src={student.profile_image_path || undefined} />
                         <AvatarFallback className="text-[10px]">
                           {student.display_name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">{student.display_name}</span>
-                        <span className="text-[11px] text-muted-foreground">{student.email}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-medium truncate">{student.display_name}</span>
+                        <span className="text-[11px] text-muted-foreground truncate">{student.email}</span>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-sm">{student.course_name || "—"}</span>
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-tight font-mono">
+                  <TableCell className="overflow-hidden text-ellipsis">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm truncate">{student.course_name || "—"}</span>
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-tight font-mono truncate">
                         {student.university_prn || "No PRN"}
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-sm truncate overflow-hidden">
                     {student.passout_year || "—"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="truncate overflow-hidden">
                     <span className="text-sm font-medium">
                       {student.cgpa ? student.cgpa.toFixed(2) : "—"}
                     </span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="truncate overflow-hidden">
                     {student.institute_verified ? (
                       <Badge variant="secondary" className="font-normal text-[10px]">
                         Verified
@@ -165,7 +295,7 @@ export function StudentsListClient({ students }: Props) {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right shrink-0">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8" disabled={loadingId === student.profile_id}>
@@ -205,6 +335,172 @@ export function StudentsListClient({ students }: Props) {
           </TableBody>
         </Table>
       </div>
+
+      {/* Mobile Card List View */}
+      {paginatedStudents.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 md:hidden">
+          {paginatedStudents.map((student) => (
+            <div key={student.profile_id} className="rounded-lg border bg-card p-4 shadow-sm space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="h-10 w-10 shrink-0">
+                    <AvatarImage src={student.profile_image_path || undefined} />
+                    <AvatarFallback className="text-xs">
+                      {student.display_name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-semibold truncate">{student.display_name}</span>
+                    <span className="text-xs text-muted-foreground truncate">{student.email}</span>
+                  </div>
+                </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled={loadingId === student.profile_id}>
+                      {loadingId === student.profile_id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <MoreHorizontal className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/~/students/${student.profile_id}`} className="cursor-pointer">
+                        View Profile
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer">Report</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      className={cn("cursor-pointer", student.institute_verified ? "text-destructive" : "text-emerald-600")}
+                      onClick={() => handleToggleVerification(student.profile_id, student.institute_verified || false)}
+                    >
+                      {student.institute_verified ? "Revoke Verification" : "Verify Student"}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-3 border-t text-xs">
+                <div className="min-w-0">
+                  <span className="text-muted-foreground block text-[10px] uppercase font-semibold tracking-wider">Course</span>
+                  <span className="font-medium text-foreground truncate block mt-0.5">{student.course_name || "—"}</span>
+                </div>
+                <div className="min-w-0">
+                  <span className="text-muted-foreground block text-[10px] uppercase font-semibold tracking-wider">University PRN</span>
+                  <span className="font-mono text-foreground truncate block mt-0.5 uppercase">{student.university_prn || "No PRN"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-semibold tracking-wider">Passout Year</span>
+                  <span className="font-medium text-foreground block mt-0.5">{student.passout_year || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-semibold tracking-wider">CGPA</span>
+                  <span className="font-medium text-foreground block mt-0.5">{student.cgpa ? student.cgpa.toFixed(2) : "—"}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t">
+                <span className="text-xs text-muted-foreground font-medium">Verification Status</span>
+                {student.institute_verified ? (
+                  <Badge variant="secondary" className="font-normal text-[10px] px-2.5 py-0.5">
+                    Verified
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="font-normal text-[10px] px-2.5 py-0.5">
+                    Pending
+                  </Badge>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="md:hidden rounded-md border bg-card p-8 text-center text-sm text-muted-foreground">
+          No students found.
+        </div>
+      )}
+
+      {totalCount > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-1 px-1">
+          <div className="text-xs text-muted-foreground">
+            Showing <span className="font-medium">{Math.min(totalCount, (activePage - 1) * initialPageSize + 1)}</span> to{" "}
+            <span className="font-medium">{Math.min(totalCount, activePage * initialPageSize)}</span> of{" "}
+            <span className="font-medium">{totalCount}</span> students
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Rows per page</span>
+              <Select
+                value={initialPageSize.toString()}
+                onValueChange={(val) => handlePageSizeChange(val)}
+              >
+                <SelectTrigger className="h-8 w-[70px] text-xs">
+                  <SelectValue placeholder={initialPageSize.toString()} />
+                </SelectTrigger>
+                <SelectContent>
+                  {[5, 10, 20, 50, 100].map((size) => (
+                    <SelectItem key={size} value={size.toString()} className="text-xs">
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => updateParams({ page: 1 })}
+                disabled={activePage === 1}
+              >
+                <ChevronsLeft className="h-4 w-4" />
+                <span className="sr-only">First page</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => updateParams({ page: Math.max(1, activePage - 1) })}
+                disabled={activePage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">Previous page</span>
+              </Button>
+              
+              <div className="flex items-center justify-center text-xs font-medium min-w-[80px]">
+                Page {activePage} of {totalPages}
+              </div>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => updateParams({ page: Math.min(totalPages, activePage + 1) })}
+                disabled={activePage === totalPages || totalPages === 0}
+              >
+                <ChevronRight className="h-4 w-4" />
+                <span className="sr-only">Next page</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => updateParams({ page: totalPages })}
+                disabled={activePage === totalPages || totalPages === 0}
+              >
+                <ChevronsRight className="h-4 w-4" />
+                <span className="sr-only">Last page</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

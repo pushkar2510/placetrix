@@ -8,15 +8,34 @@ export const metadata = {
   description: "View and manage students registered in your institution.",
 }
 
-export default async function StudentsPage() {
+interface SearchParams {
+  page?: string
+  size?: string
+  search?: string
+  status?: string
+  sortBy?: string
+  sortOrder?: string
+}
+
+export default async function StudentsPage(props: {
+  searchParams: Promise<SearchParams>
+}) {
   const profile = await getUserProfile()
   if (!profile || profile.account_type !== "institute") {
     redirect("/~/home")
   }
 
+  const params = await props.searchParams
+  const page = Math.max(1, parseInt(params.page || "1", 10))
+  const size = Math.max(1, parseInt(params.size || "10", 10))
+  const search = params.search || ""
+  const status = params.status || "all"
+  const sortBy = params.sortBy || "created"
+  const sortOrder = params.sortOrder || "desc"
+
   const supabase = await createClient()
 
-  const { data: studentsData, error } = await supabase
+  let query = supabase
     .from("candidate_profiles")
     .select(`
       profile_id,
@@ -31,9 +50,51 @@ export default async function StudentsPage() {
         display_name,
         email
       )
-    `)
+    `, { count: "exact" })
     .eq("institute_id", profile.id)
-    .order("created_at", { ascending: false })
+
+  // Status Filter
+  if (status === "verified") {
+    query = query.eq("institute_verified", true)
+  } else if (status === "pending") {
+    query = query.or("institute_verified.eq.false,institute_verified.is.null")
+  }
+
+  // Search Filter
+  if (search.trim()) {
+    const s = search.trim()
+    query = query.or(`course_name.ilike.%${s}%,university_prn.ilike.%${s}%,profiles.display_name.ilike.%${s}%,profiles.email.ilike.%${s}%`)
+  }
+
+  // Sorting
+  const ascending = sortOrder === "asc"
+  switch (sortBy) {
+    case "name":
+      query = query.order("profiles(display_name)", { ascending })
+      break
+    case "course":
+      query = query.order("course_name", { ascending })
+      break
+    case "passout":
+      query = query.order("passout_year", { ascending })
+      break
+    case "cgpa":
+      query = query.order("cgpa", { ascending })
+      break
+    case "status":
+      query = query.order("institute_verified", { ascending })
+      break
+    case "created":
+    default:
+      query = query.order("created_at", { ascending })
+      break
+  }
+
+  // Sliced Pagination Range
+  const from = (page - 1) * size
+  const to = page * size - 1
+
+  const { data: studentsData, count, error } = await query.range(from, to)
 
   if (error) {
     console.error("Error fetching students:", error)
@@ -57,10 +118,20 @@ export default async function StudentsPage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Students</h1>
         <p className="text-sm text-muted-foreground">
-          {students.length} students currently registered.
+          {count || 0} student{count === 1 ? "" : "s"} registered.
         </p>
       </div>
-      <StudentsListClient students={students} />
+      <StudentsListClient 
+        students={students}
+        totalCount={count || 0}
+        initialPage={page}
+        initialPageSize={size}
+        initialSearch={search}
+        initialStatus={status as "all" | "verified" | "pending"}
+        initialSortCol={sortBy as any}
+        initialSortDir={sortOrder as any}
+      />
     </div>
   )
 }
+
