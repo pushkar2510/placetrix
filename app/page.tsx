@@ -41,8 +41,7 @@ function HeroSection() {
             "fade-in slide-in-from-bottom-10 animate-in fill-mode-backwards transition-all delay-500 duration-500 ease-out",
           )}
         >
-          <div className="rounded-sm px-1.5 py-0.5 shadow-sm">
-            {/* <p className="font-mono text-xs">NEW</p> */}
+          <div className="rounded-sm px-1 py-0.5 shadow-sm">
           </div>
           {/* <span className="text-xs">1,000+ mock tests attempted</span> */}
           <span className="text-xs">
@@ -59,9 +58,7 @@ function HeroSection() {
             cursorBlinkDuration={0.7}
           />
           </span>
-          <span className="hidden h-5 border-l sm:block" />
-          <div className="pr-1 hidden sm:block">
-            <ArrowRightIcon className="size-3 -translate-x-0.5 duration-150 ease-out group-hover:translate-x-0.5" />
+          <div className="rounded-sm px-1 py-0.5 shadow-sm">
           </div>
         </a>
 

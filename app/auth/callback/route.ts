@@ -1,43 +1,35 @@
-// app/auth/callback/route.ts
-//
-// Handles the server-side leg of the PKCE OAuth code exchange for:
-//   - Google sign-in / sign-up
-//   - Any other OAuth provider (GitHub, Discord …)
-//
-// Flow:
-//   Provider → redirect → /auth/callback?code=…&next=…
-//              │
-//              └─ exchangeCodeForSession(code)  ← verifies PKCE verifier
-//                 sets session cookie
-//                 redirect → next (default /~)
-//
-// ── Supabase Dashboard setup ──────────────────────────────────────────────────
-//
-//  Authentication → URL Configuration → Redirect URLs:
-//    http://localhost:3000/auth/callback          ← development
-//    https://yourdomain.com/auth/callback         ← production
-//
-//  Authentication → Providers → Google:
-//    Client ID     — from Google Cloud Console
-//    Client Secret — from Google Cloud Console
-//    Redirect URI to paste into Google Cloud: shown in Supabase dashboard
-//
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  // 1. Remove 'origin' from here. We will define it explicitly below.
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/~";
 
   // Validate redirect target — only allow relative paths to prevent open redirects.
   const safeNext = next.startsWith("/") ? next : "/~";
 
+  // 2. Explicitly define your base URL using an environment variable.
+  // This bypasses the Docker 0.0.0.0 internal binding issue entirely.
+  const getBaseUrl = () => {
+    let url =
+      process.env.NEXT_PUBLIC_SITE_URL ?? // Set this to https://placetrix.app in prod
+      process.env.NEXT_PUBLIC_VERCEL_URL ?? // Automatically set by Vercel (if you ever use it)
+      "http://localhost:3000"; // Fallback for local dev
+    
+    // Ensure it includes `https://`
+    url = url.startsWith("http") ? url : `https://${url}`;
+    // Remove trailing slash if present
+    return url.charAt(url.length - 1) === "/" ? url.slice(0, -1) : url;
+  };
+
+  const baseUrl = getBaseUrl();
+
   if (!code) {
     return NextResponse.redirect(
-      `${origin}/auth/error?error=${encodeURIComponent(
+      // 3. Use baseUrl instead of origin
+      `${baseUrl}/auth/error?error=${encodeURIComponent(
         "No authorisation code returned from provider."
       )}`
     );
@@ -49,9 +41,11 @@ export async function GET(request: NextRequest) {
   if (error) {
     console.error("[auth/callback] exchangeCodeForSession error:", error.message);
     return NextResponse.redirect(
-      `${origin}/auth/error?error=${encodeURIComponent(error.message)}`
+      // 4. Use baseUrl instead of origin
+      `${baseUrl}/auth/error?error=${encodeURIComponent(error.message)}`
     );
   }
 
-  return NextResponse.redirect(`${origin}${safeNext}`);
+  // 5. Use baseUrl instead of origin for the final successful redirect
+  return NextResponse.redirect(`${baseUrl}${safeNext}`);
 }
