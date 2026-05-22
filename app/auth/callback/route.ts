@@ -10,9 +10,15 @@ export async function GET(request: NextRequest) {
   // Validate redirect target — only allow relative paths to prevent open redirects.
   const safeNext = next.startsWith("/") ? next : "/~";
 
-  // 2. Explicitly define your base URL using an environment variable.
+  // 2. Explicitly define your base URL using an environment variable or request url.
   // This bypasses the Docker 0.0.0.0 internal binding issue entirely.
   const getBaseUrl = () => {
+    const requestUrl = new URL(request.url);
+    // If the request came to localhost, keep it on localhost
+    if (requestUrl.hostname === "localhost" || requestUrl.hostname === "127.0.0.1") {
+      return `${requestUrl.protocol}//${requestUrl.host}`;
+    }
+
     let url =
       process.env.NEXT_PUBLIC_SITE_URL ?? // Set this to https://placetrix.app in prod
       process.env.NEXT_PUBLIC_VERCEL_URL ?? // Automatically set by Vercel (if you ever use it)
