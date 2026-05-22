@@ -16,19 +16,19 @@ export const TEAM_MEMBERS_1 = [
     name: 'Sidra Chaudhari',
     role: 'UI-UX Developer',
     image:
-      'https://supabase.placetrix.app/storage/v1/object/public/landing-page-material/team-members/Pushkar.jpeg',
+      'https://supabase.placetrix.app/storage/v1/object/public/landing-page-material/team-members/Sidra.png',
   },
   {
     id: '3',
     name: 'Pushkar Gaikwad',
     role: 'Software Engineer',
     image:
-      'https://supabase.placetrix.app/storage/v1/object/public/landing-page-material/team-members/Pushkar11.png',
+      'https://supabase.placetrix.app/storage/v1/object/public/landing-page-material/team-members/Pushkar.png',
   },
   {
     id: '4',
     name: 'Vishal Raut',
-    role: 'Software Engineer',
+    role: 'LogicLab Developer',
     image:
       'https://supabase.placetrix.app/storage/v1/object/public/landing-page-material/team-members/Vishal.png',
   },
