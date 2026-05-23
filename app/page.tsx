@@ -9,9 +9,7 @@ import {
   ClipboardCheck,
   BellRing,
   Briefcase,
-  CalendarDays,
   BarChart3,
-  Users,
   MenuIcon,
   MoonIcon,
   SunIcon,
@@ -26,11 +24,12 @@ import TextType from "@/components/TextType";
 import PlaceTrixLogo from "@/assets/placetrix.svg";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Portal, PortalBackdrop } from "@/components/ui/landing/portal";
 import { cirka } from "@/app/fonts";
 import type { UserProfile } from "@/lib/supabase/profile";
 import { getUserProfileAction } from "@/lib/supabase/profile";
 import { buildStorageUrl } from "@/lib/storage";
+import BorderGlow from "@/components/BorderGlow";
+import Galaxy from "@/components/Galaxy";
 
 const CONTENT = "mx-auto w-full max-w-6xl px-4 md:px-6";
 const SECTION_Y = "py-16 md:py-24";
@@ -39,7 +38,7 @@ const NAV_SHELL =
   "border border-black/10 bg-white/30 backdrop-blur-xl dark:border-white/10 dark:bg-black/30";
 
 const NAV_BUTTON =
-  "border-black/10 bg-white/70 text-slate-900 hover:bg-black/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10";
+  "border-black/10 bg-white/70 text-zinc-900 hover:bg-black/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10";
 
 const AVATAR_SHELL =
   "size-8 shrink-0 border border-black/10 bg-white/70 dark:border-white/10 dark:bg-white/5";
@@ -156,11 +155,11 @@ const UserAvatar = React.memo(function UserAvatar({
   const initials = React.useMemo(() => {
     return user.display_name
       ? user.display_name
-          .split(" ")
-          .map((n) => n[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2)
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
       : user.email[0].toUpperCase();
   }, [user.display_name, user.email]);
 
@@ -214,13 +213,29 @@ const MobileNav = React.memo(function MobileNav({
     setOpen(false);
   }, []);
 
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeMenu();
+    };
+
+    if (open) {
+      document.addEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "hidden";
+    }
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [open, closeMenu]);
+
   return (
-    <div className="md:hidden">
+    <div className="relative md:hidden">
       <Button
         aria-controls="mobile-menu"
         aria-expanded={open}
         aria-label="Toggle menu"
-        className={cn("md:hidden", NAV_BUTTON)}
+        className={cn(NAV_BUTTON)}
         onClick={toggleMenu}
         size="icon"
         variant="outline"
@@ -229,48 +244,94 @@ const MobileNav = React.memo(function MobileNav({
       </Button>
 
       {open && (
-        <Portal className="top-20" id="mobile-menu">
-          <PortalBackdrop />
-          <div
-            className={cn(
-              "data-[slot=open]:zoom-in-97 data-[slot=open]:animate-in size-full p-4 ease-out transform-gpu"
-            )}
-            data-slot={open ? "open" : "closed"}
-          >
-            <div className={cn("mx-auto mt-12 max-w-sm rounded-2xl p-3", NAV_SHELL)}>
-              <div className="mb-2 flex justify-end">
-                <ThemeToggle />
-              </div>
+        <>
+          <button
+            aria-label="Close menu"
+            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]"
+            onClick={closeMenu}
+          />
 
-              {user ? (
-                <div className="flex items-center gap-3 rounded-xl border border-black/10 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
-                  <UserAvatar user={user} className="size-9" />
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm font-medium">
-                      {user.display_name}
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {user.email}
-                    </span>
+          <div className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+4.25rem)] z-50 px-3">
+            <div className="mx-auto w-full max-w-sm">
+              <div
+                id="mobile-menu"
+                className={cn(
+                  "overflow-hidden rounded-2xl border p-3 shadow-xl",
+                  "border-black/10 bg-white/95 backdrop-blur-xl",
+                  "dark:border-white/10 dark:bg-neutral-950/95",
+                  "animate-in fade-in slide-in-from-top-2 zoom-in-95 duration-200"
+                )}
+              >
+                <div className="mb-3 flex items-center justify-between px-1">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
+                    Menu
+                  </span>
+                  <ThemeToggle />
+                </div>
+
+                {user ? (
+                  <Link
+                    href="/dashboard"
+                    onClick={closeMenu}
+                    className="mb-3 flex items-center gap-3 rounded-xl border border-black/10 bg-black/[0.03] p-3 dark:border-white/10 dark:bg-white/[0.04]"
+                  >
+                    <UserAvatar user={user} className="size-10" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-zinc-900 dark:text-white">
+                        {user.display_name || "Your account"}
+                      </p>
+                      <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                        {user.email}
+                      </p>
+                    </div>
+                  </Link>
+                ) : (
+                  <div className="mb-3 grid grid-cols-2 gap-2">
+                    <Button variant="outline" className={cn("w-full", NAV_BUTTON)} asChild>
+                      <Link href="/auth/login" onClick={closeMenu}>
+                        Sign In
+                      </Link>
+                    </Button>
+                    <Button className="w-full" asChild>
+                      <Link href="/auth/sign-up" onClick={closeMenu}>
+                        Get Started
+                      </Link>
+                    </Button>
                   </div>
+                )}
+
+                <div className="space-y-1">
+                  <a
+                    href="/#features"
+                    onClick={closeMenu}
+                    className="flex h-11 items-center justify-between rounded-xl px-3 text-sm font-medium text-zinc-800 hover:bg-black/[0.04] dark:text-zinc-100 dark:hover:bg-white/[0.06]"
+                  >
+                    <span>Features</span>
+                    <ArrowRightIcon className="size-4 opacity-60" />
+                  </a>
+
+                  <a
+                    href="/#testimonials"
+                    onClick={closeMenu}
+                    className="flex h-11 items-center justify-between rounded-xl px-3 text-sm font-medium text-zinc-800 hover:bg-black/[0.04] dark:text-zinc-100 dark:hover:bg-white/[0.06]"
+                  >
+                    <span>Testimonials</span>
+                    <ArrowRightIcon className="size-4 opacity-60" />
+                  </a>
+
+                  <Link
+                    href="/help-center"
+                    onClick={closeMenu}
+                    className="flex h-11 items-center justify-between rounded-xl px-3 text-sm font-medium text-zinc-800 hover:bg-black/[0.04] dark:text-zinc-100 dark:hover:bg-white/[0.06]"
+                  >
+                    <span>Help Center</span>
+                    <ArrowRightIcon className="size-4 opacity-60" />
+                  </Link>
                 </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <Button className={cn("w-full", NAV_BUTTON)} variant="outline" asChild>
-                    <Link href="/auth/login" onClick={closeMenu}>
-                      Sign In
-                    </Link>
-                  </Button>
-                  <Button className="w-full" asChild>
-                    <Link href="/auth/sign-up" onClick={closeMenu}>
-                      Get Started
-                    </Link>
-                  </Button>
-                </div>
-              )}
+              </div>
             </div>
           </div>
-        </Portal>
+        </>
       )}
     </div>
   );
@@ -286,42 +347,45 @@ const HeaderVisual = React.memo(function HeaderVisual({
   const scrolled = useScrollThreshold(10);
 
   return (
-    <header
-      className={cn(
-        "fixed inset-x-0 top-0 z-50 mx-auto w-full transition-all duration-300 ease-out",
-        "px-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-4 md:pt-3",
-        scrolled ? "max-w-4xl" : "max-w-6xl"
-      )}
-    >
+    <header className="fixed inset-x-0 top-0 z-50 w-full px-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-4 md:pt-3">
       <div
         className={cn(
-          "w-full transition-all duration-300 ease-out",
-          scrolled
-            ? cn("rounded-full", NAV_SHELL, "md:rounded-full")
-            : "rounded-full border-none bg-transparent shadow-none backdrop-blur-none md:rounded-none md:border-none md:bg-transparent md:shadow-none md:backdrop-blur-none"
+          "mx-auto w-full transition-all duration-300 ease-out",
+          scrolled ? "max-w-5xl" : "max-w-6xl"
         )}
       >
-        <nav
+        <div
           className={cn(
-            "flex w-full items-center justify-between px-4 transition-[height,padding] duration-300 ease-out",
-            scrolled ? "h-14 md:h-12 md:px-4" : "h-14 md:h-14 md:px-6"
+            "w-full transition-all duration-300 ease-out",
+            scrolled
+              ? cn("rounded-full", NAV_SHELL, "md:rounded-full")
+              : "rounded-full border-none bg-transparent shadow-none backdrop-blur-none md:rounded-none md:border-none md:bg-transparent md:shadow-none md:backdrop-blur-none"
           )}
         >
-          <Link
-            href="/"
-            className="flex items-center gap-2 px-2 font-bold tracking-[0.05em]"
+          <nav
+            className={cn(
+              "flex w-full items-center justify-between px-4 transition-[height,padding] duration-300 ease-out",
+              scrolled ? "h-14 md:h-12" : "h-14 md:h-14"
+            )}
           >
-            <Logo />
-            <span className="pl-1 text-lg font-bold tracking-wider">PlaceTrix</span>
-          </Link>
+            <Link
+              href="/"
+              className="flex items-center gap-2 font-bold tracking-[0.05em]"
+            >
+              <Logo />
+              <span className="pl-1 text-lg font-bold tracking-wider text-zinc-950 dark:text-white">
+                PlaceTrix
+              </span>
+            </Link>
 
-          <div className="hidden items-center gap-2 md:flex">
-            <ThemeToggle />
-            {user ? <UserAvatar user={user} /> : <AuthButtons size="sm" />}
-          </div>
+            <div className="hidden items-center gap-2 md:flex">
+              <ThemeToggle />
+              {user ? <UserAvatar user={user} /> : <AuthButtons size="sm" />}
+            </div>
 
-          <MobileNav user={user} />
-        </nav>
+            <MobileNav user={user} />
+          </nav>
+        </div>
       </div>
     </header>
   );
@@ -353,7 +417,7 @@ const HeaderShell = React.memo(function HeaderShell({
       .then((data) => {
         if (!cancelled && data) setUser(data);
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => {
       cancelled = true;
@@ -383,7 +447,7 @@ const HeroBackground = React.memo(function HeroBackground() {
 
 const HeroSection = React.memo(function HeroSection() {
   return (
-    <section className="relative isolate min-h-[100svh] w-full overflow-hidden bg-white pb-0 pt-16 text-slate-950 dark:bg-black dark:text-white md:-mt-14 md:min-h-[calc(100dvh+3.5rem)] md:pt-28 lg:pt-32">
+    <section className="relative isolate min-h-[100svh] w-full overflow-hidden bg-white pb-0 pt-16 text-zinc-950 dark:bg-black dark:text-white md:-mt-14 md:min-h-[calc(100dvh+3.5rem)] md:pt-28 lg:pt-32">
       <HeroBackground />
 
       <div className="relative z-10">
@@ -391,7 +455,7 @@ const HeroSection = React.memo(function HeroSection() {
           <div className="flex min-h-[calc(100svh-3.5rem)] max-w-3xl flex-col justify-center gap-6 pb-24 pt-6 md:min-h-[calc(100dvh-3.5rem)] md:pb-32 md:pt-12">
             <a
               className={cn(
-                "flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-white/50 px-3 py-1.5 text-slate-900 shadow-sm backdrop-blur-sm transition-all transform-gpu dark:border-white/15 dark:bg-white/5 dark:text-white",
+                "flex w-fit items-center gap-2 rounded-full border border-zinc-200 bg-white/50 px-3 py-1.5 text-zinc-900 shadow-sm backdrop-blur-sm transition-all transform-gpu dark:border-white/15 dark:bg-white/5 dark:text-white",
                 "fade-in animate-in fill-mode-backwards delay-500 duration-500 ease-out"
               )}
               href="#features"
@@ -400,7 +464,7 @@ const HeroSection = React.memo(function HeroSection() {
                 className="size-1.5 rounded-full bg-emerald-500"
                 aria-hidden="true"
               />
-              <span className="text-xs font-medium text-slate-900 dark:text-white/80">
+              <span className="text-xs font-medium text-zinc-900 dark:text-white/80">
                 <TextType
                   text={["1,000+ mock tests attempted", "500+ active users"]}
                   typingSpeed={15}
@@ -419,7 +483,7 @@ const HeroSection = React.memo(function HeroSection() {
                 "text-balance text-5xl font-extrabold leading-[1.08] md:text-7xl lg:text-8xl"
               )}
             >
-              <span className="text-slate-950 dark:text-white">
+              <span className="text-zinc-950 dark:text-white">
                 The Gap Between You and Your Goal?
               </span>{" "}
               <span className="glitch-wrap">
@@ -432,7 +496,7 @@ const HeroSection = React.memo(function HeroSection() {
               </span>
             </h1>
 
-            <p className="max-w-lg text-sm leading-relaxed text-slate-900 dark:text-slate-100 md:text-base">
+            <p className="max-w-lg text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 md:text-base">
               Placetrix gives students the tools to practise smarter, track
               progress, and stay ahead of every campus drive all in one place.
             </p>
@@ -448,7 +512,7 @@ const HeroSection = React.memo(function HeroSection() {
               <Button
                 size="lg"
                 variant="outline"
-                className="rounded-full bg-white/70 backdrop-blur-sm transform-gpu dark:bg-white/5"
+                className="rounded-full border-zinc-200 bg-white/70 text-zinc-900 backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
                 asChild
               >
                 <Link href="#features">Explore Features</Link>
@@ -487,37 +551,71 @@ const features: Feature[] = [
       "Discover off-campus opportunities and job openings curated specifically for freshers and graduating students.",
   },
   {
-    title: "Expert-Led Events",
-    icon: CalendarDays,
-    description:
-      "Join live webinars, resume workshops, and mock interview sessions hosted by industry veterans.",
-  },
-  {
     title: "Progress Insights",
     icon: BarChart3,
     description:
       "Detailed analytics across subjects help you identify and close skill gaps before interview day.",
   },
-  {
-    title: "Individual & Bulk Plans",
-    icon: Users,
-    description:
-      "Scalable solutions for solo learners or entire institutions via seamless license management.",
-  },
 ];
 
+const FeatureCard = React.memo(function FeatureCard({
+  feature,
+  glowEnabled,
+}: {
+  feature: Feature;
+  glowEnabled: boolean;
+}) {
+  const Icon = feature.icon;
+
+  return (
+    <BorderGlow
+      className="group h-full rounded-3xl"
+      glowColor="40 85% 62%"
+      backgroundColor="transparent"
+      borderRadius={24}
+      glowRadius={glowEnabled ? 14 : 0}
+      glowIntensity={glowEnabled ? 1 : 0}
+      fillOpacity={glowEnabled ? 0.08 : 0}
+      coneSpread={glowEnabled ? 14 : 0}
+    >
+      <article className="h-full rounded-3xl bg-white/95 p-6 backdrop-blur-sm transition-all duration-300 group-hover:-translate-y-0.5 dark:bg-white/[0.03] md:p-7">
+        <div className="flex h-full flex-col">
+          <div className="mb-5 flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400 dark:text-zinc-500">
+              Feature
+            </span>
+            <div className="h-px w-12 bg-black/10 dark:bg-white/10" />
+          </div>
+
+          <div className="flex-1">
+            <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-zinc-900 dark:text-white md:text-base">
+              {feature.title}
+            </h3>
+            <p className="max-w-[48ch] pt-3 text-[15px] leading-7 font-medium tracking-[-0.01em] text-stone-600 dark:text-stone-300 md:text-base">
+              {feature.description}
+            </p>
+          </div>
+        </div>
+      </article>
+    </BorderGlow>
+  );
+});
+
 const FeaturesSection = React.memo(function FeaturesSection() {
+  const { resolvedTheme } = useTheme();
+  const glowEnabled = resolvedTheme === "dark";
+
   return (
     <section
       id="features"
       className={cn(
-        "scroll-mt-24 md:scroll-mt-20 relative z-10 w-full bg-white/92 text-slate-950 backdrop-blur-sm transform-gpu dark:bg-black/88 dark:text-white",
+        "scroll-mt-24 w-full bg-white text-zinc-950 dark:bg-black dark:text-white md:scroll-mt-20",
         SECTION_Y
       )}
     >
       <div className={CONTENT}>
         <div className="mx-auto max-w-6xl text-center">
-          <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          <p className="mb-3 text-xs font-medium uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
             What you get
           </p>
           <h2
@@ -528,41 +626,19 @@ const FeaturesSection = React.memo(function FeaturesSection() {
           >
             Train. Track. Triumph.
           </h2>
-          <p className="mt-3 text-balance text-sm text-muted-foreground md:text-base">
+          <p className="mt-3 text-balance text-sm text-stone-600 dark:text-stone-300 md:text-base">
             Everything you need to practise, prepare, and get placed.
           </p>
         </div>
 
-        <div className="mt-14 grid grid-cols-1 gap-x-16 border-t border-border md:grid-cols-2">
-          {features.map((feature, i) => {
-            const Icon = feature.icon;
-            const isLastRow =
-              features.length % 2 === 0
-                ? i >= features.length - 2
-                : i === features.length - 1;
-
-            return (
-              <div
-                key={feature.title}
-                className={cn(
-                  "group flex items-start gap-5 py-8",
-                  !isLastRow && "border-b border-border"
-                )}
-              >
-                <div className="mt-0.5 shrink-0 transition-transform duration-200 group-hover:scale-110 transform-gpu [&_svg]:size-5 [&_svg]:text-foreground/50">
-                  <Icon />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-medium md:text-base">
-                    {feature.title}
-                  </h3>
-                  <p className="text-xs leading-relaxed text-muted-foreground md:text-sm">
-                    {feature.description}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+          {features.map((feature) => (
+            <FeatureCard
+              key={feature.title}
+              feature={feature}
+              glowEnabled={glowEnabled}
+            />
+          ))}
         </div>
       </div>
     </section>
@@ -612,60 +688,84 @@ const testimonials: Testimonial[] = [
   },
 ];
 
-const TestimonialItem = React.memo(function TestimonialItem({
+const TestimonialCard = React.memo(function TestimonialCard({
   testimonial,
-  last = false,
+  glowEnabled,
 }: {
   testimonial: Testimonial;
-  last?: boolean;
+  glowEnabled: boolean;
 }) {
   const { quote, company, image, name, role } = testimonial;
 
   return (
-    <figure className={cn("py-10", !last && "border-b border-border")}>
-      <span
-        aria-hidden="true"
-        className="mb-3 block select-none font-serif text-5xl leading-none text-foreground/15"
-      >
-        &ldquo;
-      </span>
-      <blockquote>
-        <p className="text-balance text-base leading-relaxed tracking-wide text-foreground/75 sm:text-lg">
-          {quote}
-        </p>
-      </blockquote>
-      <figcaption className="mt-6 flex items-center gap-3">
-        <Avatar className="size-9 rounded-full ring-1 ring-border">
-          <AvatarImage
-            alt={`${name}'s profile picture`}
-            src={image}
-            className="object-cover"
-          />
-          <AvatarFallback className="text-xs">{name.charAt(0)}</AvatarFallback>
-        </Avatar>
-        <div className="flex flex-col gap-0.5">
-          <cite className="text-sm font-medium not-italic">{name}</cite>
-          <span className="text-[11px] tracking-tight text-muted-foreground">
-            {role}
-            {company && `, ${company}`}
-          </span>
+    <BorderGlow
+      className="group h-full rounded-3xl"
+      glowColor="0 85% 62%"
+      backgroundColor="transparent"
+      borderRadius={24}
+      glowRadius={glowEnabled ? 14 : 0}
+      glowIntensity={glowEnabled ? 1.5 : 0}
+      fillOpacity={glowEnabled ? 0.08 : 0}
+      coneSpread={glowEnabled ? 14 : 0}
+    >
+      <figure className="h-full rounded-3xl bg-white/95 p-6 backdrop-blur-sm transition-all duration-300 group-hover:-translate-y-0.5 dark:bg-white/[0.03] md:p-7">
+        <div className="flex h-full flex-col">
+          <div className="mb-5 flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400 dark:text-zinc-500">
+              Success Story
+            </span>
+            <div className="h-px w-12 bg-black/10 dark:bg-white/10" />
+          </div>
+
+          <blockquote className="flex-1">
+            <p className="max-w-[48ch] text-[15px] leading-7 font-medium tracking-[-0.01em] text-stone-700 dark:text-stone-300 md:text-base">
+              {quote}
+            </p>
+          </blockquote>
+
+          <figcaption className="flex items-center gap-3 pt-8">
+            <Avatar className="size-11 rounded-full ring-1 ring-black/10 dark:ring-white/10">
+              <AvatarImage
+                alt={`${name}'s profile picture`}
+                src={image}
+                className="object-cover"
+              />
+              <AvatarFallback className="text-xs font-medium">
+                {name.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="min-w-0">
+              <cite className="block truncate text-sm font-semibold not-italic text-zinc-900 dark:text-white">
+                {name}
+              </cite>
+              <p className="truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                {role}
+                {company ? `, ${company}` : ""}
+              </p>
+            </div>
+          </figcaption>
         </div>
-      </figcaption>
-    </figure>
+      </figure>
+    </BorderGlow>
   );
 });
 
 const TestimonialsSection = React.memo(function TestimonialsSection() {
+  const { resolvedTheme } = useTheme();
+  const glowEnabled = resolvedTheme === "dark";
+
   return (
     <section
+      id="testimonials"
       className={cn(
-        "w-full bg-white text-slate-950 dark:bg-black dark:text-white",
+        "w-full bg-white text-zinc-950 dark:bg-black dark:text-white",
         SECTION_Y
       )}
     >
       <div className={CONTENT}>
         <div className="mx-auto max-w-6xl text-center">
-          <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          <p className="mb-3 text-xs font-medium uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
             Testimonials
           </p>
           <h2
@@ -676,23 +776,19 @@ const TestimonialsSection = React.memo(function TestimonialsSection() {
           >
             Real students, real results
           </h2>
-          <p className="mt-3 text-sm text-muted-foreground md:text-base">
-            Trusted by students and educators across India to prepare with
-            confidence.
+          <p className="mt-3 text-sm text-stone-600 dark:text-stone-300 md:text-base">
+            Trusted by students and educators across India to prepare with confidence.
           </p>
         </div>
 
-        <div className="mt-10 grid grid-cols-1 gap-x-16 md:grid-cols-2">
-          <div>
-            {[testimonials[0], testimonials[2]].map((t, i) => (
-              <TestimonialItem key={t.name} testimonial={t} last={i === 1} />
-            ))}
-          </div>
-          <div className="md:pt-16">
-            {[testimonials[1], testimonials[3]].map((t, i) => (
-              <TestimonialItem key={t.name} testimonial={t} last={i === 1} />
-            ))}
-          </div>
+        <div className="mt-12 grid gap-5 md:grid-cols-2">
+          {testimonials.map((testimonial) => (
+            <TestimonialCard
+              key={`${testimonial.name}-${testimonial.company ?? ""}`}
+              testimonial={testimonial}
+              glowEnabled={glowEnabled}
+            />
+          ))}
         </div>
       </div>
     </section>
@@ -701,28 +797,48 @@ const TestimonialsSection = React.memo(function TestimonialsSection() {
 
 const CTASection = React.memo(function CTASection() {
   return (
-    <section className="w-full bg-white pb-16 text-slate-950 dark:bg-black dark:text-white md:pb-24">
+    <section className="w-full bg-white pb-16 text-zinc-950 dark:bg-black dark:text-white md:pb-24">
       <div className={CONTENT}>
-        <div className="relative overflow-hidden rounded-2xl border border-slate-300/80 px-8 py-16 text-center dark:border-white/10 dark:bg-white/2 md:px-16 md:py-20">
-          <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            Get started today
-          </p>
-          <h2
-            className={cn(
-              cirka.className,
-              "text-balance text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl"
-            )}
-          >
-            Your placement journey starts here.
-          </h2>
-          <p className="mx-auto mt-4 max-w-md text-sm text-muted-foreground md:text-base">
-            Join hundreds of students who have already cracked their dream
-            placements using Placetrix.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg" className="font-medium" asChild>
-              <Link href="/auth/sign-up">Get Started</Link>
-            </Button>
+        <div className="relative overflow-hidden rounded-2xl border border-zinc-300/80 px-8 py-16 text-center dark:border-white/10 dark:bg-white/[0.02] md:px-16 md:py-20">
+          <div className="absolute inset-0 z-0 opacity-40 dark:opacity-70">
+            <Galaxy
+              density={0.9}
+              glowIntensity={0.2}
+              saturation={0}
+              hueShift={140}
+              mouseInteraction={false}
+              twinkleIntensity={0.25}
+              rotationSpeed={0.08}
+              repulsionStrength={1.5}
+              autoCenterRepulsion={0}
+              starSpeed={0.4}
+              speed={0.8}
+            />
+          </div>
+
+          <div className="pointer-events-none absolute inset-0 z-10 bg-white/70 dark:bg-black/45" />
+
+          <div className="relative z-20">
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+              Get started today
+            </p>
+            <h2
+              className={cn(
+                cirka.className,
+                "text-balance text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl"
+              )}
+            >
+              Your placement journey starts here.
+            </h2>
+            <p className="mx-auto mt-4 max-w-md text-sm text-stone-600 dark:text-stone-300 md:text-base">
+              Join hundreds of students who have already cracked their dream
+              placements using Placetrix.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Button size="lg" className="rounded-full font-medium" asChild>
+                <Link href="/auth/sign-up">Get Started</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -778,13 +894,13 @@ const socialLinks = [
 const Footer = React.memo(function Footer() {
   return (
     <footer className="relative">
-      <div className="mx-auto max-w-5xl">
-        <div className="grid max-w-5xl grid-cols-6 gap-6 p-4">
+      <div className="mx-auto max-w-6xl">
+        <div className="grid max-w-6xl grid-cols-6 gap-6 p-4">
           <div className="col-span-6 flex flex-col gap-4 pt-5 md:col-span-4">
-            <a className="font-bold" href="#">
+            <a className="font-bold text-zinc-950 dark:text-white" href="#">
               PlaceTrix
             </a>
-            <p className="max-w-sm text-balance text-sm text-muted-foreground">
+            <p className="max-w-sm text-balance text-sm text-zinc-500 dark:text-zinc-400">
               Train. Track. Triumph.
             </p>
             <div className="flex gap-2">
@@ -808,11 +924,11 @@ const Footer = React.memo(function Footer() {
           </div>
 
           <div className="col-span-3 w-full md:col-span-1">
-            <span className="text-xs text-muted-foreground">Resources</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">Resources</span>
             <div className="mt-2 flex flex-col gap-2">
               {resources.map(({ href, title }) => (
                 <a
-                  className="w-max text-sm hover:underline"
+                  className="w-max text-sm text-zinc-700 hover:underline dark:text-zinc-300"
                   href={href}
                   key={title}
                 >
@@ -823,11 +939,11 @@ const Footer = React.memo(function Footer() {
           </div>
 
           <div className="col-span-3 w-full md:col-span-1">
-            <span className="text-xs text-muted-foreground">Company</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">Company</span>
             <div className="mt-2 flex flex-col gap-2">
               {company.map(({ href, title }) => (
                 <a
-                  className="w-max text-sm hover:underline"
+                  className="w-max text-sm text-zinc-700 hover:underline dark:text-zinc-300"
                   href={href}
                   key={title}
                 >
@@ -839,8 +955,8 @@ const Footer = React.memo(function Footer() {
         </div>
 
         <div className="absolute inset-x-0 h-px w-full bg-border" />
-        <div className="flex max-w-4xl flex-col justify-between gap-2 py-4">
-          <p className="text-center text-sm font-light text-muted-foreground">
+        <div className="flex flex-col justify-between gap-2 py-4">
+          <p className="text-center text-sm font-light text-zinc-500 dark:text-zinc-400">
             &copy; {new Date().getFullYear()}, 360 View Tech, All rights reserved
           </p>
         </div>
@@ -851,7 +967,7 @@ const Footer = React.memo(function Footer() {
 
 export default function LandingPage() {
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-white text-slate-950 supports-[overflow:clip]:overflow-clip dark:bg-black dark:text-white">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-white text-zinc-950 supports-[overflow:clip]:overflow-clip dark:bg-black dark:text-white">
       <HeaderShell />
       <main className="flex flex-col">
         <HeroSection />
