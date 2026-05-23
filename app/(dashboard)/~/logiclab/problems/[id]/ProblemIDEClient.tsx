@@ -52,7 +52,7 @@ function parseInline(text: string) {
       return <strong key={idx} className="font-bold text-foreground">{part.slice(2, -2)}</strong>
     }
     if (part.startsWith("`") && part.endsWith("`")) {
-      return <code key={idx} className="bg-card border border-border px-1 py-0.5 rounded text-xs font-mono text-emerald-400">{part.slice(1, -1)}</code>
+      return <code key={idx} className="bg-card border border-border px-1 py-0.5 rounded text-xs font-mono text-emerald-600 dark:text-emerald-400">{part.slice(1, -1)}</code>
     }
     return part
   })
@@ -154,9 +154,9 @@ const LANGUAGES = [
 ]
 
 const DIFFICULTY_COLORS: Record<string, string> = {
-  Easy: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-  Medium: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-  Hard: "text-rose-400 bg-rose-500/10 border-rose-500/20",
+  Easy: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/15 dark:border-emerald-500/20",
+  Medium: "text-amber-600 dark:text-amber-400 bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/15 dark:border-amber-500/20",
+  Hard: "text-rose-600 dark:text-rose-400 bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/15 dark:border-rose-500/20",
 }
 
 interface SampleTestCase {
@@ -528,19 +528,19 @@ export function ProblemIDEClient({
                     <div
                       key={sub.id}
                       onClick={() => handleViewPastSubmission(sub)}
-                      className={`flex items-center justify-between p-3 rounded-lg border ${sub.status === "Accepted" ? "bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10" : "bg-card border-border hover:bg-muted/60"} transition-all cursor-pointer group`}
+                      className={`flex items-center justify-between p-3 rounded-lg border ${sub.status === "Accepted" ? "bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/5" : "bg-card border-border hover:bg-muted/60"} transition-all cursor-pointer group`}
                       title="Click to view submitted code"
                     >
                       <div className="flex items-center gap-3">
                         {sub.status === "Accepted" ? (
-                          <IconCircleCheck className="h-4 w-4 text-emerald-400 shrink-0" />
+                          <IconCircleCheck className="h-4 w-4 text-emerald-500 shrink-0" />
                         ) : (
-                          <IconCircleX className="h-4 w-4 text-rose-400 shrink-0" />
+                          <IconCircleX className="h-4 w-4 text-rose-500 shrink-0" />
                         )}
                         <div>
-                          <p className={`text-xs font-bold ${sub.status === "Accepted" ? "text-emerald-400" : "text-rose-400"} flex items-center gap-1.5`}>
+                          <p className={`text-xs font-bold ${sub.status === "Accepted" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"} flex items-center gap-1.5`}>
                             {sub.status}
-                            <span className="text-[9px] text-muted-foreground/80 font-normal group-hover:text-emerald-400 transition-colors">(View code →)</span>
+                            <span className="text-[9px] text-muted-foreground/80 font-normal group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">(View code →)</span>
                           </p>
                           <p className="text-[10px] text-muted-foreground/60">
                             {sub.passed_count}/{sub.total_count} passed · {LANGUAGES.find((l) => l.id === sub.language_id)?.name || "Unknown"}
@@ -676,9 +676,9 @@ export function ProblemIDEClient({
                     </div>
                   ) : submitResult ? (
                     <>
-                      <div className={`p-2.5 rounded-lg flex items-center justify-between border ${submitResult.status === "Accepted" ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400" : "bg-rose-500/5 border-rose-500/20 text-rose-400"}`}>
+                      <div className={`p-2.5 rounded-lg flex items-center justify-between border ${submitResult.status === "Accepted" ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/5 border-rose-500/20 text-rose-600 dark:text-rose-400"}`}>
                         <div className="flex items-center gap-2">
-                          {submitResult.status === "Accepted" ? <IconCircleCheck className="h-4 w-4" /> : <IconCircleX className="h-4 w-4" />}
+                          {submitResult.status === "Accepted" ? <IconCircleCheck className="h-4 w-4 text-emerald-500" /> : <IconCircleX className="h-4 w-4 text-rose-500" />}
                           <span className="font-bold uppercase tracking-wider text-[10px]">{submitResult.status}</span>
                           <span className="text-muted-foreground/80 text-[10px]">{submitResult.passed_count}/{submitResult.total_count} passed</span>
                         </div>
@@ -694,13 +694,13 @@ export function ProblemIDEClient({
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                             {sampleTestCases.map((tc, idx) => (
                               <div key={tc.id} className="flex items-center gap-1.5 bg-card/60 border border-border/50 rounded px-2 py-1">
-                                <IconCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                                <IconCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                                 <span className="text-[11px] font-medium text-foreground/80">Example {idx + 1} Passed</span>
                               </div>
                             ))}
                             {submitResult.total_count > sampleTestCases.length && (
                               <div className="flex items-center gap-1.5 bg-card/60 border border-border/50 rounded px-2 py-1 sm:col-span-2">
-                                <IconCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0 animate-pulse" />
+                                <IconCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0 animate-pulse" />
                                 <span className="text-[11px] font-medium text-foreground/80">
                                   All {submitResult.total_count - sampleTestCases.length} hidden validator test cases passed!
                                 </span>
@@ -712,7 +712,7 @@ export function ProblemIDEClient({
 
                       {submitResult.failed_test_case_info && (
                         <div className="p-2.5 bg-muted/30 dark:bg-card border border-zinc-200 dark:border-border rounded-lg space-y-1.5">
-                          <p className="text-[9px] text-rose-400 uppercase tracking-widest font-bold flex items-center gap-1"><IconAlertTriangle className="h-3 w-3" /> Failed at Test Case #{submitResult.failed_test_case_info.index}</p>
+                          <p className="text-[9px] text-rose-600 dark:text-rose-400 uppercase tracking-widest font-bold flex items-center gap-1"><IconAlertTriangle className="h-3 w-3" /> Failed at Test Case #{submitResult.failed_test_case_info.index}</p>
                           <div className="grid grid-cols-3 gap-2 text-[10px]">
                             <div>
                               <p className="text-muted-foreground/60">Input</p>
@@ -724,7 +724,7 @@ export function ProblemIDEClient({
                             </div>
                             <div>
                               <p className="text-muted-foreground/60">Your Output</p>
-                              <pre className="p-1 bg-muted/40 border border-zinc-200 dark:border-border rounded mt-0.5 whitespace-pre-wrap text-rose-400">{submitResult.failed_test_case_info.actual}</pre>
+                              <pre className="p-1 bg-muted/40 border border-zinc-200 dark:border-border rounded mt-0.5 whitespace-pre-wrap text-rose-600 dark:text-rose-400">{submitResult.failed_test_case_info.actual}</pre>
                             </div>
                           </div>
                         </div>
@@ -732,9 +732,9 @@ export function ProblemIDEClient({
                     </>
                   ) : runResult ? (
                     <>
-                      <div className={`p-2.5 rounded-lg flex items-center justify-between border ${runResult.status?.id === 3 && runResult.matched ? "bg-emerald-500/5 border-emerald-500/30 dark:border-emerald-500/20 text-emerald-400" : "bg-rose-500/5 border-rose-500/30 dark:border-rose-500/20 text-rose-400"}`}>
+                      <div className={`p-2.5 rounded-lg flex items-center justify-between border ${runResult.status?.id === 3 && runResult.matched ? "bg-emerald-500/5 border-emerald-500/30 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/5 border-rose-500/30 dark:border-rose-500/20 text-rose-600 dark:text-rose-400"}`}>
                         <div className="flex items-center gap-2">
-                          {runResult.status?.id === 3 && runResult.matched ? <IconCircleCheck className="h-4 w-4" /> : <IconCircleX className="h-4 w-4" />}
+                          {runResult.status?.id === 3 && runResult.matched ? <IconCircleCheck className="h-4 w-4 text-emerald-500" /> : <IconCircleX className="h-4 w-4 text-rose-500" />}
                           <span className="font-bold uppercase tracking-wider text-[10px]">
                             {runResult.status?.id === 3 ? (runResult.matched ? "Sample Passed" : "Wrong Answer") : (runResult.status?.description || "Error")}
                           </span>
@@ -749,15 +749,15 @@ export function ProblemIDEClient({
 
                       {runResult.compile_output && (
                         <div>
-                          <p className="text-[9px] text-rose-400 uppercase tracking-widest mb-1"><IconAlertTriangle className="h-3 w-3 inline" /> Compile Error</p>
-                          <pre className="p-2 bg-muted/40 border border-zinc-200 dark:border-border rounded text-rose-400/90 whitespace-pre-wrap text-[11px] font-mono">{runResult.compile_output}</pre>
+                          <p className="text-[9px] text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-1"><IconAlertTriangle className="h-3 w-3 inline" /> Compile Error</p>
+                          <pre className="p-2 bg-muted/40 border border-zinc-200 dark:border-border rounded text-rose-600/90 dark:text-rose-400/90 whitespace-pre-wrap text-[11px] font-mono">{runResult.compile_output}</pre>
                         </div>
                       )}
 
                       {runResult.stderr && (
                         <div>
-                          <p className="text-[9px] text-rose-400 uppercase tracking-widest mb-1"><IconAlertTriangle className="h-3 w-3 inline" /> Runtime Error</p>
-                          <pre className="p-2 bg-muted/40 border border-zinc-200 dark:border-border rounded text-rose-400/90 whitespace-pre-wrap text-[11px] font-mono">{runResult.stderr}</pre>
+                          <p className="text-[9px] text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-1"><IconAlertTriangle className="h-3 w-3 inline" /> Runtime Error</p>
+                          <pre className="p-2 bg-muted/40 border border-zinc-200 dark:border-border rounded text-rose-600/90 dark:text-rose-400/90 whitespace-pre-wrap text-[11px] font-mono">{runResult.stderr}</pre>
                         </div>
                       )}
 
@@ -796,7 +796,7 @@ export function ProblemIDEClient({
                 <div>
                   <h3 className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
                     Submission Code Preview
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${viewingSubmission.status === "Accepted" ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" : "text-rose-400 bg-rose-500/10 border-rose-500/20"}`}>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${viewingSubmission.status === "Accepted" ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/15 dark:border-emerald-500/20" : "text-rose-600 dark:text-rose-400 bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/15 dark:border-rose-500/20"}`}>
                       {viewingSubmission.status}
                     </span>
                   </h3>

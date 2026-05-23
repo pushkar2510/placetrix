@@ -49,9 +49,9 @@ interface ProblemsDirectoryProps {
 }
 
 const DIFFICULTY_COLORS: Record<string, string> = {
-  Easy: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-  Medium: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-  Hard: "text-rose-400 bg-rose-500/10 border-rose-500/20",
+  Easy: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/15 dark:border-emerald-500/20",
+  Medium: "text-amber-600 dark:text-amber-400 bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/15 dark:border-amber-500/20",
+  Hard: "text-rose-600 dark:text-rose-400 bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/15 dark:border-rose-500/20",
 }
 
 export function ProblemsDirectoryClient({
@@ -243,15 +243,17 @@ export function ProblemsDirectoryClient({
             {/* All Topics pill */}
             <button
               onClick={() => setTagFilter("All")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer whitespace-nowrap group hover:scale-[1.02] active:scale-[0.98] duration-150 ${
                 tagFilter === "All"
-                  ? "bg-emerald-500 border-emerald-500 text-background"
-                  : "bg-muted/60 border-border/60 text-muted-foreground hover:border-border/80 hover:text-foreground/90"
+                  ? "bg-emerald-500 border-emerald-500 text-black shadow-lg shadow-emerald-500/10 font-bold"
+                  : "bg-muted/50 dark:bg-muted/30 border-zinc-200 dark:border-zinc-800/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-muted-foreground hover:text-foreground"
               }`}
             >
               All Topics
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold leading-none ${
-                tagFilter === "All" ? "bg-black/20 text-background" : "bg-zinc-400/50 text-muted-foreground"
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold leading-none transition-colors ${
+                tagFilter === "All"
+                  ? "bg-black/10 text-black"
+                  : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 group-hover:bg-zinc-300 dark:group-hover:bg-zinc-700"
               }`}>
                 {localProblems.length}
               </span>
@@ -265,15 +267,17 @@ export function ProblemsDirectoryClient({
                 <button
                   key={tag}
                   onClick={() => setTagFilter(isActive ? "All" : tag)}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer whitespace-nowrap ${
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer whitespace-nowrap group hover:scale-[1.02] active:scale-[0.98] duration-150 ${
                     isActive
-                      ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-400"
-                      : "bg-muted/60 border-border/60 text-muted-foreground hover:border-border/80 hover:text-foreground/90"
+                      ? "bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500/30 dark:border-emerald-500/50 text-emerald-600 dark:text-emerald-400 font-bold shadow-md shadow-emerald-500/5"
+                      : "bg-muted/50 dark:bg-muted/30 border-zinc-200 dark:border-zinc-800/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {tag}
-                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none ${
-                    isActive ? "bg-emerald-500/20 text-emerald-300" : "bg-zinc-500/50 text-muted-foreground/70"
+                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none transition-colors ${
+                    isActive
+                      ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300"
+                      : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 group-hover:bg-zinc-300 dark:group-hover:bg-zinc-700"
                   }`}>
                     {count}
                   </span>
@@ -466,7 +470,7 @@ export function ProblemsDirectoryClient({
 
             <div className="grid grid-cols-3 gap-1 mt-1 text-[9px] font-bold">
               <div className="space-y-0.5">
-                <div className="flex items-center gap-1 text-emerald-400">
+                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                   <span className="h-1 w-1 rounded-full bg-emerald-500" />
                   <span>Easy</span>
                 </div>
@@ -474,7 +478,7 @@ export function ProblemsDirectoryClient({
               </div>
 
               <div className="space-y-0.5">
-                <div className="flex items-center gap-1 text-amber-400">
+                <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                   <span className="h-1 w-1 rounded-full bg-amber-500" />
                   <span>Medium</span>
                 </div>
@@ -482,7 +486,7 @@ export function ProblemsDirectoryClient({
               </div>
 
               <div className="space-y-0.5">
-                <div className="flex items-center gap-1 text-rose-400">
+                <div className="flex items-center gap-1 text-rose-600 dark:text-rose-400">
                   <span className="h-1 w-1 rounded-full bg-rose-500" />
                   <span>Hard</span>
                 </div>
@@ -627,8 +631,8 @@ export function ProblemsDirectoryClient({
                       title={`Filter by ${tag}`}
                       className={`px-1.5 py-0.5 rounded text-[9px] font-semibold border transition-all cursor-pointer ${
                         tagFilter === tag
-                          ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
-                          : "bg-muted border-border text-muted-foreground/70 hover:border-border/80 hover:text-foreground/75"
+                          ? "bg-emerald-500/10 dark:bg-emerald-500/15 border-emerald-500/30 dark:border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+                          : "bg-muted border-border text-muted-foreground/75 hover:border-border/85 hover:text-foreground"
                       }`}
                     >
                       {tag}

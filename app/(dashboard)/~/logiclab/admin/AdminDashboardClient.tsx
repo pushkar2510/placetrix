@@ -13,6 +13,11 @@ import {
   IconActivity,
   IconCircleCheck,
   IconCircleDot,
+  IconCircleX,
+  IconCheck,
+  IconClock,
+  IconCpu,
+  IconAlertCircle,
   IconX,
   IconAlertTriangle,
   IconBook,
@@ -22,6 +27,7 @@ import {
   IconUpload,
   IconSparkles,
   IconChevronRight,
+  IconChevronLeft,
 } from "@tabler/icons-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -57,6 +63,28 @@ interface StudentStat {
   student_email: string
   solvedCount: number
   attemptCount: number
+  solvedDifficultyCounts: {
+    Easy: number
+    Medium: number
+    Hard: number
+  }
+  solvedTags: Record<string, number>
+  recentSubmissions: {
+    id: string
+    created_at: string
+    status: string
+    problem_title: string
+    difficulty: string
+    language_id: number
+    passed_count?: number | null
+    total_count?: number | null
+    failed_test_case_info?: {
+      index: number
+      input: string
+      expected: string
+      actual: string
+    } | null
+  }[]
 }
 
 interface TagStat {
@@ -94,9 +122,9 @@ interface AnalyticsData {
 }
 
 const DIFFICULTY_COLORS: Record<string, string> = {
-  Easy: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-  Medium: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-  Hard: "text-rose-400 bg-rose-500/10 border-rose-500/20",
+  Easy: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/15 dark:border-emerald-500/20",
+  Medium: "text-amber-600 dark:text-amber-400 bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/15 dark:border-amber-500/20",
+  Hard: "text-rose-600 dark:text-rose-400 bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/15 dark:border-rose-500/20",
 }
 
 const LANG_NAMES: Record<number, string> = {
@@ -105,6 +133,79 @@ const LANG_NAMES: Record<number, string> = {
   54: "C++",
   62: "Java",
 }
+
+// Helper to render verbose diagnostics for failed test cases
+function SubmissionDiagnostics({ sub }: { sub: any }) {
+  if (sub.status === "Accepted") return null
+  
+  let failedInfo = sub.failed_test_case_info
+  if (typeof failedInfo === "string") {
+    try {
+      failedInfo = JSON.parse(failedInfo)
+    } catch {
+      failedInfo = null
+    }
+  }
+  
+  if (!failedInfo) return null
+
+  const isWA = sub.status === "Wrong Answer"
+  
+  return (
+    <div className="mt-1.5 p-3 bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/10 dark:border-rose-500/20 rounded-lg text-xs space-y-2 select-text">
+      <div className="flex items-center justify-between">
+        <span className="font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider text-[9px] flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+          Diagnostics: {sub.status}
+        </span>
+        {sub.passed_count !== null && sub.total_count !== null && (
+          <span className="text-[9px] text-muted-foreground/80 font-mono">
+            Passed {sub.passed_count}/{sub.total_count} cases
+          </span>
+        )}
+      </div>
+      
+      <div className="space-y-1.5 text-[10px] font-mono leading-relaxed bg-black/40 p-2.5 border border-border/50 rounded-md text-foreground">
+        {failedInfo.index && (
+          <div>
+            <span className="text-muted-foreground/60 font-semibold font-mono">Failing Test Case:</span>{" "}
+            <span className="text-foreground font-bold font-mono">#{failedInfo.index}</span>
+          </div>
+        )}
+        
+        {failedInfo.input && failedInfo.input !== "(hidden)" && (
+          <div>
+            <span className="text-muted-foreground/60 font-semibold block mb-0.5">Input Parameters:</span>{" "}
+            <code className="text-foreground/90 bg-muted px-1 rounded block max-h-16 overflow-y-auto whitespace-pre-wrap py-0.5">{failedInfo.input}</code>
+          </div>
+        )}
+
+        {isWA && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1.5 pt-1.5 border-t border-border/20">
+            <div>
+              <span className="text-emerald-500/80 font-semibold block mb-0.5">Expected Output:</span>
+              <code className="text-emerald-400 bg-emerald-950/20 border border-emerald-500/10 px-1 rounded block whitespace-pre-wrap max-h-20 overflow-y-auto py-0.5">{failedInfo.expected}</code>
+            </div>
+            <div>
+              <span className="text-rose-500/80 font-semibold block mb-0.5">Actual Received:</span>
+              <code className="text-rose-400 bg-rose-950/20 border border-rose-500/10 px-1 rounded block whitespace-pre-wrap max-h-20 overflow-y-auto py-0.5">{failedInfo.actual}</code>
+            </div>
+          </div>
+        )}
+
+        {!isWA && failedInfo.actual && (
+          <div className="mt-1.5 pt-1.5 border-t border-border/20">
+            <span className="text-rose-500/80 font-semibold block mb-0.5">Error/Output diagnostics:</span>
+            <pre className="mt-0.5 p-2 rounded bg-background/50 border border-border/30 text-rose-400 font-mono text-[9px] whitespace-pre-wrap max-h-32 overflow-y-auto leading-relaxed">
+              {failedInfo.actual}
+            </pre>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 
 // ── Onboarding Banner shown when DB is empty ──
 function OnboardingBanner({
@@ -171,7 +272,7 @@ export function AdminDashboardClient({
   recentSubmissions: SubmissionLog[]
 }) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<"overview" | "problems" | "create">("overview")
+  const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "problems" | "create">("overview")
   const [localProblems, setLocalProblems] = useState<Problem[]>(initialProblems)
   const [recentSubmissions] = useState<SubmissionLog[]>(initialRecentSubmissions)
 
@@ -179,11 +280,74 @@ export function AdminDashboardClient({
   const [difficultyFilter, setDifficultyFilter] = useState("All")
   const [studentSearch, setStudentSearch] = useState("")
 
+  const [studentCategoryFilter, setStudentCategoryFilter] = useState<"All" | "Struggling" | "Inactive">("All")
+  const [selectedStudent, setSelectedStudent] = useState<StudentStat | null>(null)
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+
   const [deletingProblemId, setDeletingProblemId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSeeding, setIsSeeding] = useState(false)
 
   const isEmpty = analytics.totalProblems === 0
+
+  const handleExportRoster = () => {
+    const listToExport = filteredStudents
+    if (listToExport.length === 0) {
+      toast.error("No student records available to export.")
+      return
+    }
+
+    const headers = [
+      "Rank",
+      "Student Name",
+      "Email",
+      "Solved Count",
+      "Attempt Count",
+      "Accuracy Rate",
+      "Status",
+    ]
+
+    const csvRows = [headers.join(",")]
+
+    listToExport.forEach((st, idx) => {
+      const successRate = st.attemptCount
+        ? Math.round((st.solvedCount / st.attemptCount) * 100)
+        : 0
+
+      let status = "Inactive"
+      if (st.attemptCount > 0) {
+        if (st.attemptCount >= 3 && st.solvedCount < st.attemptCount * 0.35) status = "Struggling"
+        else status = "Practicing"
+      }
+
+      const nameEscaped = `"${st.student_name.replace(/"/g, '""')}"`
+      const emailEscaped = `"${st.student_email.replace(/"/g, '""')}"`
+
+      csvRows.push([
+        idx + 1,
+        nameEscaped,
+        emailEscaped,
+        st.solvedCount,
+        st.attemptCount,
+        `${successRate}%`,
+        status,
+      ].join(","))
+    })
+
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n")
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    const filename = `logiclab_student_roster_${studentCategoryFilter.toLowerCase()}_${new Date().toISOString().slice(0, 10)}.csv`
+    link.setAttribute("download", filename)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success(`Successfully exported ${listToExport.length} students to CSV!`)
+  }
 
   const handleQuickSeed = useCallback(async () => {
     setIsSeeding(true)
@@ -256,8 +420,24 @@ export function AdminDashboardClient({
 
   const filteredStudents = (analytics.studentStats || []).filter((s) => {
     const term = studentSearch.toLowerCase()
-    return s.student_name.toLowerCase().includes(term) || s.student_email.toLowerCase().includes(term)
+    const matchesSearch = s.student_name.toLowerCase().includes(term) || s.student_email.toLowerCase().includes(term)
+    if (!matchesSearch) return false
+
+    if (studentCategoryFilter === "Struggling") {
+      return s.attemptCount >= 3 && s.solvedCount < s.attemptCount * 0.35
+    }
+    if (studentCategoryFilter === "Inactive") {
+      return s.attemptCount === 0
+    }
+    return true
   })
+
+  // Sliced version for pagination
+  const paginatedStudents = filteredStudents.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage) || 1
 
   const totalSubmissions = analytics.totalSubmissions || 1
   const acceptanceRate = ((analytics.totalAccepted / totalSubmissions) * 100).toFixed(1)
@@ -271,30 +451,28 @@ export function AdminDashboardClient({
             <IconLayoutDashboard className="h-5 w-5 text-emerald-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white">LogicLab Admin Center</h1>
+            <h1 className="text-xl font-bold tracking-tight text-foreground dark:text-white">LogicLab Admin Center</h1>
             <p className="text-xs text-muted-foreground/70">
               Manage challenges, track performance, and import curriculum.
             </p>
           </div>
         </div>
-
-        <div className="flex items-center gap-2 bg-card/60 p-0.5 border border-border rounded-lg shrink-0 select-none">
-          {(["overview", "problems", "create"] as const).map((tab) => (
+          <div className="flex items-center gap-2 bg-card/60 p-0.5 border border-border rounded-lg shrink-0 select-none">
+          {(["overview", "analytics", "problems", "create"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer capitalize ${
+              className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer capitalize ${
                 activeTab === tab
                   ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/10"
-                  : "text-muted-foreground hover:text-white"
+                  : "text-muted-foreground hover:text-foreground dark:hover:text-white"
               }`}
             >
-              {tab === "create" ? "Create / Import" : tab === "problems" ? "Manage Problems" : "Overview"}
+              {tab === "create" ? "Create / Import" : tab === "problems" ? "Manage Problems" : tab === "analytics" ? "Concept Analytics" : "Overview"}
             </button>
           ))}
         </div>
       </div>
-
       {/* ── OVERVIEW TAB ── */}
       {activeTab === "overview" && (
         <div className="space-y-5 animate-in fade-in-50 duration-200">
@@ -308,384 +486,438 @@ export function AdminDashboardClient({
             />
           )}
 
-          {/* ── Stats Grid ── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              {
-                title: "Total Submissions",
-                value: analytics.totalSubmissions.toLocaleString(),
-                desc: `${analytics.totalAccepted} accepted`,
-                icon: <IconActivity className="h-4 w-4 text-emerald-400" />,
-                accent: "hover:border-emerald-500/30",
-                empty: analytics.totalSubmissions === 0,
-              },
-              {
-                title: "Acceptance Rate",
-                value: analytics.totalSubmissions === 0 ? "—" : `${acceptanceRate}%`,
-                desc: "Average success per attempt",
-                icon: <IconTrendingUp className="h-4 w-4 text-indigo-400" />,
-                accent: "hover:border-indigo-500/30",
-                empty: analytics.totalSubmissions === 0,
-              },
-              {
-                title: "Active Students",
-                value: analytics.uniqueStudents.toLocaleString(),
-                desc: "Unique workspace participants",
-                icon: <IconUsers className="h-4 w-4 text-cyan-400" />,
-                accent: "hover:border-cyan-500/30",
-                empty: analytics.uniqueStudents === 0,
-              },
-              {
-                title: "Total Challenges",
-                value: analytics.totalProblems.toLocaleString(),
-                desc: `${analytics.difficultyCounts.Easy}E · ${analytics.difficultyCounts.Medium}M · ${analytics.difficultyCounts.Hard}H`,
-                icon: <IconBook className="h-4 w-4 text-amber-400" />,
-                accent: "hover:border-amber-500/30",
-                empty: analytics.totalProblems === 0,
-              },
-            ].map((stat, i) => (
-              <div
-                key={i}
-                className={`bg-card border border-border/80 rounded-xl p-4 flex flex-col justify-between transition-all group duration-300 hover:-translate-y-0.5 select-none ${stat.accent}`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground/70 uppercase tracking-widest font-bold">
-                    {stat.title}
-                  </span>
-                  <div className="h-7 w-7 rounded-lg bg-background border border-border flex items-center justify-center">
-                    {stat.icon}
+          {/* ── 2-Column Dashboard Overview ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            {/* Left Column (2/3 width): Leaderboard & Concept Tags */}
+            <div className="lg:col-span-8 space-y-6">
+              
+              {/* Student Leaderboard Card */}
+              <div className="bg-card border border-border/60 rounded-xl p-5 flex flex-col min-h-[420px] shadow-sm">
+                <div className="flex flex-col gap-2 mb-4 select-none">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Student Insights & Leaderboard
+                    </h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 dark:border-emerald-500/30">
+                      {filteredStudents.length} Candidates
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/50 leading-relaxed">
+                    View active student statuses, solve counts, and performance metrics.
+                  </p>
+                  
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mt-1">
+                    <div className="relative flex-1">
+                      <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+                      <input
+                        type="text"
+                        placeholder="Search by student name or email..."
+                        value={studentSearch}
+                        onChange={(e) => {
+                          setStudentSearch(e.target.value)
+                          setCurrentPage(1)
+                        }}
+                        className="w-full bg-background border border-input rounded-lg pl-8 pr-3 py-1.5 text-xs text-foreground/90 placeholder:text-muted-foreground/50 focus:outline-none focus:border-border transition-all"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleExportRoster}
+                        title="Export current roster view to CSV"
+                        className="flex items-center gap-1.5 bg-card hover:bg-muted text-foreground/80 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold border border-border hover:border-border/80 transition-all cursor-pointer shrink-0"
+                      >
+                        <IconUpload className="h-3.5 w-3.5 rotate-180 text-emerald-500" />
+                        <span>Export CSV</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sub-navigation Tabs for Focus Groups */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto mt-2 pb-1 scrollbar-none select-none border-b border-border/40 font-sans">
+                    {(["All", "Struggling", "Inactive"] as const).map((cat) => {
+                      let badgeClass = "text-muted-foreground hover:text-foreground hover:bg-muted/50 border-border/40"
+                      if (studentCategoryFilter === cat) {
+                        if (cat === "Struggling") badgeClass = "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400 font-bold border-rose-500/50"
+                        else if (cat === "Inactive") badgeClass = "bg-zinc-500/10 border-zinc-500/30 text-zinc-600 dark:text-zinc-400 font-bold"
+                        else badgeClass = "bg-emerald-500 border-emerald-500 text-black font-bold shadow-md shadow-emerald-500/10"
+                      }
+                      
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => {
+                            setStudentCategoryFilter(cat)
+                            setCurrentPage(1)
+                          }}
+                          className={`px-3 py-1 rounded-md text-[10px] font-semibold border transition-all cursor-pointer whitespace-nowrap ${badgeClass}`}
+                        >
+                          {cat === "Struggling" ? "Struggling candidates" : cat === "Inactive" ? "Inactive candidates" : "All candidates"}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
-                <div className="mt-4">
-                  <h3 className={`text-2xl font-bold tracking-tight ${stat.empty ? "text-muted-foreground/50" : "text-white"}`}>
-                    {stat.value}
-                  </h3>
-                  <p className="text-[10px] text-muted-foreground/70 mt-1 font-medium">{stat.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
 
-          {/* ── Row 1: Student Leaderboard + Language Distribution ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* Student Leaderboard */}
-            <div className="lg:col-span-8 bg-card/70 border border-border/60 rounded-xl p-5 flex flex-col min-h-[320px]">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 select-none">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
-                    Student Performance Leaderboard
-                  </h3>
-                  <p className="text-[10px] text-muted-foreground/50">Solved challenges and total attempts per student.</p>
-                </div>
-                <div className="relative w-full sm:w-44">
-                  <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
-                  <input
-                    type="text"
-                    placeholder="Search student..."
-                    value={studentSearch}
-                    onChange={(e) => setStudentSearch(e.target.value)}
-                    className="w-full bg-background border border-input rounded-lg pl-8 pr-3 py-1 text-xs text-foreground/90 placeholder:text-muted-foreground/50 focus:outline-none focus:border-border"
-                  />
-                </div>
-              </div>
-
-              <div className="flex-1 border border-border/50 rounded-lg overflow-auto">
-                <table className="w-full text-left border-collapse text-xs select-none">
-                  <thead>
-                    <tr className="bg-muted/70 border-b border-border text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">
-                      <th className="px-3 py-2 text-center w-10">#</th>
-                      <th className="px-3 py-2">Student</th>
-                      <th className="px-3 py-2 text-center">Solved</th>
-                      <th className="px-3 py-2 text-center">Attempts</th>
-                      <th className="px-3 py-2 text-right">Success Rate</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {filteredStudents.length > 0 ? (
-                      filteredStudents.map((st, idx) => {
-                        const successRate = st.attemptCount
-                          ? Math.round((st.solvedCount / st.attemptCount) * 100)
-                          : 0
-                        return (
-                          <tr key={st.user_id} className="hover:bg-card/30">
-                            <td className="px-3 py-2.5 text-center font-mono text-muted-foreground/50 text-[10px]">
-                              {idx + 1}
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <div className="font-semibold text-foreground/90 truncate">{st.student_name}</div>
-                              <div className="text-[10px] text-muted-foreground/70 truncate">{st.student_email}</div>
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                                {st.solvedCount}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2.5 text-center font-mono text-muted-foreground text-[11px]">
-                              {st.attemptCount}
-                            </td>
-                            <td className="px-3 py-2.5 text-right font-mono font-bold text-indigo-400 text-[11px]">
-                              {successRate}%
-                            </td>
-                          </tr>
-                        )
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={5} className="px-3 py-14 text-center">
-                          <div className="flex flex-col items-center gap-2 text-muted-foreground/30">
-                            <IconUsers className="h-6 w-6 stroke-[1.5]" />
-                            <span className="text-[10px] font-bold uppercase tracking-widest">
-                              {analytics.totalSubmissions === 0
-                                ? "No student submissions yet"
-                                : "No students matched your search"}
-                            </span>
-                            {analytics.totalProblems === 0 && (
-                              <button
-                                onClick={() => setActiveTab("create")}
-                                className="mt-1 text-[10px] text-emerald-500 hover:text-emerald-400 flex items-center gap-1 font-semibold"
-                              >
-                                Import problems to get started <IconChevronRight className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Language Distribution */}
-            <div className="lg:col-span-4 bg-card/70 border border-border/60 rounded-xl p-5 flex flex-col min-h-[320px]">
-              <div className="mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
-                  Language Distribution
-                </h3>
-                <p className="text-[10px] text-muted-foreground/50">Submissions grouped by programming language.</p>
-              </div>
-              <div className="space-y-4 my-auto">
-                {[
-                  { id: 71, label: "Python", color: "bg-emerald-500", text: "text-emerald-400" },
-                  { id: 63, label: "JavaScript", color: "bg-amber-500", text: "text-amber-400" },
-                  { id: 54, label: "C++", color: "bg-rose-500", text: "text-rose-400" },
-                  { id: 62, label: "Java", color: "bg-cyan-500", text: "text-cyan-400" },
-                ].map((lang) => {
-                  const count = analytics.languageCounts[lang.id] || 0
-                  const pct = analytics.totalSubmissions ? (count / analytics.totalSubmissions) * 100 : 0
-                  return (
-                    <div key={lang.id} className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-2 text-muted-foreground font-medium">
-                          <span className={`h-2 w-2 rounded-full ${lang.color}`} />
-                          {lang.label}
-                        </span>
-                        <span className={`text-[10px] font-mono font-bold ${count ? lang.text : "text-muted-foreground/30"}`}>
-                          {count} ({pct.toFixed(0)}%)
-                        </span>
-                      </div>
-                      <div className="h-1 bg-card border border-border/50 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${lang.color} rounded-full transition-all duration-500`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-
-                {analytics.totalSubmissions === 0 && (
-                  <p className="text-[10px] text-muted-foreground/30 text-center pt-2 font-medium uppercase tracking-widest">
-                    No submissions yet
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* ── Row 2: Tag Analytics + Live Activity ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* Curriculum Tag Analytics */}
-            <div className="lg:col-span-6 bg-card/70 border border-border/60 rounded-xl p-5 flex flex-col min-h-[360px]">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
-                    Curriculum Concept Tags
-                  </h3>
-                  <p className="text-[10px] text-muted-foreground/50">
-                    Topics covered, problems per concept, and student proficiency.
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50 font-semibold shrink-0">
-                  <IconTag className="h-3 w-3" />
-                  {(analytics.tagStats || []).length} topics
-                </div>
-              </div>
-
-              {analytics.tagStats && analytics.tagStats.length > 0 ? (
-                <div className="flex-1 overflow-auto border border-border/50 rounded-lg">
-                  <table className="w-full text-left border-collapse text-xs select-none">
+                <div className="flex-1 border border-border/50 rounded-lg overflow-x-auto bg-background/25">
+                  <table className="w-full text-left border-collapse text-xs select-none min-w-[600px]">
                     <thead>
-                      <tr className="bg-muted/70 border-b border-border text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider sticky top-0">
-                        <th className="px-3 py-2.5">Concept / Tag</th>
-                        <th className="px-3 py-2.5 text-center w-16">Problems</th>
-                        <th className="px-3 py-2.5 w-36">Students Solved</th>
-                        <th className="px-3 py-2.5 text-right w-28">Proficiency</th>
+                      <tr className="bg-muted border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        <th className="px-4 py-2.5 text-center w-12">Rank</th>
+                        <th className="px-4 py-2.5">Student Details</th>
+                        <th className="px-4 py-2.5 text-center w-24">Solved</th>
+                        <th className="px-4 py-2.5 text-center w-24">Attempts</th>
+                        <th className="px-4 py-2.5 text-center w-24">Accuracy</th>
+                        <th className="px-4 py-2.5 text-center w-36">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
-                      {analytics.tagStats.map((tag) => {
-                        // Proficiency color (submission acceptance rate)
-                        let rateBg = "bg-zinc-700"
-                        let rateText = "text-muted-foreground/70"
-                        let rateGlow = ""
-                        if (tag.submissions > 0) {
-                          if (tag.rate >= 70) { rateBg = "bg-emerald-500"; rateText = "text-emerald-400"; rateGlow = "shadow-[0_0_6px_rgba(16,185,129,0.3)]" }
-                          else if (tag.rate >= 40) { rateBg = "bg-amber-500"; rateText = "text-amber-400" }
-                          else { rateBg = "bg-rose-500"; rateText = "text-rose-400" }
-                        }
+                      {paginatedStudents.length > 0 ? (
+                        paginatedStudents.map((st, idx) => {
+                          const rank = (currentPage - 1) * itemsPerPage + idx + 1
+                          const successRate = st.attemptCount
+                            ? Math.round((st.solvedCount / st.attemptCount) * 100)
+                            : 0
+                          
+                          let statusLabel = "Practicing"
+                          let statusStyle = "text-amber-600 dark:text-amber-400 bg-amber-500/5 border border-amber-500/20"
+                          if (st.attemptCount === 0) {
+                            statusLabel = "Inactive"
+                            statusStyle = "text-zinc-500 bg-zinc-500/5 border border-zinc-500/20"
+                          } else if (st.attemptCount >= 3 && st.solvedCount < st.attemptCount * 0.35) {
+                            statusLabel = "Struggling"
+                            statusStyle = "text-rose-600 dark:text-rose-400 bg-rose-500/5 border border-rose-500/20 animate-pulse font-bold"
+                          }
 
-                        // Students solved progress
-                        const totalStu = tag.totalStudents || 0
-                        const solvedStu = tag.studentsSolved || 0
-                        const stuPct = totalStu > 0 ? Math.round((solvedStu / totalStu) * 100) : 0
-                        let stuBarColor = "bg-zinc-600"
-                        if (stuPct >= 70) stuBarColor = "bg-emerald-500"
-                        else if (stuPct >= 40) stuBarColor = "bg-amber-500"
-                        else if (stuPct > 0) stuBarColor = "bg-rose-500"
-
-                        return (
-                          <tr key={tag.name} className="hover:bg-card transition-colors">
-                            <td className="px-3 py-2.5">
-                              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] bg-background border border-border text-foreground/75 font-semibold">
-                                <span className="h-1.5 w-1.5 rounded-full bg-zinc-600" />
-                                {tag.name}
+                          return (
+                            <tr
+                              key={st.user_id}
+                              onClick={() => setSelectedStudent(st)}
+                              className="hover:bg-muted/40 transition-colors cursor-pointer group"
+                              title="Click to view candidate deep-dive profile"
+                            >
+                              <td className="px-4 py-3 text-center font-mono text-muted-foreground/50 text-[10px]">
+                                {rank}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="font-semibold text-foreground/90 group-hover:text-emerald-400 transition-colors">{st.student_name}</div>
+                                <div className="text-[10px] text-muted-foreground/75 mt-0.5">{st.student_email}</div>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                                  {st.solvedCount}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center font-mono text-muted-foreground text-[11px]">
+                                {st.attemptCount}
+                              </td>
+                              <td className="px-4 py-3 text-center font-mono font-bold text-indigo-600 dark:text-indigo-400 text-[11px]">
+                                {successRate}%
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${statusStyle}`}>
+                                  {statusLabel}
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-16 text-center">
+                            <div className="flex flex-col items-center gap-2 text-muted-foreground/30">
+                              <IconUsers className="h-6 w-6 stroke-[1.5]" />
+                              <span className="text-[10px] font-bold uppercase tracking-widest">
+                                {analytics.totalSubmissions === 0
+                                  ? "No student submissions recorded"
+                                  : "No matches found for search query"}
                               </span>
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              <span className="font-mono font-bold text-foreground/90 text-[12px]">
-                                {tag.problemCount}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2.5">
-                              {totalStu > 0 ? (
-                                <div className="flex items-center gap-2">
-                                  <div className="flex-1 h-1 bg-card border border-border/50 rounded-full overflow-hidden min-w-[40px]">
-                                    <div
-                                      className={`h-full ${stuBarColor} rounded-full transition-all duration-500`}
-                                      style={{ width: `${stuPct}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-[10px] font-mono text-muted-foreground shrink-0 font-bold">
-                                    {solvedStu}
-                                    <span className="text-muted-foreground/50">/{totalStu}</span>
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-[10px] text-muted-foreground/30 font-medium">No students yet</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2.5 text-right">
-                              {tag.submissions > 0 ? (
-                                <div className="flex items-center justify-end gap-2">
-                                  <div className="w-10 h-1 bg-card border border-border/50 rounded-full overflow-hidden">
-                                    <div
-                                      className={`h-full ${rateBg} rounded-full transition-all duration-500 ${rateGlow}`}
-                                      style={{ width: `${tag.rate}%` }}
-                                    />
-                                  </div>
-                                  <span className={`font-mono font-bold text-[11px] ${rateText}`}>
-                                    {tag.rate}%
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-[10px] text-muted-foreground/30 font-medium">—</span>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground/30 border border-border/50 rounded-lg">
-                  <IconTag className="h-7 w-7 stroke-[1.5]" />
-                  <div className="text-center">
-                    <p className="text-[10px] font-bold uppercase tracking-widest mb-1">No curriculum topics yet</p>
-                    <p className="text-[10px] text-muted-foreground/15">Import problems with tags to see concept analytics</p>
-                  </div>
-                  <button
-                    onClick={() => setActiveTab("create")}
-                    className="flex items-center gap-1.5 text-[10px] text-emerald-500 hover:text-emerald-400 font-semibold"
-                  >
-                    <IconUpload className="h-3 w-3" /> Import Problems
-                  </button>
-                </div>
-              )}
-            </div>
 
-            {/* Live Activity Feed */}
-            <div className="lg:col-span-6 bg-card/70 border border-border/60 rounded-xl p-5 flex flex-col min-h-[360px]">
-              <div className="mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
-                  Live Activity Feed
-                </h3>
-                <p className="text-[10px] text-muted-foreground/50">Latest student submissions across all challenges.</p>
+                {/* Pagination Controls */}
+                {filteredStudents.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs select-none">
+                    <div className="text-muted-foreground font-medium text-[11px]">
+                      Showing <span className="text-foreground font-bold">{Math.min(filteredStudents.length, (currentPage - 1) * itemsPerPage + 1)}</span> to{" "}
+                      <span className="text-foreground font-bold">
+                        {Math.min(filteredStudents.length, currentPage * itemsPerPage)}
+                      </span>{" "}
+                      of <span className="text-foreground font-bold">{filteredStudents.length}</span> students
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      {/* Page Size Selector */}
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <span className="text-muted-foreground font-medium">Rows per page:</span>
+                        <select
+                          value={itemsPerPage}
+                          onChange={(e) => {
+                            setItemsPerPage(Number(e.target.value))
+                            setCurrentPage(1)
+                          }}
+                          className="bg-background border border-border hover:border-border/80 rounded px-2 py-1 text-[11px] font-semibold text-foreground focus:outline-none cursor-pointer"
+                        >
+                          {[5, 10, 20, 50].map((size) => (
+                            <option key={size} value={size}>
+                              {size}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Pagination buttons */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                          className="p-1 border border-border rounded bg-background hover:bg-muted disabled:opacity-40 disabled:hover:bg-background transition-colors text-muted-foreground hover:text-foreground cursor-pointer disabled:cursor-not-allowed"
+                          title="Previous Page"
+                        >
+                          <IconChevronLeft className="h-4 w-4" />
+                        </button>
+                        <span className="text-muted-foreground text-[11px] px-2 font-medium">
+                          Page <span className="text-foreground font-bold">{currentPage}</span> of{" "}
+                          <span className="text-foreground font-bold">{totalPages}</span>
+                        </span>
+                        <button
+                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                          className="p-1 border border-border rounded bg-background hover:bg-muted disabled:opacity-40 disabled:hover:bg-background transition-colors text-muted-foreground hover:text-foreground cursor-pointer disabled:cursor-not-allowed"
+                          title="Next Page"
+                        >
+                          <IconChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="flex-1 overflow-auto border border-border/50 rounded-lg p-2.5 bg-background/20 space-y-2">
-                {recentSubmissions.length > 0 ? (
-                  recentSubmissions.map((log) => (
-                    <div
-                      key={log.id}
-                      className="bg-muted/40 border border-border/50 rounded-lg p-2.5 flex items-start justify-between text-xs hover:border-border/50 transition-colors gap-2"
-                    >
-                      <div className="space-y-0.5 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-foreground/90 truncate">{log.student_name}</span>
-                          <span className="text-[9px] text-muted-foreground/50 shrink-0">
-                            {new Date(log.created_at).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground/70">
-                          <span className="font-bold text-foreground/75">"{log.problem_title}"</span>
-                          {" · "}
-                          <span className="font-mono text-muted-foreground/50">{LANG_NAMES[log.language_id] || "Unknown"}</span>
-                        </p>
-                      </div>
-                      <span
-                        className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase border ${
-                          log.status === "Accepted"
-                            ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-                            : "text-rose-400 bg-rose-500/10 border-rose-500/20"
-                        }`}
+            </div>
+
+            {/* Right Column (1/3 width): Feed & Language Distribution */}
+            <div className="lg:col-span-4 space-y-6">
+              
+              {/* Live Activity Feed */}
+              <div className="bg-card border border-border/60 rounded-xl p-5 flex flex-col min-h-[350px] shadow-sm">
+                <div className="flex items-start justify-between gap-2 mb-4 select-none">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
+                      Live Submission Feed
+                    </h3>
+                    <p className="text-[10px] text-muted-foreground/50 leading-relaxed font-medium">
+                      Real-time submissions log of all active students.
+                    </p>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 dark:border-indigo-500/30 shrink-0">
+                    {acceptanceRate}% success
+                  </span>
+                </div>
+
+                <div className="flex-1 overflow-y-auto border border-border/50 rounded-lg p-2 bg-background/25 space-y-2 max-h-[350px]">
+                  {recentSubmissions.length > 0 ? (
+                    recentSubmissions.map((log) => (
+                      <div
+                        key={log.id}
+                        className="bg-muted/40 border border-border/50 rounded-lg p-2.5 flex items-start justify-between text-xs hover:border-border/80 hover:bg-muted/60 transition-colors gap-2"
                       >
-                        {log.status === "Accepted" ? "AC" : log.status === "Wrong Answer" ? "WA" : log.status?.slice(0, 4) || "?"}
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-foreground/90 truncate max-w-[120px]">{log.student_name}</span>
+                            <span className="text-[9px] text-muted-foreground/50 shrink-0">
+                              {new Date(log.created_at).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground/75 truncate max-w-[200px]">
+                            <span className="font-bold text-foreground/85">"{log.problem_title}"</span>
+                            {" · "}
+                            <span className="font-mono text-muted-foreground/50">{LANG_NAMES[log.language_id] || "Unknown"}</span>
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase border ${
+                            log.status === "Accepted"
+                              ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/15 dark:border-emerald-500/20"
+                              : "text-rose-600 dark:text-rose-400 bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/15 dark:border-rose-500/20"
+                          }`}
+                        >
+                          {log.status === "Accepted" ? "AC" : log.status === "Wrong Answer" ? "WA" : log.status?.slice(0, 4) || "?"}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground/30">
+                      <IconActivity className="h-7 w-7 stroke-[1.5]" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">
+                        No submissions captured
                       </span>
                     </div>
-                  ))
+                  )}
+                </div>
+              </div>
+
+              {/* Language Distribution */}
+              <div className="bg-card border border-border/60 rounded-xl p-5 flex flex-col min-h-[250px] shadow-sm">
+                <div className="mb-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
+                    Language Popularity
+                  </h3>
+                  <p className="text-[10px] text-muted-foreground/50">Total compile executions grouped by language.</p>
+                </div>
+                <div className="space-y-3.5 my-auto">
+                  {[
+                    { id: 71, label: "Python", color: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
+                    { id: 63, label: "JavaScript", color: "bg-amber-500", text: "text-amber-600 dark:text-amber-400" },
+                    { id: 54, label: "C++", color: "bg-rose-500", text: "text-rose-600 dark:text-rose-400" },
+                    { id: 62, label: "Java", color: "bg-cyan-500", text: "text-cyan-600 dark:text-cyan-400" },
+                  ].map((lang) => {
+                    const count = analytics.languageCounts[lang.id] || 0
+                    const pct = analytics.totalSubmissions ? (count / analytics.totalSubmissions) * 100 : 0
+                    return (
+                      <div key={lang.id} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                            <span className={`h-2 w-2 rounded-full ${lang.color}`} />
+                            {lang.label}
+                          </span>
+                          <span className={`text-[10px] font-mono font-bold ${count ? lang.text : "text-muted-foreground/30"}`}>
+                            {count} ({pct.toFixed(0)}%)
+                          </span>
+                        </div>
+                        <div className="h-1 bg-card border border-border/55 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${lang.color} rounded-full transition-all duration-500`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {analytics.totalSubmissions === 0 && (
+                    <p className="text-[10px] text-muted-foreground/30 text-center pt-2 font-medium uppercase tracking-widest">
+                      No languages logged
+                    </p>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
+          {/* ── CONCEPT ANALYTICS TAB ── */}
+          {activeTab === "analytics" && (
+            <div className="space-y-4 animate-in fade-in-50 duration-200">
+              <div className="bg-card border border-border/60 rounded-xl p-6 flex flex-col min-h-[500px] shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 select-none border-b border-border/40 pb-4">
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                      Curriculum Concept Tag Analytics
+                    </h3>
+                    <p className="text-xs text-muted-foreground/60 leading-relaxed">
+                      Detailed tags aggregated from challenge library, student progress profiles, and tag solve efficiency rates.
+                    </p>
+                  </div>
+                  <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/25 dark:border-amber-500/30 shrink-0 self-start md:self-auto">
+                    {analytics.totalProblems} Challenges · {(analytics.tagStats || []).length} Concept Topics
+                  </span>
+                </div>
+
+                {analytics.tagStats && analytics.tagStats.length > 0 ? (
+                  <div className="flex-1 overflow-x-auto border border-border/50 rounded-lg bg-background/25">
+                    <table className="w-full text-left border-collapse text-xs select-none min-w-[600px]">
+                      <thead>
+                        <tr className="bg-muted border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          <th className="px-5 py-3">Concept Tag Name</th>
+                          <th className="px-5 py-3 text-center w-36">Total Challenges</th>
+                          <th className="px-5 py-3 w-72">Student Proficiency Completion</th>
+                          <th className="px-5 py-3 text-right w-36">Average Accuracy</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/50 text-xs">
+                        {analytics.tagStats.map((tag) => {
+                          let rateText = "text-muted-foreground/75"
+                          if (tag.submissions > 0) {
+                            if (tag.rate >= 70) { rateText = "text-emerald-600 dark:text-emerald-400 font-bold" }
+                            else if (tag.rate >= 40) { rateText = "text-amber-600 dark:text-amber-400 font-bold" }
+                            else { rateText = "text-rose-600 dark:text-rose-400 font-bold" }
+                          }
+
+                          const totalStu = tag.totalStudents || 0
+                          const solvedStu = tag.studentsSolved || 0
+                          const stuPct = totalStu > 0 ? Math.round((solvedStu / totalStu) * 100) : 0
+                          let stuBarColor = "bg-zinc-600"
+                          if (stuPct >= 70) stuBarColor = "bg-emerald-500"
+                          else if (stuPct >= 40) stuBarColor = "bg-amber-500"
+                          else if (stuPct > 0) stuBarColor = "bg-rose-500"
+
+                          return (
+                            <tr key={tag.name} className="hover:bg-muted/40 transition-colors">
+                              <td className="px-5 py-4">
+                                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-md text-xs bg-background border border-border text-foreground/75 font-semibold">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.3)]" />
+                                  {tag.name}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 text-center font-mono font-bold text-foreground/90 text-sm">
+                                {tag.problemCount}
+                              </td>
+                              <td className="px-5 py-4">
+                                {totalStu > 0 ? (
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex-1 h-2 bg-card border border-border/50 rounded-full overflow-hidden min-w-[120px]">
+                                      <div
+                                        className={`h-full ${stuBarColor} rounded-full transition-all duration-500`}
+                                        style={{ width: `${stuPct}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-xs font-mono text-muted-foreground shrink-0 font-bold">
+                                      {solvedStu}
+                                      <span className="text-muted-foreground/50">/{totalStu}</span>
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground/30 font-medium">0</span>
+                                )}
+                              </td>
+                              <td className="px-5 py-4 text-right">
+                                {tag.submissions > 0 ? (
+                                  <span className={`font-mono font-bold text-sm ${rateText}`}>
+                                    {tag.rate}%
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground/30 font-medium">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground/30">
-                    <IconActivity className="h-7 w-7 stroke-[1.5]" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">
-                      No submissions yet
-                    </span>
-                    {analytics.totalProblems > 0 && (
-                      <p className="text-[9px] text-muted-foreground/15 text-center max-w-[180px]">
-                        Activity will appear here once students start submitting solutions
-                      </p>
-                    )}
+                  <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground/30 border border-border/50 rounded-lg py-20 bg-background/10">
+                    <IconTag className="h-10 w-10 stroke-[1.2]" />
+                    <div className="text-center">
+                      <p className="text-xs font-bold uppercase tracking-widest mb-1 text-muted-foreground/40">No Concept Tags Configured</p>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
       {/* ── MANAGE PROBLEMS TAB ── */}
       {activeTab === "problems" && (
@@ -848,6 +1080,193 @@ export function AdminDashboardClient({
                     Delete Problem
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Student Profile Detail Modal ── */}
+      {selectedStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-background border border-border rounded-xl shadow-2xl overflow-hidden w-full max-w-lg flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 bg-muted/80 border-b border-border">
+              <div>
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                  Student Detailed Analytics
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border ${
+                    selectedStudent.attemptCount === 0 ? "text-zinc-600 border-zinc-700 bg-zinc-500/5" :
+                    (selectedStudent.attemptCount >= 3 && selectedStudent.solvedCount < selectedStudent.attemptCount * 0.35) ? "text-rose-600 dark:text-rose-400 bg-rose-500/5 border-rose-500/20" :
+                    "text-amber-600 dark:text-amber-400 bg-amber-500/5 border-amber-500/20"
+                  }`}>
+                    {selectedStudent.attemptCount === 0 ? "Inactive" :
+                     (selectedStudent.attemptCount >= 3 && selectedStudent.solvedCount < selectedStudent.attemptCount * 0.35) ? "Struggling" :
+                     "Practicing"}
+                  </span>
+                </h3>
+                <p className="text-[10px] text-muted-foreground/80 mt-0.5 font-mono">
+                  Candidate ID: {selectedStudent.user_id.slice(0, 8)}...
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedStudent(null)}
+                className="p-1.5 hover:bg-muted rounded text-muted-foreground/75 hover:text-white transition-colors cursor-pointer"
+              >
+                <IconX className="h-4.5 w-4.5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 overflow-y-auto space-y-5">
+              
+              {/* Profile Card Summary */}
+              <div className="bg-card border border-border/80 rounded-xl p-4 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <h4 className="text-base font-extrabold text-foreground truncate">{selectedStudent.student_name}</h4>
+                  <p className="text-xs text-muted-foreground/80 truncate mt-0.5">{selectedStudent.student_email}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-[9px] text-muted-foreground/60 uppercase tracking-widest font-bold block">Overall Accuracy</span>
+                  <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight block">
+                    {selectedStudent.attemptCount ? Math.round((selectedStudent.solvedCount / selectedStudent.attemptCount) * 100) : 0}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Core Metrics Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-card border border-border/60 rounded-xl p-3 flex flex-col justify-center select-none">
+                  <span className="text-[9px] text-muted-foreground/60 uppercase tracking-widest font-bold">Solved Challenges</span>
+                  <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{selectedStudent.solvedCount}</span>
+                </div>
+                <div className="bg-card border border-border/60 rounded-xl p-3 flex flex-col justify-center select-none">
+                  <span className="text-[9px] text-muted-foreground/60 uppercase tracking-widest font-bold">Total Attempts</span>
+                  <span className="text-2xl font-black text-foreground mt-1">{selectedStudent.attemptCount}</span>
+                </div>
+              </div>
+
+              {/* Struggling Alert/Recommendation */}
+              {selectedStudent.attemptCount >= 3 && selectedStudent.solvedCount < selectedStudent.attemptCount * 0.35 && (
+                <div className="bg-rose-500/5 border border-rose-500/15 rounded-xl p-4 flex items-start gap-3 animate-in fade-in duration-300">
+                  <IconAlertTriangle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h6 className="text-xs font-bold text-rose-500 uppercase tracking-wider">Candidate Needs Attention</h6>
+                    <p className="text-[11px] text-rose-400/80 leading-relaxed">
+                      This student has made a high volume of attempts (<strong className="text-white">{selectedStudent.attemptCount}</strong>) but has a solve rate of only <strong className="text-white">{Math.round((selectedStudent.solvedCount / selectedStudent.attemptCount) * 100)}%</strong>. This mathematically indicates they are stuck on problem sets and need target guidance or conceptual help.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Difficulty breakdown */}
+              <div className="space-y-2 bg-card border border-border/60 rounded-xl p-4">
+                <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Difficulty Breakdown</h5>
+                
+                {/* Horizontal Segment Bar */}
+                <div className="w-full h-2 rounded-full bg-muted overflow-hidden flex border border-border/50">
+                  {selectedStudent.solvedDifficultyCounts.Easy > 0 && (
+                    <div
+                      className="h-full bg-emerald-500"
+                      style={{ width: `${(selectedStudent.solvedDifficultyCounts.Easy / (selectedStudent.solvedCount || 1)) * 100}%` }}
+                      title={`Easy: ${selectedStudent.solvedDifficultyCounts.Easy}`}
+                    />
+                  )}
+                  {selectedStudent.solvedDifficultyCounts.Medium > 0 && (
+                    <div
+                      className="h-full bg-amber-500"
+                      style={{ width: `${(selectedStudent.solvedDifficultyCounts.Medium / (selectedStudent.solvedCount || 1)) * 100}%` }}
+                      title={`Medium: ${selectedStudent.solvedDifficultyCounts.Medium}`}
+                    />
+                  )}
+                  {selectedStudent.solvedDifficultyCounts.Hard > 0 && (
+                    <div
+                      className="h-full bg-rose-500"
+                      style={{ width: `${(selectedStudent.solvedDifficultyCounts.Hard / (selectedStudent.solvedCount || 1)) * 100}%` }}
+                      title={`Hard: ${selectedStudent.solvedDifficultyCounts.Hard}`}
+                    />
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 mt-2 text-[9px] font-bold">
+                  <div className="space-y-0.5">
+                    <span className="text-emerald-600 dark:text-emerald-400">Easy Solved</span>
+                    <span className="block text-foreground text-sm font-extrabold">{selectedStudent.solvedDifficultyCounts.Easy}</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-amber-600 dark:text-amber-400">Medium Solved</span>
+                    <span className="block text-foreground text-sm font-extrabold">{selectedStudent.solvedDifficultyCounts.Medium}</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-rose-600 dark:text-rose-400">Hard Solved</span>
+                    <span className="block text-foreground text-sm font-extrabold">{selectedStudent.solvedDifficultyCounts.Hard}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Solved Concepts Mastery */}
+              <div className="space-y-2">
+                <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Skill Mastery Tags</h5>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(selectedStudent.solvedTags).length > 0 ? (
+                    Object.entries(selectedStudent.solvedTags).map(([tag, count]) => (
+                      <span key={tag} className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold bg-muted border border-border text-foreground/80">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        {tag}
+                        <span className="px-1.5 py-0.5 rounded text-[8px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/20">{count}</span>
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground/50 italic">No curriculum tags mastered yet.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Student's recent submissions log */}
+              <div className="space-y-2">
+                <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Recent Activity Feed & Error Diagnostics</h5>
+                <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1">
+                  {selectedStudent.recentSubmissions.length > 0 ? (
+                    selectedStudent.recentSubmissions.map((sub) => (
+                      <div key={sub.id} className="flex flex-col gap-1 border-b border-border/40 pb-2.5 last:border-0 last:pb-0">
+                        <div className="bg-muted/30 border border-border/50 rounded-lg p-2.5 flex items-center justify-between text-xs hover:border-border/80 transition-colors gap-2">
+                          <div className="space-y-0.5 min-w-0">
+                            <h6 className="font-semibold text-foreground truncate">"{sub.problem_title}"</h6>
+                            <div className="flex items-center gap-2 text-[9px] text-muted-foreground/60">
+                              <span className={`inline-block px-1.5 py-0.2 rounded text-[8px] font-bold uppercase ${
+                                sub.difficulty === "Easy" ? "text-emerald-600 bg-emerald-500/5 border border-emerald-500/25" :
+                                sub.difficulty === "Medium" ? "text-amber-600 bg-amber-500/5 border border-amber-500/25" :
+                                "text-rose-600 bg-rose-500/5 border border-rose-500/25"
+                              }`}>{sub.difficulty}</span>
+                              <span>·</span>
+                              <span>{new Date(sub.created_at).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
+                            </div>
+                          </div>
+                          <span className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border ${
+                            sub.status === "Accepted"
+                              ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 border-emerald-500/20"
+                              : "text-rose-600 dark:text-rose-400 bg-rose-500/5 border-rose-500/20"
+                          }`}>{sub.status === "Accepted" ? "AC" : sub.status?.slice(0, 4) || "?"}</span>
+                        </div>
+                        {/* Render diagnostic panel if failed */}
+                        <SubmissionDiagnostics sub={sub} />
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground/50 italic">No submissions logged yet.</p>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end px-5 py-3 bg-muted/50 border-t border-border border-b border-border/10">
+              <button
+                onClick={() => setSelectedStudent(null)}
+                className="px-4 py-1.5 bg-background border border-border hover:bg-muted text-foreground/80 hover:text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+              >
+                Close Profile
               </button>
             </div>
           </div>

@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   serverExternalPackages: ["pdf-parse"],
   images: {
+    // Flag added
+    dangerouslyAllowLocalIP: true,
     remotePatterns: [
       {
         protocol: "https",

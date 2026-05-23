@@ -28,7 +28,7 @@ export default async function AdminPage() {
   // ── 2. Fetch all submissions (stitch profiles in-memory to avoid PGRST200) ──
   const { data: rawSubmissions } = await supabase
     .from("coding_submissions" as any)
-    .select("id, status, language_id, problem_id, user_id, created_at")
+    .select("id, status, language_id, problem_id, user_id, passed_count, total_count, failed_test_case_info, created_at")
 
   const submissions: any[] = rawSubmissions || []
 
@@ -36,7 +36,7 @@ export default async function AdminPage() {
   const { data: rawAllProfiles } = await supabase
     .from("profiles" as any)
     .select("id, display_name, email, account_type")
-    .in("account_type", ["student", "user", null])
+    .in("account_type", ["candidate", "user", null])
 
   let profileMap: Record<string, { display_name: string; email: string }> = {}
   ;(rawAllProfiles || []).forEach((p: any) => {
@@ -59,12 +59,23 @@ export default async function AdminPage() {
   })
 
   // ── 4. Student leaderboard — include ALL students, even with 0 submissions ──
+  // Precompute a problem dictionary for fast lookups
+  const problemMap: Record<string, { title: string; difficulty: string; tags: string[] }> = {}
+  rawProblemsList.forEach((p: any) => {
+    problemMap[p.id] = {
+      title: p.title,
+      difficulty: p.difficulty,
+      tags: Array.isArray(p.tags) ? p.tags : [],
+    }
+  })
+
   const studentMap: Record<string, {
     user_id: string
     student_name: string
     student_email: string
     solvedProblems: Set<string>
     attemptCount: number
+    submissionsList: any[]
   }> = {}
 
   // Seed ALL profiles so students with 0 submissions still appear
@@ -77,6 +88,7 @@ export default async function AdminPage() {
       student_email: email,
       solvedProblems: new Set<string>(),
       attemptCount: 0,
+      submissionsList: [],
     }
   })
 
@@ -91,21 +103,66 @@ export default async function AdminPage() {
         student_email: "student@placetrix.com",
         solvedProblems: new Set<string>(),
         attemptCount: 0,
+        submissionsList: [],
       }
     }
+    
     studentMap[s.user_id].attemptCount++
     if (s.status === "Accepted" && s.problem_id) {
       studentMap[s.user_id].solvedProblems.add(s.problem_id)
     }
+
+    const prob = problemMap[s.problem_id]
+    if (prob) {
+      studentMap[s.user_id].submissionsList.push({
+        id: s.id,
+        created_at: s.created_at,
+        status: s.status,
+        problem_title: prob.title,
+        difficulty: prob.difficulty,
+        language_id: s.language_id,
+        passed_count: s.passed_count ?? null,
+        total_count: s.total_count ?? null,
+        failed_test_case_info: s.failed_test_case_info ?? null,
+      })
+    }
   })
 
-  const studentStats = Object.values(studentMap).map((st) => ({
-    user_id: st.user_id,
-    student_name: st.student_name,
-    student_email: st.student_email,
-    solvedCount: st.solvedProblems.size,
-    attemptCount: st.attemptCount,
-  })).sort((a, b) => b.solvedCount - a.solvedCount || b.attemptCount - a.attemptCount)
+  const studentStats = Object.values(studentMap).map((st) => {
+    const solvedDifficultyCounts = { Easy: 0, Medium: 0, Hard: 0 }
+    const solvedTags: Record<string, number> = {}
+
+    st.solvedProblems.forEach((pid) => {
+      const prob = problemMap[pid]
+      if (prob) {
+        const diff = prob.difficulty as "Easy" | "Medium" | "Hard"
+        if (solvedDifficultyCounts[diff] !== undefined) {
+          solvedDifficultyCounts[diff]++
+        }
+        prob.tags.forEach((tag) => {
+          const trimmed = tag.trim()
+          if (trimmed) {
+            solvedTags[trimmed] = (solvedTags[trimmed] || 0) + 1
+          }
+        })
+      }
+    })
+
+    const studentRecentSubmissions = [...st.submissionsList]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5)
+
+    return {
+      user_id: st.user_id,
+      student_name: st.student_name,
+      student_email: st.student_email,
+      solvedCount: st.solvedProblems.size,
+      attemptCount: st.attemptCount,
+      solvedDifficultyCounts,
+      solvedTags,
+      recentSubmissions: studentRecentSubmissions,
+    }
+  }).sort((a, b) => b.solvedCount - a.solvedCount || b.attemptCount - a.attemptCount)
 
   // ── 5. Recent submissions for Live Feed (joined in-memory) ──
   const sortedSubmissions = [...submissions]

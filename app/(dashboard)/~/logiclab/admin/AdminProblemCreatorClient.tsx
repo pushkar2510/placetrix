@@ -570,7 +570,7 @@ export function AdminProblemCreatorClient({
             onClick={() => setActiveTab("single")}
             className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
               activeTab === "single"
-                ? "border-emerald-500 text-emerald-400 font-bold"
+                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold"
                 : "border-transparent text-muted-foreground/80 hover:text-foreground/80"
             }`}
           >
@@ -580,7 +580,7 @@ export function AdminProblemCreatorClient({
             onClick={() => setActiveTab("bulk")}
             className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
               activeTab === "bulk"
-                ? "border-emerald-500 text-emerald-400 font-bold"
+                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold"
                 : "border-transparent text-muted-foreground/80 hover:text-foreground/80"
             }`}
           >
@@ -681,7 +681,7 @@ export function AdminProblemCreatorClient({
                 </label>
                 <button
                   onClick={addTestCase}
-                  className="flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 font-bold uppercase tracking-widest transition-colors cursor-pointer"
+                  className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 font-bold uppercase tracking-widest transition-colors cursor-pointer"
                 >
                   <IconPlus className="h-3 w-3" /> Add
                 </button>
@@ -697,7 +697,7 @@ export function AdminProblemCreatorClient({
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => updateTestCase(idx, "is_sample", !tc.is_sample)}
-                          className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer ${tc.is_sample ? "text-emerald-400" : "text-muted-foreground/60 hover:text-muted-foreground"}`}
+                          className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer ${tc.is_sample ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/60 hover:text-muted-foreground"}`}
                         >
                           {tc.is_sample ? <IconEye className="h-3 w-3" /> : <IconEyeOff className="h-3 w-3" />}
                           {tc.is_sample ? "Sample" : "Hidden"}
@@ -705,7 +705,7 @@ export function AdminProblemCreatorClient({
                         {testCases.length > 1 && (
                           <button
                             onClick={() => removeTestCase(idx)}
-                            className="text-muted-foreground/60 hover:text-rose-400 transition-colors cursor-pointer"
+                            className="text-muted-foreground/60 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
                           >
                             <IconTrash className="h-3.5 w-3.5" />
                           </button>
@@ -748,7 +748,7 @@ export function AdminProblemCreatorClient({
                 <button
                   key={lang.id}
                   onClick={() => setActiveLang(String(lang.id))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${String(lang.id) === activeLang ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-card border-border text-muted-foreground/80 hover:text-foreground/80 hover:border-border"}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${String(lang.id) === activeLang ? "bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold" : "bg-card border-border text-muted-foreground/80 hover:text-foreground/80 hover:border-border"}`}
                 >
                   {lang.name}
                 </button>
@@ -758,7 +758,7 @@ export function AdminProblemCreatorClient({
             {/* Boilerplate Editor */}
             <div className="flex-1 flex flex-col bg-card border border-border rounded-xl overflow-hidden min-h-[250px]">
               <div className="flex items-center gap-2 bg-background px-4 py-2 border-b border-border shrink-0">
-                <IconCode className="h-3.5 w-3.5 text-emerald-400" />
+                <IconCode className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                   User Boilerplate (visible to students)
                 </span>
@@ -855,12 +855,12 @@ export function AdminProblemCreatorClient({
               <div className="bg-card/30 border border-border/80 rounded-2xl overflow-hidden flex flex-col">
                 <div className="bg-card/80 border-b border-border px-5 py-3.5 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <IconFileDescription className="h-4 w-4 text-emerald-400" />
+                    <IconFileDescription className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                     <span className="text-xs font-bold text-foreground/80 uppercase tracking-widest">
                       Parsed Problems Summary ({parsedProblems.length})
                     </span>
                   </div>
-                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 border border-emerald-500/20 rounded-full font-bold uppercase tracking-wider">
+                  <span className="text-[10px] bg-emerald-500/5 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 border border-emerald-500/15 dark:border-emerald-500/20 rounded-full font-bold uppercase tracking-wider">
                     {parsedProblems.filter((p) => p.isValid).length} / {parsedProblems.length} Valid
                   </span>
                 </div>
@@ -874,9 +874,9 @@ export function AdminProblemCreatorClient({
                             <span className="text-xs text-muted-foreground/80 font-mono">#{idx + 1}</span>
                             <h4 className="text-sm font-semibold text-foreground">{prob.title || <span className="text-rose-500 italic">No Title</span>}</h4>
                             <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 border rounded ${
-                              prob.difficulty === "Easy" ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" :
-                              prob.difficulty === "Medium" ? "text-amber-400 bg-amber-500/10 border-amber-500/20" :
-                              "text-rose-400 bg-rose-500/10 border-rose-500/20"
+                              prob.difficulty === "Easy" ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/15 dark:border-emerald-500/20" :
+                              prob.difficulty === "Medium" ? "text-amber-600 dark:text-amber-400 bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/15 dark:border-amber-500/20" :
+                              "text-rose-600 dark:text-rose-400 bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/15 dark:border-rose-500/20"
                             }`}>
                               {prob.difficulty}
                             </span>
@@ -888,11 +888,11 @@ export function AdminProblemCreatorClient({
                             {prob.test_cases.length} TCs
                           </span>
                           {prob.isValid ? (
-                            <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 border border-emerald-500/20 rounded-md font-bold uppercase tracking-wider">
+                            <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 dark:bg-emerald-500/10 px-2.5 py-0.5 border border-emerald-500/15 dark:border-emerald-500/20 rounded-md font-bold uppercase tracking-wider">
                               <IconCheck className="h-3 w-3" /> Valid
                             </span>
                           ) : (
-                            <span className="flex items-center gap-1 text-[10px] text-rose-400 bg-rose-500/10 px-2.5 py-0.5 border border-rose-500/20 rounded-md font-bold uppercase tracking-wider">
+                            <span className="flex items-center gap-1 text-[10px] text-rose-600 dark:text-rose-400 bg-rose-500/5 dark:bg-rose-500/10 px-2.5 py-0.5 border border-rose-500/15 dark:border-rose-500/20 rounded-md font-bold uppercase tracking-wider">
                               <IconX className="h-3 w-3" /> Invalid
                             </span>
                           )}
@@ -902,7 +902,7 @@ export function AdminProblemCreatorClient({
                       {/* Display validation errors */}
                       {!prob.isValid && (
                         <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-3 space-y-1.5">
-                          <div className="flex items-center gap-1 text-[10px] font-bold text-rose-400 uppercase tracking-widest">
+                          <div className="flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-widest">
                             <IconAlertCircle className="h-3.5 w-3.5" /> Validation Errors:
                           </div>
                           <ul className="list-disc pl-4 text-xs text-muted-foreground space-y-0.5">
