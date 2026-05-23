@@ -696,7 +696,7 @@ const testimonials: Testimonial[] = [
   {
     quote:
       "Placetrix's structured aptitude and technical tests were vital to my prep. Consistent practice boosted my confidence and helped me clear the Infosys aptitude round.",
-    image: "https://api.dicebear.com/9.x/glass/svg?seed=Pranjal%20Haral",
+    image: "https://supabase.placetrix.app/storage/v1/object/public/landing-page-material/testimonials/pranjal.png",
     name: "Pranjal Haral",
     role: "Software Engineer",
     company: "Infosys",
@@ -704,7 +704,7 @@ const testimonials: Testimonial[] = [
   {
     quote:
       "Regular practice with Placetrix improved my fundamentals and helped me crack the Infosys aptitude round. I recommend it to all aspirants.",
-    image: "https://api.dicebear.com/9.x/glass/svg?seed=Janhavi%20Patil",
+    image: "https://supabase.placetrix.app/storage/v1/object/public/landing-page-material/testimonials/janhavi.png",
     name: "Janhavi Patil",
     role: "Software Engineer",
     company: "Infosys",
@@ -712,7 +712,7 @@ const testimonials: Testimonial[] = [
   {
     quote:
       "The app's quizzes and mock tests significantly improved my speed and accuracy, leaving me well-prepared for the placement process. Truly thankful!",
-    image: "https://api.dicebear.com/9.x/glass/svg?seed=Pinal%20Lagdhir",
+    image: "https://supabase.placetrix.app/storage/v1/object/public/landing-page-material/testimonials/pinal.png",
     name: "Pinal Lagdhir",
     role: "Software Engineer",
     company: "Infosys",
@@ -720,7 +720,7 @@ const testimonials: Testimonial[] = [
   {
     quote:
       "Placetrix helped me approach placements in a structured way. The consistent practice strengthened my problem-solving skills and boosted my confidence.",
-    image: "https://api.dicebear.com/9.x/glass/svg?seed=Chaitali%20Bonde",
+    image: "https://supabase.placetrix.app/storage/v1/object/public/landing-page-material/testimonials/chaitali.png",
     name: "Chaitali Bonde",
     role: "Software Engineer",
     company: "Infosys",
@@ -1015,7 +1015,7 @@ export default function LandingPage() {
   return (
     <div
       suppressHydrationWarning
-      className="relative flex min-h-screen flex-col overflow-hidden bg-white text-zinc-950 supports-[overflow:clip]:overflow-clip dark:bg-black dark:text-white"
+      className="select-none relative flex min-h-screen flex-col overflow-hidden bg-white text-zinc-950 supports-[overflow:clip]:overflow-clip dark:bg-black dark:text-white"
     >
       <HeaderShell />
       <main className="flex flex-col">

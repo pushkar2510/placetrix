@@ -436,7 +436,7 @@ const TEAM: TeamMember[] = [
 	},
 	{
 		name: "Sidra Chaudhari",
-		image: "https://supabase.placetrix.app/storage/v1/object/public/landing-page-material/team-members/Sidra.png",
+		image: "https://supabase.placetrix.app/storage/v1/object/public/landing-page-material/team-members/SidraC.png",
 		role: "UI-UX Developer",
 		email: "team@placetrix.com",
 		linkedin: "https://www.linkedin.com/company/360-view-tech/",
@@ -814,7 +814,7 @@ export default function OurTeamPage() {
 	return (
 		<div
 			suppressHydrationWarning
-			className="relative flex min-h-screen flex-col overflow-hidden bg-white text-zinc-950 supports-[overflow:clip]:overflow-clip dark:bg-black dark:text-white"
+			className="select-none relative flex min-h-screen flex-col overflow-hidden bg-white text-zinc-950 supports-[overflow:clip]:overflow-clip dark:bg-black dark:text-white"
 		>
 			<HeaderShell />
 			<main className="flex flex-col">
