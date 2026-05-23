@@ -2,6 +2,7 @@
 
 import React, { useState } from "react"
 import Editor from "@monaco-editor/react"
+import { useTheme } from "next-themes"
 import {
   IconTerminal2,
   IconPlayerPlay,
@@ -79,6 +80,9 @@ public class Main {
 }
 
 export default function PlaygroundPage() {
+  const { resolvedTheme } = useTheme()
+  const monacoTheme = resolvedTheme === "light" ? "vs" : "vs-dark"
+
   const [selectedLang, setSelectedLang] = useState(LANGUAGES[0])
   const [code, setCode] = useState(CODE_TEMPLATES.python)
   const [stdin, setStdin] = useState("Hello from PlaceTrix!")
@@ -147,22 +151,22 @@ export default function PlaygroundPage() {
   const isAccepted = results?.status?.id === 3
 
   return (
-    <div className="flex flex-col gap-3 p-3 md:p-5 h-[calc(100svh-56px)] bg-zinc-950 text-zinc-100 overflow-hidden">
+    <div className="flex flex-col gap-3 p-3 md:p-5 h-[calc(100svh-56px)] bg-background text-foreground overflow-hidden">
       {/* ── Toolbar ── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-3 backdrop-blur shrink-0">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-card/60 border border-border rounded-xl px-4 py-3 backdrop-blur shrink-0">
         <div className="flex items-center gap-3">
           <Link
             href="/~/logiclab"
-            className="h-9 w-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center hover:bg-zinc-700 transition-colors"
+            className="h-9 w-9 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-accent hover:text-accent-foreground transition-colors"
           >
-            <IconArrowLeft className="h-4 w-4 text-zinc-400" />
+            <IconArrowLeft className="h-4 w-4 text-muted-foreground" />
           </Link>
-          <div className="h-9 w-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center">
+          <div className="h-9 w-9 rounded-lg bg-muted border border-border flex items-center justify-center">
             <IconTerminal2 className="h-5 w-5 text-emerald-400" />
           </div>
           <div>
-            <p className="text-sm font-bold tracking-tight text-white">LogicLab Playground</p>
-            <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Free Sandbox — No Grading</p>
+            <p className="text-sm font-bold tracking-tight text-foreground">LogicLab Playground</p>
+            <p className="text-[10px] text-muted-foreground/80 uppercase tracking-widest">Free Sandbox — No Grading</p>
           </div>
         </div>
 
@@ -170,7 +174,7 @@ export default function PlaygroundPage() {
           <select
             value={selectedLang.value}
             onChange={(e) => handleLangChange(e.target.value)}
-            className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs font-semibold text-zinc-200 focus:outline-none cursor-pointer"
+            className="bg-muted border border-border rounded-lg px-3 py-1.5 text-xs font-semibold text-foreground/90 focus:outline-none cursor-pointer"
           >
             {LANGUAGES.map((l) => (
               <option key={l.id} value={l.value}>{l.name}</option>
@@ -180,7 +184,7 @@ export default function PlaygroundPage() {
           <button
             onClick={handleReset}
             disabled={running}
-            className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-zinc-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold border border-zinc-700 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 bg-muted hover:bg-accent hover:text-accent-foreground disabled:opacity-40 text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg text-xs font-semibold border border-border transition-all cursor-pointer"
           >
             <IconRefresh className="h-3.5 w-3.5" /> Reset
           </button>
@@ -188,7 +192,7 @@ export default function PlaygroundPage() {
           <button
             onClick={handleRunCode}
             disabled={running}
-            className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-zinc-800 disabled:text-zinc-600 text-black px-4 py-1.5 rounded-lg text-xs font-bold shadow-[0_0_16px_rgba(16,185,129,0.3)] hover:shadow-[0_0_22px_rgba(16,185,129,0.45)] disabled:shadow-none transition-all cursor-pointer"
+            className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-muted disabled:text-muted-foreground/60 text-black px-4 py-1.5 rounded-lg text-xs font-bold shadow-[0_0_16px_rgba(16,185,129,0.3)] hover:shadow-[0_0_22px_rgba(16,185,129,0.45)] disabled:shadow-none transition-all cursor-pointer"
           >
             {running ? (
               <><div className="h-3.5 w-3.5 border border-current border-t-transparent rounded-full animate-spin" /> Compiling...</>
@@ -202,10 +206,10 @@ export default function PlaygroundPage() {
       {/* ── Workspace ── */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0">
         {/* Monaco Editor */}
-        <div className="lg:col-span-7 flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden min-h-[300px]">
-          <div className="flex items-center gap-2 bg-zinc-950 px-4 py-2.5 border-b border-zinc-800 shrink-0">
+        <div className="lg:col-span-7 flex flex-col bg-card border border-zinc-200 dark:border-border rounded-xl overflow-hidden min-h-[300px]">
+          <div className="flex items-center gap-2 bg-muted/40 dark:bg-card px-4 py-2.5 border-b border-zinc-200 dark:border-border shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
               Editor — {selectedLang.name} (.{selectedLang.extension})
             </span>
           </div>
@@ -215,7 +219,7 @@ export default function PlaygroundPage() {
               language={selectedLang.value}
               value={code}
               onChange={(v) => setCode(v || "")}
-              theme="vs-dark"
+              theme={monacoTheme}
               options={{
                 fontSize: 13,
                 minimap: { enabled: false },
@@ -226,9 +230,9 @@ export default function PlaygroundPage() {
                 lineNumbersMinChars: 3,
               }}
               loading={
-                <div className="flex flex-col items-center justify-center h-full gap-2 bg-zinc-900">
-                  <div className="h-8 w-8 border-2 border-zinc-700 border-t-zinc-400 rounded-full animate-spin" />
-                  <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Loading Editor...</span>
+                <div className="flex flex-col items-center justify-center h-full gap-2 bg-card">
+                  <div className="h-8 w-8 border-2 border-muted border-t-foreground rounded-full animate-spin" />
+                  <span className="text-[10px] text-muted-foreground/60 uppercase tracking-widest">Loading Editor...</span>
                 </div>
               }
             />
@@ -238,26 +242,26 @@ export default function PlaygroundPage() {
         {/* Right column */}
         <div className="lg:col-span-5 flex flex-col gap-3 min-h-0">
           {/* Stdin */}
-          <div className="flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shrink-0" style={{ height: "160px" }}>
-            <div className="bg-zinc-950 px-4 py-2.5 border-b border-zinc-800 shrink-0">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Custom Stdin Input</span>
+          <div className="flex flex-col bg-card border border-zinc-200 dark:border-border rounded-xl overflow-hidden shrink-0" style={{ height: "160px" }}>
+            <div className="bg-muted/40 dark:bg-card px-4 py-2.5 border-b border-zinc-200 dark:border-border shrink-0">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Custom Stdin Input</span>
             </div>
             <textarea
               value={stdin}
               onChange={(e) => setStdin(e.target.value)}
               placeholder="Type stdin inputs here..."
-              className="flex-1 bg-zinc-900 text-zinc-200 font-mono text-xs p-3 resize-none focus:outline-none placeholder:text-zinc-700"
+              className="flex-1 bg-muted/10 dark:bg-muted/5 text-foreground/90 font-mono text-xs p-3 resize-none focus:outline-none placeholder:text-muted-foreground/40"
             />
           </div>
 
           {/* Output */}
-          <div className="flex-1 flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden min-h-0">
-            <div className="flex items-center justify-between bg-zinc-950 px-4 py-2.5 border-b border-zinc-800 shrink-0">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+          <div className="flex-1 flex flex-col bg-card border border-zinc-200 dark:border-border rounded-xl overflow-hidden min-h-0">
+            <div className="flex items-center justify-between bg-muted/40 dark:bg-card px-4 py-2.5 border-b border-zinc-200 dark:border-border shrink-0">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                 <IconTerminal2 className="h-3.5 w-3.5" /> Console Output
               </span>
               {results && (
-                <button onClick={handleCopyOutput} className="p-1 hover:bg-zinc-800 rounded transition-all cursor-pointer text-zinc-500 hover:text-white">
+                <button onClick={handleCopyOutput} className="p-1 hover:bg-muted rounded transition-all cursor-pointer text-muted-foreground/80 hover:text-foreground">
                   {copied ? <IconCheck className="h-3.5 w-3.5 text-emerald-400" /> : <IconCopy className="h-3.5 w-3.5" />}
                 </button>
               )}
@@ -267,13 +271,13 @@ export default function PlaygroundPage() {
               {results ? (
                 <>
                   {/* Status bar */}
-                  <div className={`p-2.5 rounded-lg flex items-center justify-between border ${isAccepted ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400" : "bg-rose-500/5 border-rose-500/20 text-rose-400"}`}>
+                  <div className={`p-2.5 rounded-lg flex items-center justify-between border ${isAccepted ? "bg-emerald-500/5 border-emerald-500/30 dark:border-emerald-500/20 text-emerald-400" : "bg-rose-500/5 border-rose-500/30 dark:border-rose-500/20 text-rose-400"}`}>
                     <div className="flex items-center gap-2">
                       {isAccepted ? <IconCircleCheck className="h-4 w-4 shrink-0" /> : <IconCircleX className="h-4 w-4 shrink-0" />}
                       <span className="font-bold uppercase tracking-wider text-[10px]">{results.status?.description || "Error"}</span>
                     </div>
                     {isAccepted && (
-                      <div className="flex items-center gap-3 text-zinc-400 text-[10px]">
+                      <div className="flex items-center gap-3 text-muted-foreground text-[10px]">
                         <span className="flex items-center gap-1"><IconClock className="h-3 w-3" />{results.time}s</span>
                         <span className="flex items-center gap-1"><IconCpu className="h-3 w-3" />{(parseInt(results.memory || "0") / 1024).toFixed(1)}MB</span>
                       </div>
@@ -283,29 +287,29 @@ export default function PlaygroundPage() {
                   {results.compile_output && (
                     <div>
                       <p className="text-[9px] text-rose-400 uppercase tracking-widest mb-1 flex items-center gap-1"><IconAlertTriangle className="h-3 w-3" /> Compile Errors</p>
-                      <pre className="p-2.5 bg-zinc-950/70 border border-zinc-800 rounded text-rose-400/90 whitespace-pre-wrap overflow-x-auto text-[11px]">{results.compile_output}</pre>
+                      <pre className="p-2.5 bg-muted/40 border border-zinc-200 dark:border-border rounded text-rose-400/90 whitespace-pre-wrap overflow-x-auto text-[11px]">{results.compile_output}</pre>
                     </div>
                   )}
 
                   {results.stderr && (
                     <div>
                       <p className="text-[9px] text-rose-400 uppercase tracking-widest mb-1 flex items-center gap-1"><IconAlertTriangle className="h-3 w-3" /> Runtime Errors</p>
-                      <pre className="p-2.5 bg-zinc-950/70 border border-zinc-800 rounded text-rose-400/90 whitespace-pre-wrap overflow-x-auto text-[11px]">{results.stderr}</pre>
+                      <pre className="p-2.5 bg-muted/40 border border-zinc-200 dark:border-border rounded text-rose-400/90 whitespace-pre-wrap overflow-x-auto text-[11px]">{results.stderr}</pre>
                     </div>
                   )}
 
                   <div className="flex-1 flex flex-col">
-                    <p className="text-[9px] text-zinc-500 uppercase tracking-widest mb-1 flex items-center gap-1"><IconInfoCircle className="h-3 w-3" /> Program Output (stdout)</p>
-                    <pre className="flex-1 p-2.5 bg-zinc-950/40 border border-zinc-800 rounded text-zinc-200 whitespace-pre-wrap overflow-x-auto text-[11px] min-h-[60px]">
-                      {results.stdout || <span className="text-zinc-700 italic">No output produced.</span>}
+                    <p className="text-[9px] text-muted-foreground/80 uppercase tracking-widest mb-1 flex items-center gap-1"><IconInfoCircle className="h-3 w-3" /> Program Output (stdout)</p>
+                    <pre className="flex-1 p-2.5 bg-muted/40 border border-zinc-200 dark:border-border rounded text-foreground/90 whitespace-pre-wrap overflow-x-auto text-[11px] min-h-[60px]">
+                      {results.stdout || <span className="text-muted-foreground/40 italic">No output produced.</span>}
                     </pre>
                   </div>
                 </>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 select-none">
-                  <IconTerminal2 className="h-8 w-8 text-zinc-800 stroke-[1.5]" />
-                  <p className="text-[10px] text-zinc-700 uppercase font-bold tracking-widest">Terminal Idle</p>
-                  <p className="text-[10px] text-zinc-800 max-w-[200px] font-sans">Press Run Code to compile and execute your program.</p>
+                  <IconTerminal2 className="h-8 w-8 text-muted-foreground/20 stroke-[1.5]" />
+                  <p className="text-[10px] text-muted-foreground/40 uppercase font-bold tracking-widest">Terminal Idle</p>
+                  <p className="text-[10px] text-muted-foreground/20 max-w-[200px] font-sans">Press Run Code to compile and execute your program.</p>
                 </div>
               )}
             </div>

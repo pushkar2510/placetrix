@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react"
 import Editor from "@monaco-editor/react"
+import { useTheme } from "next-themes"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -276,6 +277,9 @@ export function AdminProblemCreatorClient({
   initialProblem?: any
   isEdit?: boolean
 } = {}) {
+  const { resolvedTheme } = useTheme()
+  const monacoTheme = resolvedTheme === "light" ? "vs" : "vs-dark"
+
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<"single" | "bulk">("single")
@@ -514,21 +518,21 @@ export function AdminProblemCreatorClient({
   }
 
   return (
-    <div className="flex flex-col gap-5 p-4 md:p-6 min-h-[calc(100svh-56px)] bg-zinc-950 text-zinc-100">
+    <div className="flex flex-col gap-5 p-4 md:p-6 min-h-[calc(100svh-56px)] bg-background text-foreground">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3">
           <Link
             href="/~/logiclab/admin"
-            className="h-9 w-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center hover:bg-zinc-700 transition-colors"
+            className="h-9 w-9 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-accent hover:text-accent-foreground transition-colors"
           >
-            <IconArrowLeft className="h-4 w-4 text-zinc-400" />
+            <IconArrowLeft className="h-4 w-4 text-muted-foreground" />
           </Link>
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-white">
+            <h1 className="text-lg font-bold tracking-tight text-foreground">
               {isEdit ? "Edit Problem" : (activeTab === "single" ? "Create Problem" : "Bulk Import Problems")}
             </h1>
-            <p className="text-[10px] text-zinc-500 uppercase tracking-widest">LogicLab Admin Panel</p>
+            <p className="text-[10px] text-muted-foreground/80 uppercase tracking-widest">LogicLab Admin Panel</p>
           </div>
         </div>
 
@@ -536,7 +540,7 @@ export function AdminProblemCreatorClient({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-zinc-800 disabled:text-zinc-600 text-black px-5 py-2 rounded-lg text-xs font-bold shadow-[0_0_16px_rgba(16,185,129,0.25)] hover:shadow-[0_0_22px_rgba(16,185,129,0.4)] disabled:shadow-none transition-all cursor-pointer"
+            className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-muted disabled:text-muted-foreground/60 text-black px-5 py-2 rounded-lg text-xs font-bold shadow-[0_0_16px_rgba(16,185,129,0.25)] hover:shadow-[0_0_22px_rgba(16,185,129,0.4)] disabled:shadow-none transition-all cursor-pointer"
           >
             {saving ? (
               <><div className="h-3.5 w-3.5 border border-current border-t-transparent rounded-full animate-spin" /> {isEdit ? "Updating..." : "Saving..."}</>
@@ -548,7 +552,7 @@ export function AdminProblemCreatorClient({
           <button
             onClick={handleBulkImport}
             disabled={saving || parsedProblems.filter((p) => p.isValid).length === 0}
-            className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-zinc-800 disabled:text-zinc-600 text-black px-5 py-2 rounded-lg text-xs font-bold shadow-[0_0_16px_rgba(16,185,129,0.25)] hover:shadow-[0_0_22px_rgba(16,185,129,0.4)] disabled:shadow-none transition-all cursor-pointer"
+            className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-muted disabled:text-muted-foreground/60 text-black px-5 py-2 rounded-lg text-xs font-bold shadow-[0_0_16px_rgba(16,185,129,0.25)] hover:shadow-[0_0_22px_rgba(16,185,129,0.4)] disabled:shadow-none transition-all cursor-pointer"
           >
             {saving ? (
               <><div className="h-3.5 w-3.5 border border-current border-t-transparent rounded-full animate-spin" /> Importing...</>
@@ -561,13 +565,13 @@ export function AdminProblemCreatorClient({
 
       {/* Tabs bar */}
       {!isEdit && (
-        <div className="flex border-b border-zinc-900 shrink-0">
+        <div className="flex border-b border-border shrink-0">
           <button
             onClick={() => setActiveTab("single")}
             className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
               activeTab === "single"
                 ? "border-emerald-500 text-emerald-400 font-bold"
-                : "border-transparent text-zinc-500 hover:text-zinc-300"
+                : "border-transparent text-muted-foreground/80 hover:text-foreground/80"
             }`}
           >
             Single Problem Creator
@@ -577,7 +581,7 @@ export function AdminProblemCreatorClient({
             className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
               activeTab === "bulk"
                 ? "border-emerald-500 text-emerald-400 font-bold"
-                : "border-transparent text-zinc-500 hover:text-zinc-300"
+                : "border-transparent text-muted-foreground/80 hover:text-foreground/80"
             }`}
           >
             Bulk Import Problems (JSON/CSV)
@@ -592,19 +596,19 @@ export function AdminProblemCreatorClient({
           <div className="space-y-4">
             {/* Title */}
             <div>
-              <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1.5 block">Problem Title *</label>
+              <label className="text-[10px] text-muted-foreground/80 uppercase tracking-widest font-bold mb-1.5 block">Problem Title *</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Two Sum"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-zinc-600"
+                className="w-full bg-card border border-border rounded-lg px-4 py-2.5 text-sm text-foreground/90 placeholder:text-muted-foreground/40 focus:outline-none focus:border-zinc-600"
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1.5 block">
+              <label className="text-[10px] text-muted-foreground/80 uppercase tracking-widest font-bold mb-1.5 block">
                 Description * (Markdown supported)
               </label>
               <textarea
@@ -612,18 +616,18 @@ export function AdminProblemCreatorClient({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target..."
                 rows={8}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-zinc-600 resize-none font-mono"
+                className="w-full bg-card border border-border rounded-lg px-4 py-3 text-sm text-foreground/90 placeholder:text-muted-foreground/40 focus:outline-none focus:border-zinc-600 resize-none font-mono"
               />
             </div>
 
             {/* Difficulty + Tags */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1.5 block">Difficulty *</label>
+                <label className="text-[10px] text-muted-foreground/80 uppercase tracking-widest font-bold mb-1.5 block">Difficulty *</label>
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value as any)}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 focus:outline-none cursor-pointer"
+                  className="w-full bg-card border border-border rounded-lg px-4 py-2.5 text-sm text-foreground/90 focus:outline-none cursor-pointer"
                 >
                   <option value="Easy">Easy</option>
                   <option value="Medium">Medium</option>
@@ -631,13 +635,13 @@ export function AdminProblemCreatorClient({
                 </select>
               </div>
               <div>
-                <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1.5 block">Tags (comma separated)</label>
+                <label className="text-[10px] text-muted-foreground/80 uppercase tracking-widest font-bold mb-1.5 block">Tags (comma separated)</label>
                 <input
                   type="text"
                   value={tags}
                   onChange={(e) => setTags(e.target.value)}
                   placeholder="Array, Hash Table"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-zinc-600"
+                  className="w-full bg-card border border-border rounded-lg px-4 py-2.5 text-sm text-foreground/90 placeholder:text-muted-foreground/40 focus:outline-none focus:border-zinc-600"
                 />
               </div>
             </div>
@@ -645,7 +649,7 @@ export function AdminProblemCreatorClient({
             {/* Limits */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1.5 block">Time Limit (seconds)</label>
+                <label className="text-[10px] text-muted-foreground/80 uppercase tracking-widest font-bold mb-1.5 block">Time Limit (seconds)</label>
                 <input
                   type="number"
                   step="0.5"
@@ -653,18 +657,18 @@ export function AdminProblemCreatorClient({
                   max="10"
                   value={timeLimit}
                   onChange={(e) => setTimeLimit(parseFloat(e.target.value))}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600"
+                  className="w-full bg-card border border-border rounded-lg px-4 py-2.5 text-sm text-foreground/90 focus:outline-none focus:border-zinc-600"
                 />
               </div>
               <div>
-                <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-1.5 block">Memory Limit (MB)</label>
+                <label className="text-[10px] text-muted-foreground/80 uppercase tracking-widest font-bold mb-1.5 block">Memory Limit (MB)</label>
                 <input
                   type="number"
                   min="32"
                   max="1024"
                   value={memoryLimit}
                   onChange={(e) => setMemoryLimit(parseInt(e.target.value))}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600"
+                  className="w-full bg-card border border-border rounded-lg px-4 py-2.5 text-sm text-foreground/90 focus:outline-none focus:border-zinc-600"
                 />
               </div>
             </div>
@@ -672,7 +676,7 @@ export function AdminProblemCreatorClient({
             {/* Test Cases */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
+                <label className="text-[10px] text-muted-foreground/80 uppercase tracking-widest font-bold">
                   Test Cases ({testCases.length})
                 </label>
                 <button
@@ -685,15 +689,15 @@ export function AdminProblemCreatorClient({
 
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                 {testCases.map((tc, idx) => (
-                  <div key={idx} className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 space-y-2">
+                  <div key={idx} className="bg-card border border-border rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+                      <span className="text-[10px] text-muted-foreground/80 font-bold uppercase tracking-widest">
                         Test Case #{idx + 1}
                       </span>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => updateTestCase(idx, "is_sample", !tc.is_sample)}
-                          className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer ${tc.is_sample ? "text-emerald-400" : "text-zinc-600 hover:text-zinc-400"}`}
+                          className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer ${tc.is_sample ? "text-emerald-400" : "text-muted-foreground/60 hover:text-muted-foreground"}`}
                         >
                           {tc.is_sample ? <IconEye className="h-3 w-3" /> : <IconEyeOff className="h-3 w-3" />}
                           {tc.is_sample ? "Sample" : "Hidden"}
@@ -701,7 +705,7 @@ export function AdminProblemCreatorClient({
                         {testCases.length > 1 && (
                           <button
                             onClick={() => removeTestCase(idx)}
-                            className="text-zinc-600 hover:text-rose-400 transition-colors cursor-pointer"
+                            className="text-muted-foreground/60 hover:text-rose-400 transition-colors cursor-pointer"
                           >
                             <IconTrash className="h-3.5 w-3.5" />
                           </button>
@@ -710,23 +714,23 @@ export function AdminProblemCreatorClient({
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[9px] text-zinc-600 uppercase tracking-widest">Input (stdin)</label>
+                        <label className="text-[9px] text-muted-foreground/60 uppercase tracking-widest">Input (stdin)</label>
                         <textarea
                           value={tc.input}
                           onChange={(e) => updateTestCase(idx, "input", e.target.value)}
                           rows={3}
                           placeholder="[2,7,11,15]\n9"
-                          className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-300 font-mono placeholder:text-zinc-700 focus:outline-none resize-none"
+                          className="w-full bg-background border border-border rounded px-2 py-1.5 text-xs text-foreground/80 font-mono placeholder:text-muted-foreground/40 focus:outline-none resize-none"
                         />
                       </div>
                       <div>
-                        <label className="text-[9px] text-zinc-600 uppercase tracking-widest">Expected Output</label>
+                        <label className="text-[9px] text-muted-foreground/60 uppercase tracking-widest">Expected Output</label>
                         <textarea
                           value={tc.expected_output}
                           onChange={(e) => updateTestCase(idx, "expected_output", e.target.value)}
                           rows={3}
                           placeholder="[0,1]"
-                          className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-300 font-mono placeholder:text-zinc-700 focus:outline-none resize-none"
+                          className="w-full bg-background border border-border rounded px-2 py-1.5 text-xs text-foreground/80 font-mono placeholder:text-muted-foreground/40 focus:outline-none resize-none"
                         />
                       </div>
                     </div>
@@ -744,7 +748,7 @@ export function AdminProblemCreatorClient({
                 <button
                   key={lang.id}
                   onClick={() => setActiveLang(String(lang.id))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${String(lang.id) === activeLang ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700"}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${String(lang.id) === activeLang ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-card border-border text-muted-foreground/80 hover:text-foreground/80 hover:border-border"}`}
                 >
                   {lang.name}
                 </button>
@@ -752,10 +756,10 @@ export function AdminProblemCreatorClient({
             </div>
 
             {/* Boilerplate Editor */}
-            <div className="flex-1 flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden min-h-[250px]">
-              <div className="flex items-center gap-2 bg-zinc-950 px-4 py-2 border-b border-zinc-800 shrink-0">
+            <div className="flex-1 flex flex-col bg-card border border-border rounded-xl overflow-hidden min-h-[250px]">
+              <div className="flex items-center gap-2 bg-background px-4 py-2 border-b border-border shrink-0">
                 <IconCode className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                   User Boilerplate (visible to students)
                 </span>
               </div>
@@ -765,7 +769,7 @@ export function AdminProblemCreatorClient({
                   language={LANGUAGES.find((l) => String(l.id) === activeLang)?.value || "python"}
                   value={boilerplates[activeLang] || ""}
                   onChange={(v) => setBoilerplates({ ...boilerplates, [activeLang]: v || "" })}
-                  theme="vs-dark"
+                  theme={monacoTheme}
                   options={{
                     fontSize: 12,
                     minimap: { enabled: false },
@@ -780,10 +784,10 @@ export function AdminProblemCreatorClient({
             </div>
 
             {/* Driver Code Editor */}
-            <div className="flex-1 flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden min-h-[250px]">
-              <div className="flex items-center gap-2 bg-zinc-950 px-4 py-2 border-b border-zinc-800 shrink-0">
+            <div className="flex-1 flex flex-col bg-card border border-border rounded-xl overflow-hidden min-h-[250px]">
+              <div className="flex items-center gap-2 bg-background px-4 py-2 border-b border-border shrink-0">
                 <IconAlertTriangle className="h-3.5 w-3.5 text-amber-400" />
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                   Driver Code (hidden — appended to user code before execution)
                 </span>
               </div>
@@ -793,7 +797,7 @@ export function AdminProblemCreatorClient({
                   language={LANGUAGES.find((l) => String(l.id) === activeLang)?.value || "python"}
                   value={driverCodes[activeLang] || ""}
                   onChange={(v) => setDriverCodes({ ...driverCodes, [activeLang]: v || "" })}
-                  theme="vs-dark"
+                  theme={monacoTheme}
                   options={{
                     fontSize: 12,
                     minimap: { enabled: false },
@@ -820,10 +824,10 @@ export function AdminProblemCreatorClient({
               onDragLeave={handleDrag}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer min-h-[180px] bg-zinc-900/40 backdrop-blur-md ${
+              className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer min-h-[180px] bg-card/40 backdrop-blur-md ${
                 dragActive
                   ? "border-emerald-400 bg-emerald-500/5 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
-                  : "border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/60"
+                  : "border-border hover:border-border hover:bg-card/60"
               }`}
             >
               <input
@@ -833,14 +837,14 @@ export function AdminProblemCreatorClient({
                 onChange={handleFileChange}
                 className="hidden"
               />
-              <div className="h-12 w-12 rounded-xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-center text-zinc-400">
+              <div className="h-12 w-12 rounded-xl bg-card/80 border border-border flex items-center justify-center text-muted-foreground">
                 <IconUpload className="h-6 w-6 text-emerald-400" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold text-zinc-200">
+                <p className="text-sm font-semibold text-foreground/90">
                   {importedFileName ? `Selected: ${importedFileName}` : "Drag and drop your file here"}
                 </p>
-                <p className="text-xs text-zinc-500 mt-1">
+                <p className="text-xs text-muted-foreground/80 mt-1">
                   Supports JSON and CSV formats (max 5MB)
                 </p>
               </div>
@@ -848,11 +852,11 @@ export function AdminProblemCreatorClient({
 
             {/* Preview & Validation Table */}
             {parsedProblems.length > 0 && (
-              <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-2xl overflow-hidden flex flex-col">
-                <div className="bg-zinc-900/80 border-b border-zinc-800 px-5 py-3.5 flex items-center justify-between">
+              <div className="bg-card/30 border border-border/80 rounded-2xl overflow-hidden flex flex-col">
+                <div className="bg-card/80 border-b border-border px-5 py-3.5 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <IconFileDescription className="h-4 w-4 text-emerald-400" />
-                    <span className="text-xs font-bold text-zinc-300 uppercase tracking-widest">
+                    <span className="text-xs font-bold text-foreground/80 uppercase tracking-widest">
                       Parsed Problems Summary ({parsedProblems.length})
                     </span>
                   </div>
@@ -863,12 +867,12 @@ export function AdminProblemCreatorClient({
 
                 <div className="divide-y divide-zinc-800/50 max-h-[480px] overflow-y-auto">
                   {parsedProblems.map((prob, idx) => (
-                    <div key={idx} className="p-4 hover:bg-zinc-900/20 transition-colors space-y-3">
+                    <div key={idx} className="p-4 hover:bg-card/20 transition-colors space-y-3">
                       <div className="flex items-start justify-between gap-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs text-zinc-500 font-mono">#{idx + 1}</span>
-                            <h4 className="text-sm font-semibold text-white">{prob.title || <span className="text-rose-500 italic">No Title</span>}</h4>
+                            <span className="text-xs text-muted-foreground/80 font-mono">#{idx + 1}</span>
+                            <h4 className="text-sm font-semibold text-foreground">{prob.title || <span className="text-rose-500 italic">No Title</span>}</h4>
                             <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 border rounded ${
                               prob.difficulty === "Easy" ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" :
                               prob.difficulty === "Medium" ? "text-amber-400 bg-amber-500/10 border-amber-500/20" :
@@ -877,10 +881,10 @@ export function AdminProblemCreatorClient({
                               {prob.difficulty}
                             </span>
                           </div>
-                          <p className="text-xs text-zinc-500 line-clamp-2 pr-4">{prob.description || <span className="text-rose-500 italic">No Description provided.</span>}</p>
+                          <p className="text-xs text-muted-foreground/80 line-clamp-2 pr-4">{prob.description || <span className="text-rose-500 italic">No Description provided.</span>}</p>
                         </div>
                         <div className="shrink-0 flex items-center gap-2">
-                          <span className="text-[10px] text-zinc-400 bg-zinc-800 px-2 py-0.5 border border-zinc-700 rounded-md font-semibold">
+                          <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 border border-border rounded-md font-semibold">
                             {prob.test_cases.length} TCs
                           </span>
                           {prob.isValid ? (
@@ -901,7 +905,7 @@ export function AdminProblemCreatorClient({
                           <div className="flex items-center gap-1 text-[10px] font-bold text-rose-400 uppercase tracking-widest">
                             <IconAlertCircle className="h-3.5 w-3.5" /> Validation Errors:
                           </div>
-                          <ul className="list-disc pl-4 text-xs text-zinc-400 space-y-0.5">
+                          <ul className="list-disc pl-4 text-xs text-muted-foreground space-y-0.5">
                             {prob.errors.map((err, errIdx) => (
                               <li key={errIdx}>{err}</li>
                             ))}
@@ -911,17 +915,17 @@ export function AdminProblemCreatorClient({
 
                       {/* Display metadata details */}
                       {prob.isValid && (
-                        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[10px] text-zinc-500 font-medium">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[10px] text-muted-foreground/80 font-medium">
                           {prob.tags.length > 0 && (
                             <div>
-                              Tags: <span className="text-zinc-300">{prob.tags.join(", ")}</span>
+                              Tags: <span className="text-foreground/80">{prob.tags.join(", ")}</span>
                             </div>
                           )}
                           <div>
-                            Time Limit: <span className="text-zinc-300">{prob.time_limit}s</span>
+                            Time Limit: <span className="text-foreground/80">{prob.time_limit}s</span>
                           </div>
                           <div>
-                            Memory Limit: <span className="text-zinc-300">{prob.memory_limit}MB</span>
+                            Memory Limit: <span className="text-foreground/80">{prob.memory_limit}MB</span>
                           </div>
                         </div>
                       )}
@@ -933,20 +937,20 @@ export function AdminProblemCreatorClient({
           </div>
 
           {/* Right Column: Copy template guides */}
-          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 space-y-4">
+          <div className="bg-card/40 border border-border/80 rounded-2xl p-5 space-y-4">
             <div>
-              <h3 className="text-sm font-bold text-zinc-200 uppercase tracking-widest">Format Guide</h3>
-              <p className="text-xs text-zinc-500 mt-1">
+              <h3 className="text-sm font-bold text-foreground/90 uppercase tracking-widest">Format Guide</h3>
+              <p className="text-xs text-muted-foreground/80 mt-1">
                 Use these mock templates to format your files perfectly before uploading.
               </p>
             </div>
 
             {/* Template Selector tabs */}
-            <div className="grid grid-cols-3 gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-900">
+            <div className="grid grid-cols-3 gap-1 bg-background p-1 rounded-lg border border-border">
               <button
                 onClick={() => setActiveTemplateTab("json")}
                 className={`py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer ${
-                  activeTemplateTab === "json" ? "bg-zinc-800 text-emerald-400 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+                  activeTemplateTab === "json" ? "bg-muted text-emerald-400 shadow-sm" : "text-muted-foreground/80 hover:text-foreground/80"
                 }`}
               >
                 JSON
@@ -954,7 +958,7 @@ export function AdminProblemCreatorClient({
               <button
                 onClick={() => setActiveTemplateTab("csv_robust")}
                 className={`py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer ${
-                  activeTemplateTab === "csv_robust" ? "bg-zinc-800 text-emerald-400 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+                  activeTemplateTab === "csv_robust" ? "bg-muted text-emerald-400 shadow-sm" : "text-muted-foreground/80 hover:text-foreground/80"
                 }`}
               >
                 CSV Robust
@@ -962,7 +966,7 @@ export function AdminProblemCreatorClient({
               <button
                 onClick={() => setActiveTemplateTab("csv_simple")}
                 className={`py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer ${
-                  activeTemplateTab === "csv_simple" ? "bg-zinc-800 text-emerald-400 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+                  activeTemplateTab === "csv_simple" ? "bg-muted text-emerald-400 shadow-sm" : "text-muted-foreground/80 hover:text-foreground/80"
                 }`}
               >
                 CSV Simple
@@ -970,7 +974,7 @@ export function AdminProblemCreatorClient({
             </div>
 
             {/* Template preview */}
-            <div className="relative bg-zinc-950 border border-zinc-900 rounded-xl p-3.5 font-mono text-[10px] overflow-x-auto text-zinc-400 max-h-[300px] whitespace-pre select-all">
+            <div className="relative bg-background border border-border rounded-xl p-3.5 font-mono text-[10px] overflow-x-auto text-muted-foreground max-h-[300px] whitespace-pre select-all">
               <button
                 onClick={() =>
                   handleCopyTemplate(
@@ -981,7 +985,7 @@ export function AdminProblemCreatorClient({
                       : CSV_SIMPLE_TEMPLATE
                   )
                 }
-                className="absolute right-2 top-2 h-7 w-7 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                className="absolute right-2 top-2 h-7 w-7 rounded bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                 title="Copy Template"
               >
                 <IconCopy className="h-3.5 w-3.5" />
@@ -994,18 +998,18 @@ export function AdminProblemCreatorClient({
             </div>
 
             {/* Format Instructions */}
-            <div className="space-y-3.5 text-xs text-zinc-400 border-t border-zinc-800/80 pt-4">
+            <div className="space-y-3.5 text-xs text-muted-foreground border-t border-border/80 pt-4">
               <div className="flex gap-2.5">
                 <IconInfoCircle className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-bold text-zinc-300">Format Rules</h4>
-                  <ul className="list-disc pl-4 mt-1 space-y-1.5 text-zinc-500 text-[11px]">
-                    <li><strong className="text-zinc-400">title</strong> and <strong className="text-zinc-400">description</strong> are mandatory fields.</li>
-                    <li><strong className="text-zinc-400">difficulty</strong> defaults to Easy if omitted. Valid values: Easy, Medium, Hard.</li>
-                    <li><strong className="text-zinc-400">tags</strong> can be separated by commas or semicolons.</li>
-                    <li>In JSON, <strong className="text-zinc-400">test_cases</strong> is an array of objects.</li>
-                    <li>In CSV Robust, <strong className="text-zinc-400">test_cases</strong> is a JSON-string array. Escape double quotes like <code className="text-zinc-300">""</code> inside quoted cells.</li>
-                    <li>In CSV Simple, use columns <strong className="text-zinc-400">sample_input</strong> and <strong className="text-zinc-400">sample_output</strong> to quickly add a single sample test case.</li>
+                  <h4 className="font-bold text-foreground/80">Format Rules</h4>
+                  <ul className="list-disc pl-4 mt-1 space-y-1.5 text-muted-foreground/80 text-[11px]">
+                    <li><strong className="text-muted-foreground">title</strong> and <strong className="text-muted-foreground">description</strong> are mandatory fields.</li>
+                    <li><strong className="text-muted-foreground">difficulty</strong> defaults to Easy if omitted. Valid values: Easy, Medium, Hard.</li>
+                    <li><strong className="text-muted-foreground">tags</strong> can be separated by commas or semicolons.</li>
+                    <li>In JSON, <strong className="text-muted-foreground">test_cases</strong> is an array of objects.</li>
+                    <li>In CSV Robust, <strong className="text-muted-foreground">test_cases</strong> is a JSON-string array. Escape double quotes like <code className="text-foreground/80">""</code> inside quoted cells.</li>
+                    <li>In CSV Simple, use columns <strong className="text-muted-foreground">sample_input</strong> and <strong className="text-muted-foreground">sample_output</strong> to quickly add a single sample test case.</li>
                   </ul>
                 </div>
               </div>

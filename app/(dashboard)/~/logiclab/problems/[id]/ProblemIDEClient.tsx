@@ -2,6 +2,7 @@
 
 import React, { useState } from "react"
 import Editor from "@monaco-editor/react"
+import { useTheme } from "next-themes"
 import Link from "next/link"
 import {
   IconArrowLeft,
@@ -48,10 +49,10 @@ function parseInline(text: string) {
   const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g)
   return parts.map((part, idx) => {
     if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={idx} className="font-bold text-white">{part.slice(2, -2)}</strong>
+      return <strong key={idx} className="font-bold text-foreground">{part.slice(2, -2)}</strong>
     }
     if (part.startsWith("`") && part.endsWith("`")) {
-      return <code key={idx} className="bg-zinc-900 border border-zinc-800 px-1 py-0.5 rounded text-xs font-mono text-emerald-400">{part.slice(1, -1)}</code>
+      return <code key={idx} className="bg-card border border-border px-1 py-0.5 rounded text-xs font-mono text-emerald-400">{part.slice(1, -1)}</code>
     }
     return part
   })
@@ -71,20 +72,20 @@ function MarkdownDescription({ content }: { content: string }) {
   const blocks = formatted.split(/(```[\s\S]*?```)/g)
 
   return (
-    <div className="text-zinc-300 leading-relaxed text-sm space-y-4 font-sans">
+    <div className="text-foreground/80 leading-relaxed text-sm space-y-4 font-sans">
       {blocks.map((block, idx) => {
         if (block.startsWith("```")) {
           const match = block.match(/```(\w*)\n([\s\S]*?)```/)
           const lang = match ? match[1] : ""
           const codeText = match ? match[2] : block.slice(3, -3)
           return (
-            <div key={idx} className="bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden my-3 font-mono text-xs">
+            <div key={idx} className="bg-background border border-border rounded-lg overflow-hidden my-3 font-mono text-xs">
               {lang && (
-                <div className="bg-zinc-900/60 px-3 py-1 border-b border-zinc-800 text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
+                <div className="bg-card/60 px-3 py-1 border-b border-border text-[10px] text-muted-foreground/80 uppercase tracking-widest font-bold">
                   {lang}
                 </div>
               )}
-              <pre className="p-3 overflow-x-auto text-zinc-300 whitespace-pre scrollbar-thin">{codeText.trim()}</pre>
+              <pre className="p-3 overflow-x-auto text-foreground/80 whitespace-pre scrollbar-thin">{codeText.trim()}</pre>
             </div>
           )
         }
@@ -97,18 +98,18 @@ function MarkdownDescription({ content }: { content: string }) {
               if (!trimmed) return <div key={lIdx} className="h-1.5" />
 
               if (trimmed.startsWith("### ")) {
-                return <h3 key={lIdx} className="text-sm font-bold text-white uppercase tracking-wider mt-4 mb-2">{parseInline(trimmed.slice(4))}</h3>
+                return <h3 key={lIdx} className="text-sm font-bold text-foreground uppercase tracking-wider mt-4 mb-2">{parseInline(trimmed.slice(4))}</h3>
               }
               if (trimmed.startsWith("## ")) {
-                return <h2 key={lIdx} className="text-base font-bold text-white uppercase tracking-wider mt-5 mb-2 border-b border-zinc-800/80 pb-1">{parseInline(trimmed.slice(3))}</h2>
+                return <h2 key={lIdx} className="text-base font-bold text-foreground uppercase tracking-wider mt-5 mb-2 border-b border-border/80 pb-1">{parseInline(trimmed.slice(3))}</h2>
               }
               if (trimmed.startsWith("# ")) {
-                return <h1 key={lIdx} className="text-lg font-bold text-white uppercase tracking-wider mt-6 mb-3 border-b border-zinc-800/80 pb-1">{parseInline(trimmed.slice(2))}</h1>
+                return <h1 key={lIdx} className="text-lg font-bold text-foreground uppercase tracking-wider mt-6 mb-3 border-b border-border/80 pb-1">{parseInline(trimmed.slice(2))}</h1>
               }
 
               if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
                 return (
-                  <ul key={lIdx} className="list-disc pl-5 space-y-1 text-zinc-400">
+                  <ul key={lIdx} className="list-disc pl-5 space-y-1 text-muted-foreground">
                     <li>{parseInline(trimmed.slice(2))}</li>
                   </ul>
                 )
@@ -117,7 +118,7 @@ function MarkdownDescription({ content }: { content: string }) {
               const numMatch = trimmed.match(/^(\d+)\.\s(.*)/)
               if (numMatch) {
                 return (
-                  <ol key={lIdx} className="list-decimal pl-5 space-y-1 text-zinc-400">
+                  <ol key={lIdx} className="list-decimal pl-5 space-y-1 text-muted-foreground">
                     <li value={parseInt(numMatch[1])}>{parseInline(numMatch[2])}</li>
                   </ol>
                 )
@@ -125,17 +126,17 @@ function MarkdownDescription({ content }: { content: string }) {
 
               if (trimmed.startsWith("> ")) {
                 return (
-                  <blockquote key={lIdx} className="border-l-2 border-emerald-500 bg-zinc-900/40 px-3 py-2 rounded-r text-zinc-400 text-xs italic my-2">
+                  <blockquote key={lIdx} className="border-l-2 border-emerald-500 bg-card/40 px-3 py-2 rounded-r text-muted-foreground text-xs italic my-2">
                     {parseInline(trimmed.slice(2))}
                   </blockquote>
                 )
               }
 
               if (trimmed === "---" || trimmed === "***") {
-                return <hr key={lIdx} className="border-zinc-800 my-4" />
+                return <hr key={lIdx} className="border-border my-4" />
               }
 
-              return <p key={lIdx} className="text-zinc-300 leading-relaxed">{parseInline(line)}</p>
+              return <p key={lIdx} className="text-foreground/80 leading-relaxed">{parseInline(line)}</p>
             })}
           </div>
         )
@@ -200,6 +201,9 @@ export function ProblemIDEClient({
   submissions: Submission[]
   userId: string
 }) {
+  const { resolvedTheme } = useTheme()
+  const monacoTheme = resolvedTheme === "light" ? "vs" : "vs-dark"
+
   // Safely parse boilerplates if it is returned as a double-serialized string
   let parsedBoilerplates: any = problem.boilerplates || {}
   if (typeof parsedBoilerplates === "string") {
@@ -365,25 +369,25 @@ export function ProblemIDEClient({
   const langForDisplay = LANGUAGES.find((l) => l.id === selectedLang.id)
 
   return (
-    <div className="flex flex-col h-[calc(100svh-56px)] bg-zinc-950 text-zinc-100 overflow-hidden">
+    <div className="flex flex-col h-[calc(100svh-56px)] bg-background text-foreground overflow-hidden">
       {/* ── Top Bar ── */}
-      <div className="flex items-center justify-between gap-3 bg-zinc-900/60 border-b border-zinc-800 px-4 py-2 shrink-0">
+      <div className="flex items-center justify-between gap-3 bg-card/60 border-b border-border px-4 py-2 shrink-0">
         <div className="flex items-center gap-3">
           <Link
             href="/~/logiclab"
-            className="h-8 w-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center hover:bg-zinc-700 transition-colors"
+            className="h-8 w-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-accent hover:text-accent-foreground transition-colors"
           >
-            <IconArrowLeft className="h-4 w-4 text-zinc-400" />
+            <IconArrowLeft className="h-4 w-4 text-muted-foreground" />
           </Link>
           <div>
-            <p className="text-sm font-bold tracking-tight text-white truncate max-w-[300px]">
+            <p className="text-sm font-bold tracking-tight text-foreground truncate max-w-[300px]">
               {problem.title}
             </p>
             <div className="flex items-center gap-2 mt-0.5">
               <span className={`inline-block px-1.5 py-0 rounded text-[9px] font-bold uppercase tracking-wider border ${DIFFICULTY_COLORS[problem.difficulty]}`}>
                 {problem.difficulty}
               </span>
-              <span className="text-[10px] text-zinc-600">
+              <span className="text-[10px] text-muted-foreground/60">
                 {totalTestCases} test cases · {problem.time_limit}s · {problem.memory_limit}MB
               </span>
             </div>
@@ -394,7 +398,7 @@ export function ProblemIDEClient({
           <select
             value={selectedLang.value}
             onChange={(e) => handleLangChange(e.target.value)}
-            className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs font-semibold text-zinc-200 focus:outline-none cursor-pointer"
+            className="bg-muted border border-border rounded-lg px-3 py-1.5 text-xs font-semibold text-foreground/90 focus:outline-none cursor-pointer"
           >
             {LANGUAGES.map((l) => (
               <option key={l.id} value={l.value}>{l.name}</option>
@@ -409,7 +413,7 @@ export function ProblemIDEClient({
             }}
             disabled={running || submitting}
             title="Reset code to boilerplate"
-            className="flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-zinc-400 hover:text-rose-400 h-8 w-8 rounded-lg border border-zinc-700 transition-all cursor-pointer"
+            className="flex items-center justify-center bg-muted hover:bg-accent hover:text-accent-foreground disabled:opacity-40 text-muted-foreground hover:text-rose-400 h-8 w-8 rounded-lg border border-border transition-all cursor-pointer"
           >
             <IconRefresh className="h-4 w-4" />
           </button>
@@ -417,7 +421,7 @@ export function ProblemIDEClient({
           <button
             onClick={handleRunCode}
             disabled={running || submitting}
-            className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold border border-zinc-700 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 bg-muted hover:bg-accent hover:text-accent-foreground disabled:opacity-40 text-foreground/80 hover:text-foreground px-3 py-1.5 rounded-lg text-xs font-semibold border border-border transition-all cursor-pointer"
           >
             {running ? (
               <><div className="h-3 w-3 border border-current border-t-transparent rounded-full animate-spin" /> Running...</>
@@ -429,7 +433,7 @@ export function ProblemIDEClient({
           <button
             onClick={handleSubmitCode}
             disabled={running || submitting}
-            className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-zinc-800 disabled:text-zinc-600 text-black px-4 py-1.5 rounded-lg text-xs font-bold shadow-[0_0_12px_rgba(16,185,129,0.25)] hover:shadow-[0_0_18px_rgba(16,185,129,0.4)] disabled:shadow-none transition-all cursor-pointer"
+            className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-muted disabled:text-muted-foreground/60 text-black px-4 py-1.5 rounded-lg text-xs font-bold shadow-[0_0_12px_rgba(16,185,129,0.25)] hover:shadow-[0_0_18px_rgba(16,185,129,0.4)] disabled:shadow-none transition-all cursor-pointer"
           >
             {submitting ? (
               <><div className="h-3 w-3 border border-current border-t-transparent rounded-full animate-spin" /> Judging...</>
@@ -443,18 +447,18 @@ export function ProblemIDEClient({
       {/* ── Main Content ── */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 min-h-0">
         {/* LEFT PANEL: Description / Submissions */}
-        <div className="flex flex-col border-r border-zinc-800 min-h-0 overflow-hidden">
+        <div className="flex flex-col border-r border-border min-h-0 overflow-hidden">
           {/* Tabs */}
-          <div className="flex bg-zinc-900 border-b border-zinc-800 shrink-0">
+          <div className="flex bg-card border-b border-border shrink-0">
             <button
               onClick={() => setActiveTab("description")}
-              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors cursor-pointer ${activeTab === "description" ? "text-white border-b-2 border-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}
+              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors cursor-pointer ${activeTab === "description" ? "text-foreground border-b-2 border-emerald-400" : "text-muted-foreground/80 hover:text-foreground/80"}`}
             >
               Description
             </button>
             <button
               onClick={() => setActiveTab("submissions")}
-              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === "submissions" ? "text-white border-b-2 border-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}
+              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === "submissions" ? "text-foreground border-b-2 border-emerald-400" : "text-muted-foreground/80 hover:text-foreground/80"}`}
             >
               <IconHistory className="h-3 w-3" /> Submissions ({submissions.length})
             </button>
@@ -473,7 +477,7 @@ export function ProblemIDEClient({
                     {problem.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] text-zinc-400 font-medium"
+                        className="px-2 py-0.5 bg-muted border border-border rounded text-[10px] text-muted-foreground font-medium"
                       >
                         {tag}
                       </span>
@@ -484,22 +488,22 @@ export function ProblemIDEClient({
                 {/* Sample Test Cases */}
                 {sampleTestCases.length > 0 && (
                   <div className="space-y-3">
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Sample Test Cases</p>
+                    <p className="text-[10px] text-muted-foreground/80 uppercase tracking-widest font-bold">Sample Test Cases</p>
                     {sampleTestCases.map((tc, idx) => (
-                      <div key={tc.id} className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
-                        <div className="bg-zinc-950 px-3 py-1.5 border-b border-zinc-800">
-                          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+                      <div key={tc.id} className="bg-card border border-zinc-200 dark:border-border rounded-lg overflow-hidden">
+                        <div className="bg-muted/50 dark:bg-card px-3 py-1.5 border-b border-zinc-200 dark:border-border">
+                          <span className="text-[10px] text-muted-foreground/80 font-bold uppercase tracking-widest">
                             Example {idx + 1}
                           </span>
                         </div>
                         <div className="p-3 space-y-2">
                           <div>
-                            <span className="text-[9px] text-zinc-600 uppercase tracking-widest font-bold">Input</span>
-                            <pre className="mt-1 p-2 bg-zinc-950 rounded text-xs text-zinc-300 font-mono whitespace-pre-wrap">{tc.input}</pre>
+                            <span className="text-[9px] text-muted-foreground/60 uppercase tracking-widest font-bold">Input</span>
+                            <pre className="mt-1 p-2 bg-muted/40 border border-zinc-200 dark:border-border rounded text-xs text-foreground/80 font-mono whitespace-pre-wrap">{tc.input}</pre>
                           </div>
                           <div>
-                            <span className="text-[9px] text-zinc-600 uppercase tracking-widest font-bold">Expected Output</span>
-                            <pre className="mt-1 p-2 bg-zinc-950 rounded text-xs text-zinc-300 font-mono whitespace-pre-wrap">{tc.expected_output}</pre>
+                            <span className="text-[9px] text-muted-foreground/60 uppercase tracking-widest font-bold">Expected Output</span>
+                            <pre className="mt-1 p-2 bg-muted/40 border border-zinc-200 dark:border-border rounded text-xs text-foreground/80 font-mono whitespace-pre-wrap">{tc.expected_output}</pre>
                           </div>
                         </div>
                       </div>
@@ -508,9 +512,9 @@ export function ProblemIDEClient({
                 )}
 
                 {/* Constraints */}
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3">
-                  <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-2">Constraints</p>
-                  <div className="space-y-1 text-xs text-zinc-400">
+                <div className="bg-muted/30 dark:bg-card/50 border border-zinc-200 dark:border-border rounded-lg p-3">
+                  <p className="text-[10px] text-muted-foreground/80 uppercase tracking-widest font-bold mb-2">Constraints</p>
+                  <div className="space-y-1 text-xs text-muted-foreground">
                     <p>• Time Limit: {problem.time_limit}s</p>
                     <p>• Memory Limit: {problem.memory_limit}MB</p>
                   </div>
@@ -524,7 +528,7 @@ export function ProblemIDEClient({
                     <div
                       key={sub.id}
                       onClick={() => handleViewPastSubmission(sub)}
-                      className={`flex items-center justify-between p-3 rounded-lg border ${sub.status === "Accepted" ? "bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10" : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800/60"} transition-all cursor-pointer group`}
+                      className={`flex items-center justify-between p-3 rounded-lg border ${sub.status === "Accepted" ? "bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10" : "bg-card border-border hover:bg-muted/60"} transition-all cursor-pointer group`}
                       title="Click to view submitted code"
                     >
                       <div className="flex items-center gap-3">
@@ -536,15 +540,15 @@ export function ProblemIDEClient({
                         <div>
                           <p className={`text-xs font-bold ${sub.status === "Accepted" ? "text-emerald-400" : "text-rose-400"} flex items-center gap-1.5`}>
                             {sub.status}
-                            <span className="text-[9px] text-zinc-500 font-normal group-hover:text-emerald-400 transition-colors">(View code →)</span>
+                            <span className="text-[9px] text-muted-foreground/80 font-normal group-hover:text-emerald-400 transition-colors">(View code →)</span>
                           </p>
-                          <p className="text-[10px] text-zinc-600">
+                          <p className="text-[10px] text-muted-foreground/60">
                             {sub.passed_count}/{sub.total_count} passed · {LANGUAGES.find((l) => l.id === sub.language_id)?.name || "Unknown"}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="flex items-center gap-3 text-[10px] text-zinc-500">
+                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground/80">
                           {sub.runtime !== null && (
                             <span className="flex items-center gap-0.5"><IconClock className="h-3 w-3" />{sub.runtime}s</span>
                           )}
@@ -552,7 +556,7 @@ export function ProblemIDEClient({
                             <span className="flex items-center gap-0.5"><IconCpu className="h-3 w-3" />{formatMemory(sub.memory, true)}</span>
                           )}
                         </div>
-                        <p className="text-[9px] text-zinc-700 mt-0.5">
+                        <p className="text-[9px] text-muted-foreground/40 mt-0.5">
                           {new Date(sub.created_at).toLocaleString()}
                         </p>
                       </div>
@@ -560,8 +564,8 @@ export function ProblemIDEClient({
                   ))
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 gap-2 select-none">
-                    <IconHistory className="h-8 w-8 text-zinc-800" />
-                    <p className="text-[10px] text-zinc-700 uppercase font-bold tracking-widest">No submissions yet</p>
+                    <IconHistory className="h-8 w-8 text-muted-foreground/20" />
+                    <p className="text-[10px] text-muted-foreground/40 uppercase font-bold tracking-widest">No submissions yet</p>
                   </div>
                 )}
               </div>
@@ -573,9 +577,9 @@ export function ProblemIDEClient({
         <div className="flex flex-col min-h-0 overflow-hidden">
           {/* Code Editor */}
           <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex items-center gap-2 bg-zinc-900 px-4 py-2 border-b border-zinc-800 shrink-0">
+            <div className="flex items-center gap-2 bg-card px-4 py-2 border-b border-border shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+              <span className="text-[10px] font-bold text-muted-foreground/80 uppercase tracking-widest">
                 {langForDisplay?.name} (.{langForDisplay?.extension})
               </span>
             </div>
@@ -585,7 +589,7 @@ export function ProblemIDEClient({
                 language={selectedLang.value}
                 value={code}
                 onChange={(v) => setCode(v || "")}
-                theme="vs-dark"
+                theme={monacoTheme}
                 options={{
                   fontSize: 13,
                   minimap: { enabled: false },
@@ -596,9 +600,9 @@ export function ProblemIDEClient({
                   lineNumbersMinChars: 3,
                 }}
                 loading={
-                  <div className="flex flex-col items-center justify-center h-full gap-2 bg-zinc-950">
-                    <div className="h-6 w-6 border-2 border-zinc-700 border-t-zinc-400 rounded-full animate-spin" />
-                    <span className="text-[10px] text-zinc-600 uppercase tracking-widest">Loading...</span>
+                  <div className="flex flex-col items-center justify-center h-full gap-2 bg-background">
+                    <div className="h-6 w-6 border-2 border-muted border-t-foreground rounded-full animate-spin" />
+                    <span className="text-[10px] text-muted-foreground/60 uppercase tracking-widest">Loading...</span>
                   </div>
                 }
               />
@@ -606,25 +610,25 @@ export function ProblemIDEClient({
           </div>
 
           {/* Output Panel */}
-          <div className="h-[220px] flex flex-col border-t border-zinc-800 shrink-0 overflow-hidden">
+          <div className="h-[220px] flex flex-col border-t border-border shrink-0 overflow-hidden">
             {/* Output tabs */}
-            <div className="flex items-center justify-between bg-zinc-900 border-b border-zinc-800 px-3 shrink-0">
+            <div className="flex items-center justify-between bg-card border-b border-border px-3 shrink-0">
               <div className="flex">
                 <button
                   onClick={() => setActiveOutputTab("testcases")}
-                  className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer ${activeOutputTab === "testcases" ? "text-white border-b-2 border-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}
+                  className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer ${activeOutputTab === "testcases" ? "text-foreground border-b-2 border-emerald-400" : "text-muted-foreground/80 hover:text-foreground/80"}`}
                 >
                   Test Cases
                 </button>
                 <button
                   onClick={() => setActiveOutputTab("result")}
-                  className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer ${activeOutputTab === "result" ? "text-white border-b-2 border-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}
+                  className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer ${activeOutputTab === "result" ? "text-foreground border-b-2 border-emerald-400" : "text-muted-foreground/80 hover:text-foreground/80"}`}
                 >
                   Result
                 </button>
               </div>
               {(runResult || submitResult) && (
-                <button onClick={handleCopyOutput} className="p-1 hover:bg-zinc-800 rounded transition-all cursor-pointer text-zinc-500 hover:text-white">
+                <button onClick={handleCopyOutput} className="p-1 hover:bg-muted rounded transition-all cursor-pointer text-muted-foreground/80 hover:text-foreground">
                   {copied ? <IconCheck className="h-3 w-3 text-emerald-400" /> : <IconCopy className="h-3 w-3" />}
                 </button>
               )}
@@ -637,18 +641,18 @@ export function ProblemIDEClient({
                     {sampleTestCases.map((tc, idx) => (
                       <div key={tc.id} className="flex gap-4">
                         <div className="flex-1">
-                          <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-0.5">Input {idx + 1}</p>
-                          <pre className="p-1.5 bg-zinc-900 rounded text-zinc-400 text-[11px]">{tc.input}</pre>
+                          <p className="text-[9px] text-muted-foreground/60 uppercase tracking-widest mb-0.5">Input {idx + 1}</p>
+                          <pre className="p-1.5 bg-muted/40 border border-zinc-200 dark:border-border rounded text-muted-foreground text-[11px]">{tc.input}</pre>
                         </div>
                         <div className="flex-1">
-                          <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-0.5">Expected</p>
-                          <pre className="p-1.5 bg-zinc-900 rounded text-zinc-400 text-[11px]">{tc.expected_output}</pre>
+                          <p className="text-[9px] text-muted-foreground/60 uppercase tracking-widest mb-0.5">Expected</p>
+                          <pre className="p-1.5 bg-muted/40 border border-zinc-200 dark:border-border rounded text-muted-foreground text-[11px]">{tc.expected_output}</pre>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-zinc-700 text-[10px]">No sample test cases available.</p>
+                  <p className="text-muted-foreground/40 text-[10px]">No sample test cases available.</p>
                 )
               ) : (
                 /* Result tab */
@@ -662,10 +666,10 @@ export function ProblemIDEClient({
                         </div>
                       </div>
                       <div className="text-center space-y-1">
-                        <p className="text-xs font-bold text-white uppercase tracking-wider">
+                        <p className="text-xs font-bold text-foreground uppercase tracking-wider">
                           {submitting ? "Judging Submission..." : "Compiling & Running..."}
                         </p>
-                        <p className="text-[10px] text-zinc-500">
+                        <p className="text-[10px] text-muted-foreground/80">
                           Executing solution against the logiclab sandbox...
                         </p>
                       </div>
@@ -676,28 +680,28 @@ export function ProblemIDEClient({
                         <div className="flex items-center gap-2">
                           {submitResult.status === "Accepted" ? <IconCircleCheck className="h-4 w-4" /> : <IconCircleX className="h-4 w-4" />}
                           <span className="font-bold uppercase tracking-wider text-[10px]">{submitResult.status}</span>
-                          <span className="text-zinc-500 text-[10px]">{submitResult.passed_count}/{submitResult.total_count} passed</span>
+                          <span className="text-muted-foreground/80 text-[10px]">{submitResult.passed_count}/{submitResult.total_count} passed</span>
                         </div>
-                        <div className="flex items-center gap-3 text-zinc-400 text-[10px]">
+                        <div className="flex items-center gap-3 text-muted-foreground text-[10px]">
                           <span className="flex items-center gap-1"><IconClock className="h-3 w-3" />{submitResult.runtime ?? "0.0"}s</span>
                           <span className="flex items-center gap-1"><IconCpu className="h-3 w-3" />{formatMemory(submitResult.memory, true)}</span>
                         </div>
                       </div>
 
                       {submitResult.status === "Accepted" && (
-                        <div className="p-2.5 bg-zinc-900/40 border border-zinc-800/80 rounded-lg space-y-2 max-h-[120px] overflow-y-auto">
-                          <p className="text-[9px] text-zinc-500 uppercase tracking-widest font-bold">Grading Checklist</p>
+                        <div className="p-2.5 bg-card/40 border border-border/80 rounded-lg space-y-2 max-h-[120px] overflow-y-auto">
+                          <p className="text-[9px] text-muted-foreground/80 uppercase tracking-widest font-bold">Grading Checklist</p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                             {sampleTestCases.map((tc, idx) => (
-                              <div key={tc.id} className="flex items-center gap-1.5 bg-zinc-900/60 border border-zinc-800/50 rounded px-2 py-1">
+                              <div key={tc.id} className="flex items-center gap-1.5 bg-card/60 border border-border/50 rounded px-2 py-1">
                                 <IconCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                                <span className="text-[11px] font-medium text-zinc-300">Example {idx + 1} Passed</span>
+                                <span className="text-[11px] font-medium text-foreground/80">Example {idx + 1} Passed</span>
                               </div>
                             ))}
                             {submitResult.total_count > sampleTestCases.length && (
-                              <div className="flex items-center gap-1.5 bg-zinc-900/60 border border-zinc-800/50 rounded px-2 py-1 sm:col-span-2">
+                              <div className="flex items-center gap-1.5 bg-card/60 border border-border/50 rounded px-2 py-1 sm:col-span-2">
                                 <IconCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0 animate-pulse" />
-                                <span className="text-[11px] font-medium text-zinc-300">
+                                <span className="text-[11px] font-medium text-foreground/80">
                                   All {submitResult.total_count - sampleTestCases.length} hidden validator test cases passed!
                                 </span>
                               </div>
@@ -707,20 +711,20 @@ export function ProblemIDEClient({
                       )}
 
                       {submitResult.failed_test_case_info && (
-                        <div className="p-2.5 bg-zinc-900 border border-zinc-800 rounded-lg space-y-1.5">
+                        <div className="p-2.5 bg-muted/30 dark:bg-card border border-zinc-200 dark:border-border rounded-lg space-y-1.5">
                           <p className="text-[9px] text-rose-400 uppercase tracking-widest font-bold flex items-center gap-1"><IconAlertTriangle className="h-3 w-3" /> Failed at Test Case #{submitResult.failed_test_case_info.index}</p>
                           <div className="grid grid-cols-3 gap-2 text-[10px]">
                             <div>
-                              <p className="text-zinc-600">Input</p>
-                              <pre className="text-zinc-400 mt-0.5 whitespace-pre-wrap">{submitResult.failed_test_case_info.input}</pre>
+                              <p className="text-muted-foreground/60">Input</p>
+                              <pre className="p-1 bg-muted/40 border border-zinc-200 dark:border-border rounded mt-0.5 whitespace-pre-wrap text-muted-foreground">{submitResult.failed_test_case_info.input}</pre>
                             </div>
                             <div>
-                              <p className="text-zinc-600">Expected</p>
-                              <pre className="text-zinc-400 mt-0.5 whitespace-pre-wrap">{submitResult.failed_test_case_info.expected}</pre>
+                              <p className="text-muted-foreground/60">Expected</p>
+                              <pre className="p-1 bg-muted/40 border border-zinc-200 dark:border-border rounded mt-0.5 whitespace-pre-wrap text-muted-foreground">{submitResult.failed_test_case_info.expected}</pre>
                             </div>
                             <div>
-                              <p className="text-zinc-600">Your Output</p>
-                              <pre className="text-rose-400 mt-0.5 whitespace-pre-wrap">{submitResult.failed_test_case_info.actual}</pre>
+                              <p className="text-muted-foreground/60">Your Output</p>
+                              <pre className="p-1 bg-muted/40 border border-zinc-200 dark:border-border rounded mt-0.5 whitespace-pre-wrap text-rose-400">{submitResult.failed_test_case_info.actual}</pre>
                             </div>
                           </div>
                         </div>
@@ -728,7 +732,7 @@ export function ProblemIDEClient({
                     </>
                   ) : runResult ? (
                     <>
-                      <div className={`p-2.5 rounded-lg flex items-center justify-between border ${runResult.status?.id === 3 && runResult.matched ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400" : "bg-rose-500/5 border-rose-500/20 text-rose-400"}`}>
+                      <div className={`p-2.5 rounded-lg flex items-center justify-between border ${runResult.status?.id === 3 && runResult.matched ? "bg-emerald-500/5 border-emerald-500/30 dark:border-emerald-500/20 text-emerald-400" : "bg-rose-500/5 border-rose-500/30 dark:border-rose-500/20 text-rose-400"}`}>
                         <div className="flex items-center gap-2">
                           {runResult.status?.id === 3 && runResult.matched ? <IconCircleCheck className="h-4 w-4" /> : <IconCircleX className="h-4 w-4" />}
                           <span className="font-bold uppercase tracking-wider text-[10px]">
@@ -736,7 +740,7 @@ export function ProblemIDEClient({
                           </span>
                         </div>
                         {runResult.status?.id === 3 && (
-                          <div className="flex items-center gap-3 text-zinc-400 text-[10px]">
+                          <div className="flex items-center gap-3 text-muted-foreground text-[10px]">
                             <span className="flex items-center gap-1"><IconClock className="h-3 w-3" />{runResult.time}s</span>
                             <span className="flex items-center gap-1"><IconCpu className="h-3 w-3" />{formatMemory(runResult.memory, false)}</span>
                           </div>
@@ -746,32 +750,32 @@ export function ProblemIDEClient({
                       {runResult.compile_output && (
                         <div>
                           <p className="text-[9px] text-rose-400 uppercase tracking-widest mb-1"><IconAlertTriangle className="h-3 w-3 inline" /> Compile Error</p>
-                          <pre className="p-2 bg-zinc-900 border border-zinc-800 rounded text-rose-400/90 whitespace-pre-wrap text-[11px] font-mono">{runResult.compile_output}</pre>
+                          <pre className="p-2 bg-muted/40 border border-zinc-200 dark:border-border rounded text-rose-400/90 whitespace-pre-wrap text-[11px] font-mono">{runResult.compile_output}</pre>
                         </div>
                       )}
 
                       {runResult.stderr && (
                         <div>
                           <p className="text-[9px] text-rose-400 uppercase tracking-widest mb-1"><IconAlertTriangle className="h-3 w-3 inline" /> Runtime Error</p>
-                          <pre className="p-2 bg-zinc-900 border border-zinc-800 rounded text-rose-400/90 whitespace-pre-wrap text-[11px] font-mono">{runResult.stderr}</pre>
+                          <pre className="p-2 bg-muted/40 border border-zinc-200 dark:border-border rounded text-rose-400/90 whitespace-pre-wrap text-[11px] font-mono">{runResult.stderr}</pre>
                         </div>
                       )}
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-0.5">Your Output</p>
-                          <pre className="p-1.5 bg-zinc-900 border border-zinc-800 rounded text-zinc-300 text-[11px] whitespace-pre-wrap font-mono">{runResult.stdout || "(empty)"}</pre>
+                          <p className="text-[9px] text-muted-foreground/60 uppercase tracking-widest mb-0.5">Your Output</p>
+                          <pre className="p-1.5 bg-muted/40 border border-zinc-200 dark:border-border rounded text-foreground/80 text-[11px] whitespace-pre-wrap font-mono">{runResult.stdout || "(empty)"}</pre>
                         </div>
                         <div>
-                          <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-0.5">Expected</p>
-                          <pre className="p-1.5 bg-zinc-900 border border-zinc-800 rounded text-zinc-300 text-[11px] whitespace-pre-wrap font-mono">{runResult.expected || "(none)"}</pre>
+                          <p className="text-[9px] text-muted-foreground/60 uppercase tracking-widest mb-0.5">Expected</p>
+                          <pre className="p-1.5 bg-muted/40 border border-zinc-200 dark:border-border rounded text-foreground/80 text-[11px] whitespace-pre-wrap font-mono">{runResult.expected || "(none)"}</pre>
                         </div>
                       </div>
                     </>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full gap-1.5 select-none my-auto">
-                      <IconTerminal2 className="h-6 w-6 text-zinc-800" />
-                      <p className="text-[10px] text-zinc-700 uppercase font-bold tracking-widest">Run or Submit to see results</p>
+                      <IconTerminal2 className="h-6 w-6 text-muted-foreground/20" />
+                      <p className="text-[10px] text-muted-foreground/40 uppercase font-bold tracking-widest">Run or Submit to see results</p>
                     </div>
                   )}
                 </div>
@@ -784,37 +788,36 @@ export function ProblemIDEClient({
       {/* ── Historical Code Viewer Modal ── */}
       {viewingSubmission && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden w-full max-w-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+          <div className="bg-background border border-border rounded-xl shadow-2xl overflow-hidden w-full max-w-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-zinc-900/80 border-b border-zinc-800 shrink-0">
+            <div className="flex items-center justify-between px-4 py-3 bg-card/80 border-b border-border shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className={`h-2 w-2 rounded-full ${viewingSubmission.status === "Accepted" ? "bg-emerald-500" : "bg-rose-500"}`} />
                 <div>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
                     Submission Code Preview
                     <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${viewingSubmission.status === "Accepted" ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" : "text-rose-400 bg-rose-500/10 border-rose-500/20"}`}>
                       {viewingSubmission.status}
                     </span>
                   </h3>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">
+                  <p className="text-[10px] text-muted-foreground/80 mt-0.5">
                     Submitted on {new Date(viewingSubmission.created_at).toLocaleString()} · {LANGUAGES.find(l => l.id === viewingSubmission.language_id)?.name}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setViewingSubmission(null)}
-                className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
                 <IconX className="h-4.5 w-4.5" />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="flex-1 min-h-[300px] bg-zinc-950 flex flex-col relative overflow-hidden">
+            <div className="flex-1 min-h-[300px] bg-background flex flex-col relative overflow-hidden">
               {loadingCode ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-zinc-950 z-10">
-                  <div className="h-7 w-7 border-2 border-zinc-700 border-t-emerald-400 rounded-full animate-spin" />
-                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Fetching solution from database...</span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-background z-10">
+                  <div className="h-7 w-7 border-2 border-muted border-t-emerald-400 rounded-full animate-spin" />
+                  <span className="text-[10px] text-muted-foreground/80 uppercase tracking-widest font-bold">Fetching solution from database...</span>
                 </div>
               ) : (
                 <div className="flex-1 h-full min-h-[350px]">
@@ -822,7 +825,7 @@ export function ProblemIDEClient({
                     height="100%"
                     language={LANGUAGES.find((l) => l.id === viewingSubmission.language_id)?.value || "javascript"}
                     value={viewingCode}
-                    theme="vs-dark"
+                    theme={monacoTheme}
                     options={{
                       readOnly: true,
                       fontSize: 12.5,
@@ -839,14 +842,14 @@ export function ProblemIDEClient({
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between px-4 py-3 bg-zinc-900/50 border-t border-zinc-800 shrink-0">
-              <div className="text-[10px] text-zinc-500 font-medium">
+            <div className="flex items-center justify-between px-4 py-3 bg-card/50 border-t border-border shrink-0">
+              <div className="text-[10px] text-muted-foreground/80 font-medium">
                 Passed {viewingSubmission.passed_count}/{viewingSubmission.total_count} test cases
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setViewingSubmission(null)}
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700 transition-colors cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground bg-card border border-border hover:bg-muted hover:border-border transition-colors cursor-pointer"
                 >
                   Close
                 </button>

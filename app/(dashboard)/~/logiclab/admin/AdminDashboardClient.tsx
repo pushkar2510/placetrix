@@ -65,6 +65,8 @@ interface TagStat {
   submissions: number
   accepted: number
   rate: number
+  studentsSolved: number
+  totalStudents: number
 }
 
 interface AnalyticsData {
@@ -115,15 +117,15 @@ function OnboardingBanner({
   isSeeding: boolean
 }) {
   return (
-    <div className="bg-zinc-900/60 border border-emerald-500/10 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-5">
+    <div className="bg-card/90 border border-emerald-500/10 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-5">
       <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
         <IconSparkles className="h-6 w-6 text-emerald-400" />
       </div>
       <div className="flex-1 min-w-0">
         <h2 className="text-sm font-bold text-white mb-1">Your curriculum library is empty</h2>
-        <p className="text-xs text-zinc-400 leading-relaxed">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           10 pre-built challenges are bundled with your project in{" "}
-          <code className="text-emerald-400 font-mono text-[11px] bg-zinc-950 px-1 py-0.5 rounded border border-zinc-800">
+          <code className="text-emerald-400 font-mono text-[11px] bg-background px-1 py-0.5 rounded border border-border">
             problems_import.json
           </code>
           . Click <strong className="text-white">Quick Seed</strong> to load them instantly, or use the manual import flow below.
@@ -149,7 +151,7 @@ function OnboardingBanner({
         </button>
         <button
           onClick={onImport}
-          className="flex items-center gap-2 text-zinc-400 hover:text-white bg-zinc-900 border border-zinc-800 hover:border-zinc-700 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
+          className="flex items-center gap-2 text-muted-foreground hover:text-white bg-card border border-border hover:border-border px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer"
         >
           <IconUpload className="h-3.5 w-3.5" />
           Manual Import
@@ -261,22 +263,22 @@ export function AdminDashboardClient({
   const acceptanceRate = ((analytics.totalAccepted / totalSubmissions) * 100).toFixed(1)
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6 min-h-[calc(100svh-56px)] bg-zinc-950 text-zinc-100">
+    <div className="flex flex-col gap-6 p-4 md:p-6 min-h-[calc(100svh-56px)] bg-background text-foreground">
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-900 pb-5">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-5">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center">
             <IconLayoutDashboard className="h-5 w-5 text-emerald-400" />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-white">LogicLab Admin Center</h1>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-muted-foreground/70">
               Manage challenges, track performance, and import curriculum.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 bg-zinc-900/60 p-0.5 border border-zinc-800 rounded-lg shrink-0 select-none">
+        <div className="flex items-center gap-2 bg-card/60 p-0.5 border border-border rounded-lg shrink-0 select-none">
           {(["overview", "problems", "create"] as const).map((tab) => (
             <button
               key={tab}
@@ -284,7 +286,7 @@ export function AdminDashboardClient({
               className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer capitalize ${
                 activeTab === tab
                   ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/10"
-                  : "text-zinc-400 hover:text-white"
+                  : "text-muted-foreground hover:text-white"
               }`}
             >
               {tab === "create" ? "Create / Import" : tab === "problems" ? "Manage Problems" : "Overview"}
@@ -344,21 +346,21 @@ export function AdminDashboardClient({
             ].map((stat, i) => (
               <div
                 key={i}
-                className={`bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-4 flex flex-col justify-between transition-all group duration-300 hover:-translate-y-0.5 select-none ${stat.accent}`}
+                className={`bg-card border border-border/80 rounded-xl p-4 flex flex-col justify-between transition-all group duration-300 hover:-translate-y-0.5 select-none ${stat.accent}`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
+                  <span className="text-[10px] text-muted-foreground/70 uppercase tracking-widest font-bold">
                     {stat.title}
                   </span>
-                  <div className="h-7 w-7 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-center">
+                  <div className="h-7 w-7 rounded-lg bg-background border border-border flex items-center justify-center">
                     {stat.icon}
                   </div>
                 </div>
                 <div className="mt-4">
-                  <h3 className={`text-2xl font-bold tracking-tight ${stat.empty ? "text-zinc-600" : "text-white"}`}>
+                  <h3 className={`text-2xl font-bold tracking-tight ${stat.empty ? "text-muted-foreground/50" : "text-white"}`}>
                     {stat.value}
                   </h3>
-                  <p className="text-[10px] text-zinc-500 mt-1 font-medium">{stat.desc}</p>
+                  <p className="text-[10px] text-muted-foreground/70 mt-1 font-medium">{stat.desc}</p>
                 </div>
               </div>
             ))}
@@ -367,30 +369,30 @@ export function AdminDashboardClient({
           {/* ── Row 1: Student Leaderboard + Language Distribution ── */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Student Leaderboard */}
-            <div className="lg:col-span-8 bg-zinc-900/30 border border-zinc-800/60 rounded-xl p-5 flex flex-col min-h-[320px]">
+            <div className="lg:col-span-8 bg-card/70 border border-border/60 rounded-xl p-5 flex flex-col min-h-[320px]">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 select-none">
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-0.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
                     Student Performance Leaderboard
                   </h3>
-                  <p className="text-[10px] text-zinc-600">Solved challenges and total attempts per student.</p>
+                  <p className="text-[10px] text-muted-foreground/50">Solved challenges and total attempts per student.</p>
                 </div>
                 <div className="relative w-full sm:w-44">
-                  <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600" />
+                  <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
                   <input
                     type="text"
                     placeholder="Search student..."
                     value={studentSearch}
                     onChange={(e) => setStudentSearch(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-8 pr-3 py-1 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-700"
+                    className="w-full bg-background border border-input rounded-lg pl-8 pr-3 py-1 text-xs text-foreground/90 placeholder:text-muted-foreground/50 focus:outline-none focus:border-border"
                   />
                 </div>
               </div>
 
-              <div className="flex-1 border border-zinc-800/50 rounded-lg overflow-auto">
+              <div className="flex-1 border border-border/50 rounded-lg overflow-auto">
                 <table className="w-full text-left border-collapse text-xs select-none">
                   <thead>
-                    <tr className="bg-zinc-900/80 border-b border-zinc-800 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                    <tr className="bg-muted/70 border-b border-border text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">
                       <th className="px-3 py-2 text-center w-10">#</th>
                       <th className="px-3 py-2">Student</th>
                       <th className="px-3 py-2 text-center">Solved</th>
@@ -398,27 +400,27 @@ export function AdminDashboardClient({
                       <th className="px-3 py-2 text-right">Success Rate</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-800/50">
+                  <tbody className="divide-y divide-border/50">
                     {filteredStudents.length > 0 ? (
                       filteredStudents.map((st, idx) => {
                         const successRate = st.attemptCount
                           ? Math.round((st.solvedCount / st.attemptCount) * 100)
                           : 0
                         return (
-                          <tr key={st.user_id} className="hover:bg-zinc-900/30">
-                            <td className="px-3 py-2.5 text-center font-mono text-zinc-600 text-[10px]">
+                          <tr key={st.user_id} className="hover:bg-card/30">
+                            <td className="px-3 py-2.5 text-center font-mono text-muted-foreground/50 text-[10px]">
                               {idx + 1}
                             </td>
                             <td className="px-3 py-2.5">
-                              <div className="font-semibold text-zinc-200 truncate">{st.student_name}</div>
-                              <div className="text-[10px] text-zinc-500 truncate">{st.student_email}</div>
+                              <div className="font-semibold text-foreground/90 truncate">{st.student_name}</div>
+                              <div className="text-[10px] text-muted-foreground/70 truncate">{st.student_email}</div>
                             </td>
                             <td className="px-3 py-2.5 text-center">
                               <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                                 {st.solvedCount}
                               </span>
                             </td>
-                            <td className="px-3 py-2.5 text-center font-mono text-zinc-400 text-[11px]">
+                            <td className="px-3 py-2.5 text-center font-mono text-muted-foreground text-[11px]">
                               {st.attemptCount}
                             </td>
                             <td className="px-3 py-2.5 text-right font-mono font-bold text-indigo-400 text-[11px]">
@@ -430,7 +432,7 @@ export function AdminDashboardClient({
                     ) : (
                       <tr>
                         <td colSpan={5} className="px-3 py-14 text-center">
-                          <div className="flex flex-col items-center gap-2 text-zinc-700">
+                          <div className="flex flex-col items-center gap-2 text-muted-foreground/30">
                             <IconUsers className="h-6 w-6 stroke-[1.5]" />
                             <span className="text-[10px] font-bold uppercase tracking-widest">
                               {analytics.totalSubmissions === 0
@@ -455,12 +457,12 @@ export function AdminDashboardClient({
             </div>
 
             {/* Language Distribution */}
-            <div className="lg:col-span-4 bg-zinc-900/30 border border-zinc-800/60 rounded-xl p-5 flex flex-col min-h-[320px]">
+            <div className="lg:col-span-4 bg-card/70 border border-border/60 rounded-xl p-5 flex flex-col min-h-[320px]">
               <div className="mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-0.5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
                   Language Distribution
                 </h3>
-                <p className="text-[10px] text-zinc-600">Submissions grouped by programming language.</p>
+                <p className="text-[10px] text-muted-foreground/50">Submissions grouped by programming language.</p>
               </div>
               <div className="space-y-4 my-auto">
                 {[
@@ -474,15 +476,15 @@ export function AdminDashboardClient({
                   return (
                     <div key={lang.id} className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-2 text-zinc-400 font-medium">
+                        <span className="flex items-center gap-2 text-muted-foreground font-medium">
                           <span className={`h-2 w-2 rounded-full ${lang.color}`} />
                           {lang.label}
                         </span>
-                        <span className={`text-[10px] font-mono font-bold ${count ? lang.text : "text-zinc-700"}`}>
+                        <span className={`text-[10px] font-mono font-bold ${count ? lang.text : "text-muted-foreground/30"}`}>
                           {count} ({pct.toFixed(0)}%)
                         </span>
                       </div>
-                      <div className="h-1 bg-zinc-900 border border-zinc-800/50 rounded-full overflow-hidden">
+                      <div className="h-1 bg-card border border-border/50 rounded-full overflow-hidden">
                         <div
                           className={`h-full ${lang.color} rounded-full transition-all duration-500`}
                           style={{ width: `${pct}%` }}
@@ -493,7 +495,7 @@ export function AdminDashboardClient({
                 })}
 
                 {analytics.totalSubmissions === 0 && (
-                  <p className="text-[10px] text-zinc-700 text-center pt-2 font-medium uppercase tracking-widest">
+                  <p className="text-[10px] text-muted-foreground/30 text-center pt-2 font-medium uppercase tracking-widest">
                     No submissions yet
                   </p>
                 )}
@@ -504,72 +506,100 @@ export function AdminDashboardClient({
           {/* ── Row 2: Tag Analytics + Live Activity ── */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Curriculum Tag Analytics */}
-            <div className="lg:col-span-6 bg-zinc-900/30 border border-zinc-800/60 rounded-xl p-5 flex flex-col min-h-[360px]">
+            <div className="lg:col-span-6 bg-card/70 border border-border/60 rounded-xl p-5 flex flex-col min-h-[360px]">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-0.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
                     Curriculum Concept Tags
                   </h3>
-                  <p className="text-[10px] text-zinc-600">
+                  <p className="text-[10px] text-muted-foreground/50">
                     Topics covered, problems per concept, and student proficiency.
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5 text-[10px] text-zinc-600 font-semibold shrink-0">
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50 font-semibold shrink-0">
                   <IconTag className="h-3 w-3" />
                   {(analytics.tagStats || []).length} topics
                 </div>
               </div>
 
               {analytics.tagStats && analytics.tagStats.length > 0 ? (
-                <div className="flex-1 overflow-auto border border-zinc-800/50 rounded-lg">
+                <div className="flex-1 overflow-auto border border-border/50 rounded-lg">
                   <table className="w-full text-left border-collapse text-xs select-none">
                     <thead>
-                      <tr className="bg-zinc-900/80 border-b border-zinc-800 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                        <th className="px-3 py-2">Concept / Tag</th>
-                        <th className="px-3 py-2 text-center w-20">Problems</th>
-                        <th className="px-3 py-2 text-center w-20">Attempts</th>
-                        <th className="px-3 py-2 text-right w-32">Proficiency</th>
+                      <tr className="bg-muted/70 border-b border-border text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider sticky top-0">
+                        <th className="px-3 py-2.5">Concept / Tag</th>
+                        <th className="px-3 py-2.5 text-center w-16">Problems</th>
+                        <th className="px-3 py-2.5 w-36">Students Solved</th>
+                        <th className="px-3 py-2.5 text-right w-28">Proficiency</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-800/50">
+                    <tbody className="divide-y divide-border/50">
                       {analytics.tagStats.map((tag) => {
-                        let rateBg = "bg-zinc-800"
-                        let rateText = "text-zinc-500"
+                        // Proficiency color (submission acceptance rate)
+                        let rateBg = "bg-zinc-700"
+                        let rateText = "text-muted-foreground/70"
+                        let rateGlow = ""
                         if (tag.submissions > 0) {
-                          if (tag.rate >= 70) { rateBg = "bg-emerald-500"; rateText = "text-emerald-400" }
+                          if (tag.rate >= 70) { rateBg = "bg-emerald-500"; rateText = "text-emerald-400"; rateGlow = "shadow-[0_0_6px_rgba(16,185,129,0.3)]" }
                           else if (tag.rate >= 40) { rateBg = "bg-amber-500"; rateText = "text-amber-400" }
                           else { rateBg = "bg-rose-500"; rateText = "text-rose-400" }
                         }
+
+                        // Students solved progress
+                        const totalStu = tag.totalStudents || 0
+                        const solvedStu = tag.studentsSolved || 0
+                        const stuPct = totalStu > 0 ? Math.round((solvedStu / totalStu) * 100) : 0
+                        let stuBarColor = "bg-zinc-600"
+                        if (stuPct >= 70) stuBarColor = "bg-emerald-500"
+                        else if (stuPct >= 40) stuBarColor = "bg-amber-500"
+                        else if (stuPct > 0) stuBarColor = "bg-rose-500"
+
                         return (
-                          <tr key={tag.name} className="hover:bg-zinc-900/30">
+                          <tr key={tag.name} className="hover:bg-card transition-colors">
                             <td className="px-3 py-2.5">
-                              <span className="inline-block px-2 py-0.5 rounded text-[10px] bg-zinc-950 border border-zinc-800 text-zinc-300 font-medium">
+                              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] bg-background border border-border text-foreground/75 font-semibold">
+                                <span className="h-1.5 w-1.5 rounded-full bg-zinc-600" />
                                 {tag.name}
                               </span>
                             </td>
                             <td className="px-3 py-2.5 text-center">
-                              <span className="font-mono font-bold text-zinc-300 text-[11px]">
+                              <span className="font-mono font-bold text-foreground/90 text-[12px]">
                                 {tag.problemCount}
                               </span>
                             </td>
-                            <td className="px-3 py-2.5 text-center font-mono text-zinc-500 text-[11px]">
-                              {tag.submissions}
+                            <td className="px-3 py-2.5">
+                              {totalStu > 0 ? (
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 h-1 bg-card border border-border/50 rounded-full overflow-hidden min-w-[40px]">
+                                    <div
+                                      className={`h-full ${stuBarColor} rounded-full transition-all duration-500`}
+                                      style={{ width: `${stuPct}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] font-mono text-muted-foreground shrink-0 font-bold">
+                                    {solvedStu}
+                                    <span className="text-muted-foreground/50">/{totalStu}</span>
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground/30 font-medium">No students yet</span>
+                              )}
                             </td>
                             <td className="px-3 py-2.5 text-right">
                               {tag.submissions > 0 ? (
                                 <div className="flex items-center justify-end gap-2">
-                                  <span className={`font-mono font-bold text-[11px] ${rateText}`}>
-                                    {tag.rate}%
-                                  </span>
-                                  <div className="w-12 h-1 bg-zinc-900 border border-zinc-800/50 rounded-full overflow-hidden">
+                                  <div className="w-10 h-1 bg-card border border-border/50 rounded-full overflow-hidden">
                                     <div
-                                      className={`h-full ${rateBg} rounded-full`}
+                                      className={`h-full ${rateBg} rounded-full transition-all duration-500 ${rateGlow}`}
                                       style={{ width: `${tag.rate}%` }}
                                     />
                                   </div>
+                                  <span className={`font-mono font-bold text-[11px] ${rateText}`}>
+                                    {tag.rate}%
+                                  </span>
                                 </div>
                               ) : (
-                                <span className="text-[10px] text-zinc-700 font-medium">No data</span>
+                                <span className="text-[10px] text-muted-foreground/30 font-medium">—</span>
                               )}
                             </td>
                           </tr>
@@ -579,11 +609,11 @@ export function AdminDashboardClient({
                   </table>
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-zinc-700 border border-zinc-800/50 rounded-lg">
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground/30 border border-border/50 rounded-lg">
                   <IconTag className="h-7 w-7 stroke-[1.5]" />
                   <div className="text-center">
                     <p className="text-[10px] font-bold uppercase tracking-widest mb-1">No curriculum topics yet</p>
-                    <p className="text-[10px] text-zinc-800">Import problems with tags to see concept analytics</p>
+                    <p className="text-[10px] text-muted-foreground/15">Import problems with tags to see concept analytics</p>
                   </div>
                   <button
                     onClick={() => setActiveTab("create")}
@@ -596,35 +626,35 @@ export function AdminDashboardClient({
             </div>
 
             {/* Live Activity Feed */}
-            <div className="lg:col-span-6 bg-zinc-900/30 border border-zinc-800/60 rounded-xl p-5 flex flex-col min-h-[360px]">
+            <div className="lg:col-span-6 bg-card/70 border border-border/60 rounded-xl p-5 flex flex-col min-h-[360px]">
               <div className="mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-0.5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
                   Live Activity Feed
                 </h3>
-                <p className="text-[10px] text-zinc-600">Latest student submissions across all challenges.</p>
+                <p className="text-[10px] text-muted-foreground/50">Latest student submissions across all challenges.</p>
               </div>
 
-              <div className="flex-1 overflow-auto border border-zinc-800/50 rounded-lg p-2.5 bg-zinc-950/20 space-y-2">
+              <div className="flex-1 overflow-auto border border-border/50 rounded-lg p-2.5 bg-background/20 space-y-2">
                 {recentSubmissions.length > 0 ? (
                   recentSubmissions.map((log) => (
                     <div
                       key={log.id}
-                      className="bg-zinc-900/50 border border-zinc-800/50 rounded-lg p-2.5 flex items-start justify-between text-xs hover:border-zinc-700/50 transition-colors gap-2"
+                      className="bg-muted/40 border border-border/50 rounded-lg p-2.5 flex items-start justify-between text-xs hover:border-border/50 transition-colors gap-2"
                     >
                       <div className="space-y-0.5 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-zinc-200 truncate">{log.student_name}</span>
-                          <span className="text-[9px] text-zinc-600 shrink-0">
+                          <span className="font-semibold text-foreground/90 truncate">{log.student_name}</span>
+                          <span className="text-[9px] text-muted-foreground/50 shrink-0">
                             {new Date(log.created_at).toLocaleTimeString([], {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
                           </span>
                         </div>
-                        <p className="text-[10px] text-zinc-500">
-                          <span className="font-bold text-zinc-300">"{log.problem_title}"</span>
+                        <p className="text-[10px] text-muted-foreground/70">
+                          <span className="font-bold text-foreground/75">"{log.problem_title}"</span>
                           {" · "}
-                          <span className="font-mono text-zinc-600">{LANG_NAMES[log.language_id] || "Unknown"}</span>
+                          <span className="font-mono text-muted-foreground/50">{LANG_NAMES[log.language_id] || "Unknown"}</span>
                         </p>
                       </div>
                       <span
@@ -639,13 +669,13 @@ export function AdminDashboardClient({
                     </div>
                   ))
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center py-10 gap-2 text-zinc-700">
+                  <div className="h-full flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground/30">
                     <IconActivity className="h-7 w-7 stroke-[1.5]" />
                     <span className="text-[10px] font-bold uppercase tracking-widest">
                       No submissions yet
                     </span>
                     {analytics.totalProblems > 0 && (
-                      <p className="text-[9px] text-zinc-800 text-center max-w-[180px]">
+                      <p className="text-[9px] text-muted-foreground/15 text-center max-w-[180px]">
                         Activity will appear here once students start submitting solutions
                       </p>
                     )}
@@ -663,20 +693,20 @@ export function AdminDashboardClient({
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="relative flex-1 max-w-sm">
-              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600" />
+              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
               <input
                 type="text"
                 placeholder="Search challenges or tags..."
                 value={problemSearch}
                 onChange={(e) => setProblemSearch(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-700"
+                className="w-full bg-muted border border-input rounded-lg pl-9 pr-3 py-2 text-xs text-foreground/90 placeholder:text-muted-foreground/50 focus:outline-none focus:border-border"
               />
             </div>
             <div className="flex items-center gap-2">
               <select
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
-                className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-300 focus:outline-none cursor-pointer"
+                className="bg-muted border border-input rounded-lg px-3 py-2 text-xs font-semibold text-foreground/75 focus:outline-none cursor-pointer"
               >
                 <option value="All">All Difficulty</option>
                 <option value="Easy">Easy</option>
@@ -692,8 +722,8 @@ export function AdminDashboardClient({
             </div>
           </div>
 
-          <div className="bg-zinc-900/30 border border-zinc-800/60 rounded-xl overflow-hidden">
-            <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-zinc-900/80 border-b border-zinc-800 text-[10px] font-bold text-zinc-500 uppercase tracking-widest select-none">
+          <div className="bg-card/70 border border-border/60 rounded-xl overflow-hidden">
+            <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-muted/70 border-b border-border text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest select-none">
               <div className="col-span-1">#</div>
               <div className="col-span-5">Challenge Title</div>
               <div className="col-span-2">Difficulty</div>
@@ -702,15 +732,15 @@ export function AdminDashboardClient({
             </div>
 
             {filteredProblems.length > 0 ? (
-              <div className="divide-y divide-zinc-800/50">
+              <div className="divide-y divide-border/50">
                 {filteredProblems.map((problem, idx) => (
                   <div
                     key={problem.id}
-                    className="grid grid-cols-12 gap-2 items-center px-4 py-3 hover:bg-zinc-900/30 transition-colors text-xs"
+                    className="grid grid-cols-12 gap-2 items-center px-4 py-3 hover:bg-card/30 transition-colors text-xs"
                   >
-                    <div className="col-span-1 text-zinc-600 font-mono text-[10px]">{idx + 1}.</div>
+                    <div className="col-span-1 text-muted-foreground/50 font-mono text-[10px]">{idx + 1}.</div>
                     <div className="col-span-5 flex items-center gap-2 min-w-0">
-                      <span className="font-semibold text-zinc-200 truncate">{problem.title}</span>
+                      <span className="font-semibold text-foreground/90 truncate">{problem.title}</span>
                     </div>
                     <div className="col-span-2">
                       <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${DIFFICULTY_COLORS[problem.difficulty]}`}>
@@ -718,22 +748,22 @@ export function AdminDashboardClient({
                       </span>
                     </div>
                     <div className="col-span-2">
-                      <span className="font-medium text-zinc-300">
+                      <span className="font-medium text-foreground/75">
                         {problem.acceptance_rate !== null ? `${problem.acceptance_rate}%` : "—"}
                       </span>
-                      <span className="text-[10px] text-zinc-600 ml-1">({problem.total_submissions})</span>
+                      <span className="text-[10px] text-muted-foreground/50 ml-1">({problem.total_submissions})</span>
                     </div>
                     <div className="col-span-2 flex items-center justify-end gap-1">
                       <Link
                         href={`/~/logiclab/admin/edit/${problem.id}`}
-                        className="p-1.5 hover:bg-zinc-800 rounded text-zinc-500 hover:text-emerald-400 transition-all inline-flex items-center justify-center border border-zinc-800/50"
+                        className="p-1.5 hover:bg-muted rounded text-muted-foreground/70 hover:text-emerald-400 transition-all inline-flex items-center justify-center border border-border/50"
                         title="Edit Problem"
                       >
                         <IconEdit className="h-3.5 w-3.5" />
                       </Link>
                       <button
                         onClick={() => setDeletingProblemId(problem.id)}
-                        className="p-1.5 hover:bg-zinc-800 rounded text-zinc-500 hover:text-rose-400 transition-all inline-flex items-center justify-center border border-zinc-800/50 cursor-pointer"
+                        className="p-1.5 hover:bg-muted rounded text-muted-foreground/70 hover:text-rose-400 transition-all inline-flex items-center justify-center border border-border/50 cursor-pointer"
                         title="Delete Problem"
                       >
                         <IconTrash className="h-3.5 w-3.5" />
@@ -744,8 +774,8 @@ export function AdminDashboardClient({
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 gap-3 select-none">
-                <IconCode className="h-8 w-8 text-zinc-800 stroke-[1.5]" />
-                <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-wider">
+                <IconCode className="h-8 w-8 text-muted-foreground/15 stroke-[1.5]" />
+                <p className="text-[10px] text-muted-foreground/50 font-bold uppercase tracking-wider">
                   {localProblems.length === 0
                     ? "No challenges in your library yet"
                     : "No challenges matched your search"}
@@ -774,31 +804,31 @@ export function AdminDashboardClient({
       {/* ── Delete Confirmation Modal ── */}
       {deletingProblemId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden w-full max-w-md flex flex-col animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-4 py-3.5 bg-zinc-900 border-b border-zinc-800">
+          <div className="bg-background border border-border rounded-xl shadow-2xl overflow-hidden w-full max-w-md flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-4 py-3.5 bg-muted/80 border-b border-border">
               <h3 className="text-sm font-bold text-rose-400 uppercase tracking-wider flex items-center gap-2">
                 <IconAlertTriangle className="h-4 w-4" /> Permanent Deletion
               </h3>
               <button
                 onClick={() => setDeletingProblemId(null)}
                 disabled={isDeleting}
-                className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                className="p-1 hover:bg-muted rounded text-muted-foreground/70 hover:text-white transition-colors cursor-pointer"
               >
                 <IconX className="h-4 w-4" />
               </button>
             </div>
-            <div className="p-5 text-sm text-zinc-300 space-y-3">
+            <div className="p-5 text-sm text-foreground/75 space-y-3">
               <p>Are you absolutely sure you want to permanently delete this coding problem?</p>
               <div className="p-3 bg-rose-500/5 border border-rose-500/10 rounded-lg text-xs text-rose-400/90 leading-relaxed">
                 <strong>WARNING:</strong> This action is irreversible. All student submissions and performance
                 records for this challenge will be permanently purged.
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2 px-4 py-3 bg-zinc-900/50 border-t border-zinc-800">
+            <div className="flex items-center justify-end gap-2 px-4 py-3 bg-muted/50 border-t border-border">
               <button
                 onClick={() => setDeletingProblemId(null)}
                 disabled={isDeleting}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 transition-colors cursor-pointer disabled:opacity-40"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-white bg-card border border-border hover:bg-muted transition-colors cursor-pointer disabled:opacity-40"
               >
                 Cancel
               </button>
