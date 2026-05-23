@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -29,7 +30,14 @@ import type { UserProfile } from "@/lib/supabase/profile";
 import { getUserProfileAction } from "@/lib/supabase/profile";
 import { buildStorageUrl } from "@/lib/storage";
 import BorderGlow from "@/components/BorderGlow";
-import Galaxy from "@/components/Galaxy";
+import LightRays from "@/components/LightRays";
+
+const Galaxy = dynamic(() => import("@/components/Galaxy"), {
+  ssr: false,
+  loading: () => (
+    <div className="absolute inset-0 bg-transparent" aria-hidden="true" />
+  ),
+});
 
 const CONTENT = "mx-auto w-full max-w-6xl px-4 md:px-6";
 const SECTION_Y = "py-16 md:py-24";
@@ -53,42 +61,26 @@ function useMounted() {
   return mounted;
 }
 
-function useScrollThreshold(threshold = 10) {
+function useScrolled(threshold = 10) {
   const [scrolled, setScrolled] = React.useState(false);
-  const frame = React.useRef<number | null>(null);
-  const last = React.useRef(false);
 
   React.useEffect(() => {
-    const update = () => {
-      frame.current = null;
-      const next = window.scrollY > threshold;
-
-      if (last.current !== next) {
-        last.current = next;
-        setScrolled(next);
-      }
-    };
-
     const onScroll = () => {
-      if (frame.current !== null) return;
-      frame.current = window.requestAnimationFrame(update);
+      setScrolled(window.scrollY > threshold);
     };
 
-    update();
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
 
     return () => {
       window.removeEventListener("scroll", onScroll);
-      if (frame.current !== null) {
-        window.cancelAnimationFrame(frame.current);
-      }
     };
   }, [threshold]);
 
   return scrolled;
 }
 
-const Logo = React.memo(function Logo() {
+function Logo() {
   return (
     <div className="flex shrink-0 items-center justify-center">
       <Image
@@ -101,9 +93,9 @@ const Logo = React.memo(function Logo() {
       />
     </div>
   );
-});
+}
 
-const ThemeToggle = React.memo(function ThemeToggle() {
+function ThemeToggle() {
   const { setTheme, resolvedTheme } = useTheme();
   const mounted = useMounted();
 
@@ -143,9 +135,9 @@ const ThemeToggle = React.memo(function ThemeToggle() {
       <span className="sr-only">Toggle theme</span>
     </Button>
   );
-});
+}
 
-const UserAvatar = React.memo(function UserAvatar({
+function UserAvatar({
   user,
   className,
 }: {
@@ -155,11 +147,11 @@ const UserAvatar = React.memo(function UserAvatar({
   const initials = React.useMemo(() => {
     return user.display_name
       ? user.display_name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2)
       : user.email[0].toUpperCase();
   }, [user.display_name, user.email]);
 
@@ -179,9 +171,9 @@ const UserAvatar = React.memo(function UserAvatar({
       </AvatarFallback>
     </Avatar>
   );
-});
+}
 
-const AuthButtons = React.memo(function AuthButtons({
+function AuthButtons({
   size,
 }: {
   size: "sm" | "default";
@@ -196,9 +188,9 @@ const AuthButtons = React.memo(function AuthButtons({
       </Button>
     </>
   );
-});
+}
 
-const MobileNav = React.memo(function MobileNav({
+function MobileNav({
   user,
 }: {
   user: UserProfile | null;
@@ -335,16 +327,14 @@ const MobileNav = React.memo(function MobileNav({
       )}
     </div>
   );
-});
+}
 
 interface HeaderVisualProps {
   user: UserProfile | null;
 }
 
-const HeaderVisual = React.memo(function HeaderVisual({
-  user,
-}: HeaderVisualProps) {
-  const scrolled = useScrollThreshold(10);
+function HeaderVisual({ user }: HeaderVisualProps) {
+  const scrolled = useScrolled(10);
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 w-full px-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-4 md:pt-3">
@@ -389,13 +379,13 @@ const HeaderVisual = React.memo(function HeaderVisual({
       </div>
     </header>
   );
-});
+}
 
 interface HeaderShellProps {
   initialUser?: UserProfile | null;
 }
 
-const HeaderShell = React.memo(function HeaderShell({
+function HeaderShell({
   initialUser = null,
 }: HeaderShellProps) {
   const [user, setUser] = React.useState<UserProfile | null>(initialUser);
@@ -417,7 +407,7 @@ const HeaderShell = React.memo(function HeaderShell({
       .then((data) => {
         if (!cancelled && data) setUser(data);
       })
-      .catch(() => { });
+      .catch(() => {});
 
     return () => {
       cancelled = true;
@@ -425,105 +415,146 @@ const HeaderShell = React.memo(function HeaderShell({
   }, [initialUser]);
 
   return <HeaderVisual user={user} />;
-});
+}
 
-const HeroBackground = React.memo(function HeroBackground() {
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 z-0 overflow-hidden transform-gpu"
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(6,95,70,0.18),transparent_28%),radial-gradient(circle_at_82%_20%,rgba(16,185,129,0.16),transparent_24%),radial-gradient(circle_at_92%_12%,rgba(52,211,153,0.10),transparent_18%),radial-gradient(circle_at_50%_72%,rgba(16,185,129,0.12),transparent_30%)] dark:bg-[radial-gradient(circle_at_20%_18%,rgba(16,185,129,0.24),transparent_28%),radial-gradient(circle_at_82%_20%,rgba(16,185,129,0.20),transparent_24%),radial-gradient(circle_at_92%_12%,rgba(74,222,128,0.14),transparent_18%),radial-gradient(circle_at_50%_72%,rgba(16,185,129,0.16),transparent_30%)]" />
-      <div className="hero-grid absolute inset-x-0 bottom-[-12%] h-[72%] transform-gpu will-change-transform" />
-      <div className="hero-beam hero-beam-1 absolute left-[-10%] top-[4%] h-[30rem] w-[30rem] rounded-full transform-gpu will-change-transform" />
-      <div className="hero-beam hero-beam-2 absolute right-[-8%] top-[10%] h-[25rem] w-[25rem] rounded-full transform-gpu will-change-transform" />
-      <div className="hero-ring absolute left-1/2 top-[46%] h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full transform-gpu will-change-transform" />
-      <div className="hero-noise absolute inset-0 opacity-[0.06] mix-blend-overlay transform-gpu dark:opacity-[0.08]" />
-      <div className="hero-top-fade absolute inset-x-0 top-0 h-36" />
-      <div className="hero-bottom-fade absolute inset-x-0 bottom-0 h-40 md:h-52" />
-    </div>
-  );
-});
-
-const HeroSection = React.memo(function HeroSection() {
+function HeroSection() {
   return (
     <section className="relative isolate min-h-[100svh] w-full overflow-hidden bg-white pb-0 pt-16 text-zinc-950 dark:bg-black dark:text-white md:-mt-14 md:min-h-[calc(100dvh+3.5rem)] md:pt-28 lg:pt-32">
-      <HeroBackground />
+      <div
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-0 -z-10 overflow-hidden",
+          "[mask-image:linear-gradient(to_bottom,black_0%,black_72%,black_84%,transparent_100%)]",
+          "[-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_72%,black_84%,transparent_100%)]"
+        )}
+      >
+        <div
+          className={cn(
+            "absolute inset-0",
+            "bg-[radial-gradient(1200px_640px_at_50%_8%,rgba(16,185,129,0.12),transparent_62%)]",
+            "dark:bg-[radial-gradient(1200px_640px_at_50%_8%,rgba(52,211,153,0.15),transparent_62%)]"
+          )}
+        />
+
+        <div
+          className={cn(
+            "absolute inset-0",
+            "bg-[radial-gradient(900px_520px_at_18%_18%,rgba(255,255,255,0.95),transparent_54%)]",
+            "dark:bg-[radial-gradient(900px_520px_at_18%_18%,rgba(255,255,255,0.05),transparent_54%)]"
+          )}
+        />
+
+        <div
+          className={cn(
+            "absolute inset-0",
+            "bg-[radial-gradient(820px_420px_at_50%_100%,rgba(0,0,0,0.05),transparent_62%)]",
+            "dark:bg-[radial-gradient(820px_420px_at_50%_100%,rgba(255,255,255,0.07),transparent_62%)]"
+          )}
+        />
+
+        <div
+          className={cn(
+            "absolute inset-0 opacity-[0.55] dark:opacity-[0.3]",
+            "[background-image:linear-gradient(to_right,rgba(24,24,27,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(24,24,27,0.10)_1px,transparent_1px)]",
+            "dark:[background-image:linear-gradient(to_right,rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.12)_1px,transparent_1px)]",
+            "[background-size:34px_34px]",
+            "[mask-image:radial-gradient(ellipse_at_center,black_58%,rgba(0,0,0,0.82)_74%,transparent_100%)]",
+            "[-webkit-mask-image:radial-gradient(ellipse_at_center,black_58%,rgba(0,0,0,0.82)_74%,transparent_100%)]"
+          )}
+        />
+
+        <div
+          className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] mix-blend-overlay"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none'%3E%3Cg fill='currentColor' fill-opacity='1'%3E%3Ccircle cx='12' cy='14' r='1'/%3E%3Ccircle cx='56' cy='44' r='1'/%3E%3Ccircle cx='102' cy='22' r='1'/%3E%3Ccircle cx='138' cy='68' r='1'/%3E%3Ccircle cx='24' cy='110' r='1'/%3E%3Ccircle cx='84' cy='92' r='1'/%3E%3Ccircle cx='126' cy='128' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+          }}
+        />
+
+        <div
+          className={cn(
+            "absolute inset-x-0 bottom-0 h-32 md:h-40",
+            "bg-gradient-to-b from-transparent via-white/75 to-white",
+            "dark:from-transparent dark:via-black/75 dark:to-black"
+          )}
+        />
+      </div>
 
       <div className="relative z-10">
         <div className={CONTENT}>
-          <div className="flex min-h-[calc(100svh-3.5rem)] max-w-3xl flex-col justify-center gap-6 pb-24 pt-6 md:min-h-[calc(100dvh-3.5rem)] md:pb-32 md:pt-12">
-            <a
-              className={cn(
-                "flex w-fit items-center gap-2 rounded-full border border-zinc-200 bg-white/50 px-3 py-1.5 text-zinc-900 shadow-sm backdrop-blur-sm transition-all transform-gpu dark:border-white/15 dark:bg-white/5 dark:text-white",
-                "fade-in animate-in fill-mode-backwards delay-500 duration-500 ease-out"
-              )}
-              href="#features"
-            >
-              <span
-                className="size-1.5 rounded-full bg-emerald-500"
-                aria-hidden="true"
-              />
-              <span className="text-xs font-medium text-zinc-900 dark:text-white/80">
-                <TextType
-                  text={["1,000+ mock tests attempted", "500+ active users"]}
-                  typingSpeed={15}
-                  pauseDuration={1500}
-                  showCursor
-                  cursorCharacter="|"
-                  deletingSpeed={45}
-                  cursorBlinkDuration={0.7}
+          <div className="flex min-h-[calc(100svh-3.5rem)] items-center justify-center">
+            <div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-6 pb-24 pt-6 text-center md:pb-32 md:pt-12">
+              <a
+                href="#features"
+                className={cn(
+                  "flex w-fit items-center gap-2 rounded-full border border-zinc-200 bg-white/75 px-3 py-1.5 text-zinc-900 shadow-sm backdrop-blur-md transition-all",
+                  "dark:border-white/10 dark:bg-white/5 dark:text-white",
+                  "fade-in animate-in fill-mode-backwards delay-500 duration-500 ease-out"
+                )}
+              >
+                <span
+                  className="size-1.5 rounded-full bg-emerald-500"
+                  aria-hidden="true"
                 />
-              </span>
-            </a>
+                <span className="text-xs font-medium text-zinc-800 dark:text-white/80">
+                  <TextType
+                    text={["1,000+ mock tests attempted", "500+ active users"]}
+                    typingSpeed={15}
+                    pauseDuration={1500}
+                    showCursor
+                    cursorCharacter="|"
+                    deletingSpeed={45}
+                    cursorBlinkDuration={0.7}
+                  />
+                </span>
+              </a>
 
-            <h1
-              className={cn(
-                cirka.className,
-                "text-balance text-5xl font-extrabold leading-[1.08] md:text-7xl lg:text-8xl"
-              )}
-            >
-              <span className="text-zinc-950 dark:text-white">
-                The Gap Between You and Your Goal?
-              </span>{" "}
-              <span className="glitch-wrap">
+              <h1
+                className={cn(
+                  cirka.className,
+                  "text-balance text-5xl font-extrabold leading-[1.06] tracking-tight md:text-7xl lg:text-8xl"
+                )}
+              >
+                <span className="text-zinc-950 dark:text-white">
+                  The Gap Between You and Your Goal?
+                </span>{" "}
                 <span
                   className="glitch-text tracking-wider italic text-emerald-700 dark:text-emerald-300"
-                  data-text="Let&apos;s Close It."
+                  data-text={"Let's Close It."}
                 >
                   Let&apos;s Close It.
                 </span>
-              </span>
-            </h1>
+              </h1>
 
-            <p className="max-w-lg text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 md:text-base">
-              Placetrix gives students the tools to practise smarter, track
-              progress, and stay ahead of every campus drive all in one place.
-            </p>
+              <p className="max-w-xl text-sm leading-7 text-zinc-700 dark:text-zinc-300 md:text-base md:leading-8">
+                Placetrix gives students the tools to practise smarter, track
+                progress, and stay ahead of every campus drive, all in one place.
+              </p>
 
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <Button size="lg" className="rounded-full font-medium" asChild>
-                <Link href="/auth/sign-up">
-                  Get Started
-                  <ArrowRightIcon data-icon="inline-end" />
-                </Link>
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                <Button size="lg" className="rounded-full font-medium shadow-sm" asChild>
+                  <Link href="/auth/sign-up">
+                    Get Started
+                    <ArrowRightIcon data-icon="inline-end" />
+                  </Link>
+                </Button>
 
-              <Button
-                size="lg"
-                variant="outline"
-                className="rounded-full border-zinc-200 bg-white/70 text-zinc-900 backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
-                asChild
-              >
-                <Link href="#features">Explore Features</Link>
-              </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="rounded-full border-zinc-200 bg-white/75 text-zinc-900 backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-white"
+                  asChild
+                >
+                  <Link href="#features">Explore Features</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </section>
   );
-});
+}
 
 type Feature = {
   title: string;
@@ -558,15 +589,13 @@ const features: Feature[] = [
   },
 ];
 
-const FeatureCard = React.memo(function FeatureCard({
+function FeatureCard({
   feature,
   glowEnabled,
 }: {
   feature: Feature;
   glowEnabled: boolean;
 }) {
-  const Icon = feature.icon;
-
   return (
     <BorderGlow
       className="group h-full rounded-3xl"
@@ -599,11 +628,12 @@ const FeatureCard = React.memo(function FeatureCard({
       </article>
     </BorderGlow>
   );
-});
+}
 
-const FeaturesSection = React.memo(function FeaturesSection() {
+function FeaturesSection() {
   const { resolvedTheme } = useTheme();
-  const glowEnabled = resolvedTheme === "dark";
+  const mounted = useMounted();
+  const glowEnabled = mounted && resolvedTheme === "dark";
 
   return (
     <section
@@ -643,7 +673,7 @@ const FeaturesSection = React.memo(function FeaturesSection() {
       </div>
     </section>
   );
-});
+}
 
 type Testimonial = {
   name: string;
@@ -688,7 +718,7 @@ const testimonials: Testimonial[] = [
   },
 ];
 
-const TestimonialCard = React.memo(function TestimonialCard({
+function TestimonialCard({
   testimonial,
   glowEnabled,
 }: {
@@ -749,11 +779,12 @@ const TestimonialCard = React.memo(function TestimonialCard({
       </figure>
     </BorderGlow>
   );
-});
+}
 
-const TestimonialsSection = React.memo(function TestimonialsSection() {
+function TestimonialsSection() {
   const { resolvedTheme } = useTheme();
-  const glowEnabled = resolvedTheme === "dark";
+  const mounted = useMounted();
+  const glowEnabled = mounted && resolvedTheme === "dark";
 
   return (
     <section
@@ -793,29 +824,27 @@ const TestimonialsSection = React.memo(function TestimonialsSection() {
       </div>
     </section>
   );
-});
+}
 
-const CTASection = React.memo(function CTASection() {
+function CTASection() {
   return (
     <section className="w-full bg-white pb-16 text-zinc-950 dark:bg-black dark:text-white md:pb-24">
       <div className={CONTENT}>
         <div className="relative overflow-hidden rounded-2xl border border-zinc-300/80 px-8 py-16 text-center dark:border-white/10 dark:bg-white/[0.02] md:px-16 md:py-20">
-          <div className="absolute inset-0 z-0 opacity-40 dark:opacity-70">
+          <div className="absolute inset-0 z-0 hidden opacity-40 dark:opacity-70 lg:block">
             <Galaxy
-              density={0.9}
+              density={0.7}
               glowIntensity={0.2}
               saturation={0}
               hueShift={140}
               mouseInteraction={false}
-              twinkleIntensity={0.25}
-              rotationSpeed={0.08}
-              repulsionStrength={1.5}
+              twinkleIntensity={0}
+              rotationSpeed={0.02}
               autoCenterRepulsion={0}
-              starSpeed={0.4}
-              speed={0.8}
+              starSpeed={0.2}
+              speed={0.5}
             />
           </div>
-
           <div className="pointer-events-none absolute inset-0 z-10 bg-white/70 dark:bg-black/45" />
 
           <div className="relative z-20">
@@ -844,7 +873,7 @@ const CTASection = React.memo(function CTASection() {
       </div>
     </section>
   );
-});
+}
 
 const company = [
   {
@@ -891,7 +920,7 @@ const socialLinks = [
   },
 ];
 
-const Footer = React.memo(function Footer() {
+function Footer() {
   return (
     <footer className="relative">
       <div className="mx-auto max-w-6xl">
@@ -963,11 +992,14 @@ const Footer = React.memo(function Footer() {
       </div>
     </footer>
   );
-});
+}
 
 export default function LandingPage() {
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-white text-zinc-950 supports-[overflow:clip]:overflow-clip dark:bg-black dark:text-white">
+    <div
+      suppressHydrationWarning
+      className="relative flex min-h-screen flex-col overflow-hidden bg-white text-zinc-950 supports-[overflow:clip]:overflow-clip dark:bg-black dark:text-white"
+    >
       <HeaderShell />
       <main className="flex flex-col">
         <HeroSection />
