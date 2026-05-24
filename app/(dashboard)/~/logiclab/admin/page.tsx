@@ -25,18 +25,21 @@ export default async function AdminPage() {
 
   const rawProblemsList: any[] = rawProblems || []
 
-  // ── 2. Fetch all submissions (stitch profiles in-memory to avoid PGRST200) ──
+  // ── 2. Fetch lightweight submissions for analytics (Limit to 2000 to prevent memory exhaustion) ──
   const { data: rawSubmissions } = await supabase
     .from("coding_submissions" as any)
-    .select("id, status, language_id, problem_id, user_id, passed_count, total_count, failed_test_case_info, created_at")
+    .select("id, status, language_id, problem_id, user_id, passed_count, total_count, created_at")
+    .order("created_at", { ascending: false })
+    .limit(2000)
 
   const submissions: any[] = rawSubmissions || []
 
-  // Fetch ALL student profiles (not just those with submissions) so leaderboard shows everyone
+  // Fetch student profiles (limit to 500 to prevent huge payloads)
   const { data: rawAllProfiles } = await supabase
     .from("profiles" as any)
     .select("id, display_name, email, account_type")
     .in("account_type", ["candidate", "user", null])
+    .limit(500)
 
   let profileMap: Record<string, { display_name: string; email: string }> = {}
   ;(rawAllProfiles || []).forEach((p: any) => {
@@ -164,10 +167,14 @@ export default async function AdminPage() {
     }
   }).sort((a, b) => b.solvedCount - a.solvedCount || b.attemptCount - a.attemptCount)
 
-  // ── 5. Recent submissions for Live Feed (joined in-memory) ──
-  const sortedSubmissions = [...submissions]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 15)
+  // ── 5. Recent submissions for Live Feed (Fetch detailed logs securely) ──
+  const { data: recentDetailedSubmissions } = await supabase
+    .from("coding_submissions" as any)
+    .select("id, status, language_id, problem_id, user_id, passed_count, total_count, failed_test_case_info, runtime, memory, created_at")
+    .order("created_at", { ascending: false })
+    .limit(15)
+
+  const sortedSubmissions = recentDetailedSubmissions || []
 
   // Build a problem title map
   const problemTitleMap: Record<string, string> = {}

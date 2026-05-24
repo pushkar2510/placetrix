@@ -63,6 +63,17 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
     .order("created_at", { ascending: false })
     .limit(20)
 
+  // Fetch all problem IDs in the same order as directory
+  const { data: allProblems } = await supabase
+    .from("coding_problems")
+    .select("id")
+    .order("created_at", { ascending: false })
+
+  const problemIds = (allProblems ?? []).map((p: any) => p.id)
+  const currentIndex = problemIds.indexOf(id)
+  const prevProblemId = currentIndex > 0 ? problemIds[currentIndex - 1] : null
+  const nextProblemId = currentIndex < problemIds.length - 1 ? problemIds[currentIndex + 1] : null
+
   return (
     <ProblemIDEClient
       problem={problem}
@@ -70,6 +81,9 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
       totalTestCases={totalTestCases ?? 0}
       submissions={submissions ?? []}
       userId={profile.id}
+      userProfile={profile}
+      prevProblemId={prevProblemId}
+      nextProblemId={nextProblemId}
     />
   )
 }

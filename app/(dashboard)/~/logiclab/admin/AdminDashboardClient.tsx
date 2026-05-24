@@ -293,7 +293,7 @@ export function AdminDashboardClient({
   const [difficultyFilter, setDifficultyFilter] = useState("All")
   const [studentSearch, setStudentSearch] = useState("")
 
-  const [studentCategoryFilter, setStudentCategoryFilter] = useState<"All" | "Struggling" | "Inactive">("All")
+  const [studentCategoryFilter, setStudentCategoryFilter] = useState<"All" | "Inactive">("All")
   const [selectedStudent, setSelectedStudent] = useState<StudentStat | null>(null)
 
   // Pagination states
@@ -435,9 +435,6 @@ export function AdminDashboardClient({
     const matchesSearch = s.student_name.toLowerCase().includes(term) || s.student_email.toLowerCase().includes(term)
     if (!matchesSearch) return false
 
-    if (studentCategoryFilter === "Struggling") {
-      return s.attemptCount >= 3 && s.solvedCount < s.attemptCount * 0.35
-    }
     if (studentCategoryFilter === "Inactive") {
       return s.attemptCount === 0
     }
@@ -566,11 +563,10 @@ export function AdminDashboardClient({
                       
                       {/* Category filters */}
                       <div className="flex flex-wrap items-center gap-1.5 pt-1.5 select-none border-b border-border/40 pb-3 font-sans">
-                        {(["All", "Struggling", "Inactive"] as const).map((cat) => {
+                        {(["All", "Inactive"] as const).map((cat) => {
                           let badgeClass = "px-3 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer whitespace-nowrap "
                           if (studentCategoryFilter === cat) {
-                            if (cat === "Struggling") badgeClass += "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400 font-bold border-rose-500/50"
-                            else if (cat === "Inactive") badgeClass += "bg-zinc-500/10 border-zinc-500/30 text-zinc-600 dark:text-zinc-400 font-bold"
+                            if (cat === "Inactive") badgeClass += "bg-zinc-500/10 border-zinc-500/30 text-zinc-600 dark:text-zinc-400 font-bold"
                             else badgeClass += "bg-emerald-500 hover:bg-emerald-500 text-white border-0 shadow-sm shadow-emerald-500/10"
                           } else {
                             badgeClass += "border-muted-foreground/20 text-muted-foreground hover:text-foreground hover:bg-secondary/50 bg-transparent"
@@ -585,7 +581,7 @@ export function AdminDashboardClient({
                               }}
                               className={badgeClass}
                             >
-                              {cat === "Struggling" ? "Struggling candidates" : cat === "Inactive" ? "Inactive candidates" : "All candidates"}
+                              {cat === "Inactive" ? "Inactive candidates" : "All candidates"}
                             </button>
                           )
                         })}
@@ -775,7 +771,7 @@ export function AdminDashboardClient({
                               <div className="space-y-1 min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-semibold text-foreground/90 truncate max-w-[120px]">{log.student_name}</span>
-                                  <span className="text-[9px] text-muted-foreground/50 shrink-0">
+                                  <span suppressHydrationWarning className="text-[9px] text-muted-foreground/50 shrink-0">
                                     {new Date(log.created_at).toLocaleTimeString([], {
                                       hour: "2-digit",
                                       minute: "2-digit",

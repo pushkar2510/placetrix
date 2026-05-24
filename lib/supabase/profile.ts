@@ -193,7 +193,7 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
         display_name: meta.display_name as string,
         email: user.email as string,
         account_type: meta.account_type as AccountType,
-        avatar_path: (meta.avatar_path as string) ?? null,
+        avatar_path: (meta.avatar_url as string) ?? (meta.avatar_path as string) ?? (meta.picture as string) ?? null,
         username: (meta.username as string) ?? null,
       };
     }
