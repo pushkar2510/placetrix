@@ -1,6 +1,5 @@
 // app/~/tests/page.tsx
 
-import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { CandidateTestsClient } from "./CandidateTestsClient"
@@ -151,7 +150,20 @@ async function fetchCandidateTests(
   }
 
   query = searchFilter(query)
-  query = query.order("available_from", { ascending: false })
+  if (activeTab === "live") {
+    query = query
+      .order("available_until", { ascending: true, nullsFirst: false })
+      .order("available_from", { ascending: false })
+  } else if (activeTab === "upcoming") {
+    query = query
+      .order("available_from", { ascending: true })
+      .order("available_until", { ascending: true, nullsFirst: false })
+  } else {
+    // "past" tab
+    query = query
+      .order("available_until", { ascending: false, nullsFirst: false })
+      .order("available_from", { ascending: false })
+  }
 
   const from = (page - 1) * size
   const to = page * size - 1
@@ -260,7 +272,25 @@ async function fetchInstituteTests(
   }
 
   query = searchFilter(query)
-  query = query.order("id", { ascending: false })
+  if (activeTab === "all") {
+    query = query
+      .order("available_from", { ascending: false, nullsFirst: false })
+      .order("title", { ascending: true })
+  } else if (activeTab === "drafts") {
+    query = query.order("title", { ascending: true })
+  } else if (activeTab === "live") {
+    query = query
+      .order("available_until", { ascending: true, nullsFirst: false })
+      .order("available_from", { ascending: false })
+  } else if (activeTab === "upcoming") {
+    query = query
+      .order("available_from", { ascending: true })
+      .order("available_until", { ascending: true, nullsFirst: false })
+  } else if (activeTab === "past") {
+    query = query
+      .order("available_until", { ascending: false, nullsFirst: false })
+      .order("available_from", { ascending: false })
+  }
 
   const from = (page - 1) * size
   const to = page * size - 1

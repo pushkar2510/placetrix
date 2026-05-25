@@ -37,6 +37,7 @@ const SEGMENT_LABELS: Record<string, string> = {
     postings: "Job Postings",
     candidates: "Candidates",
     notifications: "Notifications",
+    myprofile: "My Profile",
     settings: "Settings",
     help: "Get Help",
     result: "Results",

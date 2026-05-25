@@ -34,6 +34,17 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   // Start with a plain pass-through response.
   let supabaseResponse = NextResponse.next({ request });
 
+  const userAgent = request.headers.get("user-agent");
+  const ip = request.headers.get("x-forwarded-for") || request.ip;
+
+  const globalHeaders: Record<string, string> = {};
+  if (userAgent) {
+    globalHeaders["User-Agent"] = userAgent;
+  }
+  if (ip) {
+    globalHeaders["x-forwarded-for"] = ip;
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -59,6 +70,9 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
             supabaseResponse.cookies.set(name, value, options)
           );
         },
+      },
+      global: {
+        headers: globalHeaders,
       },
     }
   );

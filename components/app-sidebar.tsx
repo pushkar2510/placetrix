@@ -63,7 +63,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "My Applications", url: "/~/applications", icon: IconClipboardList },
     { title: "Tests", url: "/~/tests", icon: IconChartBar },
     { title: "Events", url: "/~/events", icon: IconCalendarEvent },
-    { title: "LogicLab", url: "/~/logiclab", icon: IconCode },
+    { title: "Logic Lab", url: "/~/logiclab", icon: IconCode },
     {
       title: "Tools",
       url: "#",
@@ -253,6 +253,17 @@ export function NavUser({ user }: { user: UserProfile | null }) {
                   </div>
                 </div>
               </DropdownMenuLabel>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuGroup>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/~/myprofile">
+                    <IconUserCircle className="size-4 shrink-0" />
+                    <span>My Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
 
               <DropdownMenuSeparator />
 

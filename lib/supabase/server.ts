@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { cache } from "react";
 import type { Database } from "@/types/supabase";
 
@@ -16,6 +16,24 @@ import type { Database } from "@/types/supabase";
  */
 export const createClient = cache(async () => {
   const cookieStore = await cookies();
+  let userAgent: string | null = null;
+  let ip: string | null = null;
+
+  try {
+    const headersList = await headers();
+    userAgent = headersList.get("user-agent");
+    ip = headersList.get("x-forwarded-for") || headersList.get("x-real-ip");
+  } catch {
+    // Ignore error if called outside a request context (e.g. static generation)
+  }
+
+  const globalHeaders: Record<string, string> = {};
+  if (userAgent) {
+    globalHeaders["User-Agent"] = userAgent;
+  }
+  if (ip) {
+    globalHeaders["x-forwarded-for"] = ip;
+  }
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,6 +55,9 @@ export const createClient = cache(async () => {
       auth: {
         autoRefreshToken: false, // Middleware handles the single refresh per request
         persistSession: false,   // Server has no persistent storage — don't try to save
+      },
+      global: {
+        headers: globalHeaders,
       },
     },
   );

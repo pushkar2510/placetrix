@@ -69,140 +69,206 @@ export function formatDateTime(dt?: string): string {
 
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
-
 function StatusBadge({ status }: { status: DerivedCandidateStatus }) {
   if (status === "live") {
     return (
-      <Badge className="gap-1.5 bg-emerald-500 hover:bg-emerald-500 text-white border-0 text-[11px] px-2 py-0.5">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
-        </span>
+      <Badge className="gap-1 border border-emerald-200 bg-emerald-50 text--700 hover:bg-emerald-50 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 text-[11px] px-2 py-0.5">
         Live
       </Badge>
     )
   }
+
   if (status === "upcoming") {
     return (
-      <Badge variant="secondary" className="gap-1 text-[11px] px-2 py-0.5">
+      <Badge className="gap-1 border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-50 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300 text-[11px] px-2 py-0.5">
         <CalendarClock className="h-3 w-3" />
         Upcoming
       </Badge>
     )
   }
+
   return (
-    <Badge variant="outline" className="gap-1 text-[11px] px-2 py-0.5 text-muted-foreground">
+    <Badge
+      variant="outline"
+      className="gap-1 border-border/70 text-muted-foreground text-[11px] px-2 py-0.5"
+    >
       <CheckCircle2 className="h-3 w-3" />
       Ended
     </Badge>
   )
 }
 
+function StatChip({
+  icon,
+  children,
+  tone = "neutral",
+}: {
+  icon: React.ReactNode
+  children: React.ReactNode
+  tone?: "neutral" | "sky" | "emerald" | "amber" | "violet"
+}) {
+  const tones = {
+    neutral:
+      "border-border/60 bg-muted/50 text-muted-foreground",
+    sky:
+      "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300",
+    emerald:
+      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300",
+    amber:
+      "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300",
+    violet:
+      "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300",
+  } as const
 
-// ─── Test Card ────────────────────────────────────────────────────────────────
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium",
+        tones[tone]
+      )}
+    >
+      {icon}
+      <span className="truncate">{children}</span>
+    </span>
+  )
+}
+
+function CandidateStatus({
+  test,
+  isSubmitted,
+  isInProgress,
+}: {
+  test: CandidateTest
+  isSubmitted: boolean
+  isInProgress: boolean
+}) {
+  if (test.derived_status === "past" && !test.attempt) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-xs md:justify-end">
+        <span className="inline-flex items-center gap-1.5 font-medium text-muted-foreground">
+          <AlertCircle className="h-3.5 w-3.5" />
+          Not attempted
+        </span>
+      </div>
+    )
+  }
+
+  if (isInProgress) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-xs md:justify-end">
+        <span className="inline-flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-300">
+          <Clock className="h-3.5 w-3.5" />
+          In progress
+        </span>
+      </div>
+    )
+  }
+
+  if (isSubmitted) {
+    return (
+      <div className="flex flex-col gap-1 md:items-end">
+        <span className="text-xs font-medium text-foreground">
+          {test.attempt?.submitted_at ? (
+            <>Submitted {formatDateTime(test.attempt.submitted_at)}</>
+          ) : (
+            "Submitted"
+          )}
+        </span>
+
+        {test.results_available && (
+          test.attempt?.percentage != null ? (
+            <span className="inline-flex w-fit items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300">
+              {test.attempt.score}/{test.attempt.total_marks}
+              <span className="ml-1 font-normal text-violet-600/80 dark:text-violet-300/80">
+                ({test.attempt.percentage.toFixed(1)}%)
+              </span>
+            </span>
+          ) : (
+            <span className="text-[11px] text-muted-foreground italic">Score hidden</span>
+          )
+        )}
+      </div>
+    )
+  }
+
+  if (test.derived_status === "upcoming") {
+    return (
+      <span className="text-xs font-medium text-sky-700 dark:text-sky-300">
+        {test.available_from ? (
+          <>Opens {formatDateTime(test.available_from)}</>
+        ) : (
+          <span className="italic text-muted-foreground">Schedule not set</span>
+        )}
+      </span>
+    )
+  }
+
+  if (test.derived_status === "live") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 md:justify-end">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        Available now
+      </span>
+    )
+  }
+
+  return null
+}
 
 function TestCard({ test }: { test: CandidateTest }) {
   const isSubmitted = test.attempt?.status === "submitted"
   const isInProgress = test.attempt?.status === "in_progress"
 
   return (
-    <Card className="border overflow-hidden p-0">
-      <div className="flex flex-col md:flex-row md:items-center justify-between p-4 gap-4">
-
-        {/* Left: Title, Description, Status */}
-        <div className="flex-1 min-w-0 space-y-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h3 className="text-base font-semibold leading-tight text-foreground">{test.title}</h3>
+    <Card className="overflow-hidden border-border/70 bg-card p-0">
+      <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:gap-4 md:p-5">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="min-w-0 text-sm md:text-base font-semibold leading-tight text-foreground">
+              {test.title}
+            </h3>
             <StatusBadge status={test.derived_status} />
           </div>
-          <p className={cn(
-            "text-xs text-muted-foreground max-w-2xl",
-            test.description ? "line-clamp-2" : "italic text-muted-foreground/60"
-          )}>
-            {test.description ?? "No description provided"}
-          </p>
-        </div>
 
-        {/* Middle: Details & Meta */}
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs md:text-sm text-muted-foreground border-t md:border-t-0 pt-3 md:pt-0">
-          <div className="flex flex-col gap-0.5 min-w-[100px]">
-            <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground/80">Duration</span>
-            <span className="flex items-center gap-1.5 font-medium text-foreground">
-              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-              {test.time_limit_seconds ? formatDuration(test.time_limit_seconds) : "No time limit"}
-            </span>
-          </div>
+          {test.description && (
+            <p className="mt-1 line-clamp-1 text-xs leading-5 text-muted-foreground">
+              {test.description}
+            </p>
+          )}
 
-          <div className="flex flex-col gap-0.5 min-w-[140px]">
-            <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground/80">Availability</span>
-            <span className="flex items-center gap-1.5 font-medium text-foreground">
-              <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
-              {test.available_from ? formatDateTime(test.available_from) : "No schedule set"}
-            </span>
-          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <StatChip
+              icon={<Clock className="h-3.5 w-3.5" />}
+              tone={test.time_limit_seconds ? "sky" : "neutral"}
+            >
+              {test.time_limit_seconds ? formatDuration(test.time_limit_seconds) : "Untimed"}
+            </StatChip>
 
-          <div className="flex flex-col gap-0.5 min-w-[150px] justify-center">
-            <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground/80">Status</span>
-
-            {/* Past – not attempted */}
-            {test.derived_status === "past" && !test.attempt && (
-              <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
-                <AlertCircle className="h-3.5 w-3.5" />
-                Not attempted
-              </span>
-            )}
-
-            {/* In-progress indicator */}
-            {isInProgress && (
-              <span className="flex items-center gap-1.5 font-medium text-amber-600 dark:text-amber-400">
-                <Clock className="h-3.5 w-3.5" />
-                In progress
-              </span>
-            )}
-
-            {/* Submitted timestamp */}
-            {isSubmitted && (
-              <span className="font-medium text-foreground">
-                {test.attempt?.submitted_at
-                  ? <>Submitted {formatDateTime(test.attempt.submitted_at)}</>
-                  : <span className="italic text-muted-foreground/60">Submitted</span>
-                }
-              </span>
-            )}
-
-            {/* Score (only when results are released) */}
-            {isSubmitted && test.results_available && (
-              test.attempt?.percentage != null ? (
-                <span className="font-semibold text-primary">
-                  {test.attempt.score}/{test.attempt.total_marks}{" "}
-                  <span className="text-[10px] font-normal text-muted-foreground">
-                    ({test.attempt.percentage.toFixed(1)}%)
-                  </span>
-                </span>
-              ) : (
-                <span className="italic text-[11px]">Score hidden</span>
-              )
-            )}
-
-            {/* Upcoming note */}
-            {test.derived_status === "upcoming" && (
-              <span className="font-medium text-foreground">
-                {test.available_from
-                  ? <>Opens {formatDateTime(test.available_from)}</>
-                  : <span className="italic text-muted-foreground/60">Not scheduled</span>
-                }
-              </span>
+            {test.available_from && (
+              <StatChip icon={<CalendarClock className="h-3.5 w-3.5" />} tone="neutral">
+                {formatDateTime(test.available_from)}
+              </StatChip>
             )}
           </div>
         </div>
+        <div className="flex flex-col gap-3 border-t border-border/60 pt-3 md:min-w-[220px] md:items-end md:pt-0 md:border-t-0 md:text-right">
+          <div className="md:items-end">
+            <CandidateStatus
+              test={test}
+              isSubmitted={isSubmitted}
+              isInProgress={isInProgress}
+            />
+          </div>
 
-        {/* Right: Actions */}
-        <div className="flex items-center justify-end md:pl-4 border-t md:border-t-0 pt-3 md:pt-0 shrink-0 w-full md:w-auto">
-          <Button asChild variant="outline" size="sm" className="w-full md:w-auto">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="w-full md:w-auto md:self-end"
+          >
             <Link href={`tests/${test.id}`}>View Details</Link>
           </Button>
         </div>
-
       </div>
     </Card>
   )
