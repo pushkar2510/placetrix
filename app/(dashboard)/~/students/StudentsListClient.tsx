@@ -166,14 +166,16 @@ export function StudentsListClient({
     [pathname, router]
   )
 
-  // Debounce search input — no early-return guard, no initialSearch dependency
+  // Debounce search input
   useEffect(() => {
+    if (searchInput === initialSearch) return
+
     const timer = setTimeout(() => {
       isOwnUpdateRef.current = true
       updateParams({ search: searchInput, page: 1 })
     }, 400)
     return () => clearTimeout(timer)
-  }, [searchInput]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchInput, initialSearch, updateParams])
 
   const handleStatusFilterChange = (filter: "all" | "verified" | "pending") => {
     updateParams({ status: filter, page: 1 })

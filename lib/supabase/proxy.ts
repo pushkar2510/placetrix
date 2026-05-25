@@ -35,7 +35,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   let supabaseResponse = NextResponse.next({ request });
 
   const userAgent = request.headers.get("user-agent");
-  const ip = request.headers.get("x-forwarded-for") || request.ip;
+  const ip = request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip");
 
   const globalHeaders: Record<string, string> = {};
   if (userAgent) {
