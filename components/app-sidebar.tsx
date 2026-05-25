@@ -17,6 +17,7 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton,
   SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton, useSidebar,
+  SidebarMenuBadge,
 } from "@/components/ui/sidebar"
 import {
   Collapsible,
@@ -46,6 +47,7 @@ type NavItem = {
   title: string
   url: string
   icon: Icon
+  badge?: string
   items?: {
     title: string
     url: string
@@ -63,7 +65,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "My Applications", url: "/~/applications", icon: IconClipboardList },
     { title: "Tests", url: "/~/tests", icon: IconChartBar },
     { title: "Events", url: "/~/events", icon: IconCalendarEvent },
-    { title: "Logic Lab", url: "/~/logiclab", icon: IconCode },
+    { title: "Logic Lab", url: "/~/logiclab", icon: IconCode, badge: "New" },
     {
       title: "Tools",
       url: "#",
@@ -79,7 +81,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "Students", url: "/~/students", icon: IconSchool },
     { title: "Drives", url: "/~/drives", icon: IconFolder },
     { title: "Tests", url: "/~/tests", icon: IconChartBar },
-    { title: "LogicLab", url: "/~/logiclab", icon: IconCode },
+    { title: "LogicLab", url: "/~/logiclab", icon: IconCode, badge: "New" },
     { title: "Reports", url: "/~/reports", icon: IconReport },
     { title: "Recruiters", url: "/~/recruiters", icon: IconBriefcase },
   ],
@@ -89,7 +91,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "Groups", url: "/~/groups", icon: IconUsersGroup },
     { title: "Drives", url: "/~/drives", icon: IconFolder },
     { title: "Tests", url: "/~/tests", icon: IconChartBar },
-    { title: "LogicLab", url: "/~/logiclab", icon: IconCode },
+    { title: "LogicLab", url: "/~/logiclab", icon: IconCode, badge: "New" },
     { title: "Events", url: "/~/events", icon: IconCalendarEvent },
     { title: "Analytics", url: "/~/analytics", icon: IconFileAnalytics },
     { title: "Reports", url: "/~/reports", icon: IconReport },
@@ -100,7 +102,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "Candidates", url: "/~/candidates", icon: IconTargetArrow },
     { title: "Drives", url: "/~/drives", icon: IconFolder },
     { title: "Tests", url: "/~/tests", icon: IconChartBar },
-    { title: "LogicLab", url: "/~/logiclab", icon: IconCode },
+    { title: "LogicLab", url: "/~/logiclab", icon: IconCode, badge: "New" },
     { title: "Reports", url: "/~/reports", icon: IconReport },
   ],
 }
@@ -380,6 +382,11 @@ export function NavMain({ items }: { items: NavItem[] }) {
                     <span>{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
+                {item.badge && (
+                  <SidebarMenuBadge className="font-semibold text-[10px]">
+                    {item.badge}
+                  </SidebarMenuBadge>
+                )}
               </SidebarMenuItem>
             )
           })}
