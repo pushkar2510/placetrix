@@ -50,6 +50,19 @@ interface ParsedUA {
 function parseUserAgent(ua: string | null): ParsedUA {
   if (!ua) return { browser: "Unknown Browser", os: "Unknown OS", device: "desktop" };
 
+  if (
+    ua.includes("Next.js") ||
+    ua.includes("Middleware") ||
+    ua.includes("Vercel") ||
+    ua.includes("node-fetch") ||
+    ua.includes("undici") ||
+    ua.includes("Go-http-client") ||
+    ua.includes("postgrest-js") ||
+    ua.includes("supabase-js")
+  ) {
+    return { browser: "System Server", os: "Next.js / Node", device: "desktop" };
+  }
+
   let browser = "Unknown Browser";
   let os = "Unknown OS";
   let device: "desktop" | "mobile" | "tablet" = "desktop";
