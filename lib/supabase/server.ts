@@ -32,7 +32,9 @@ export const createClient = cache(async () => {
     globalHeaders["User-Agent"] = userAgent;
   }
   if (ip) {
-    globalHeaders["x-forwarded-for"] = ip;
+    // x-forwarded-for can be a comma-separated list. We only want the client's actual IP (the first one).
+    const clientIp = ip.split(",")[0].trim();
+    globalHeaders["x-forwarded-for"] = clientIp;
   }
 
   return createServerClient<Database>(
