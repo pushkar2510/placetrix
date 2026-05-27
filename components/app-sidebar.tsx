@@ -17,7 +17,6 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton,
   SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton, useSidebar,
-  SidebarMenuBadge,
 } from "@/components/ui/sidebar"
 import {
   Collapsible,
@@ -313,8 +312,16 @@ export function NavUser({ user }: { user: UserProfile | null }) {
 }
 
 
-// ─── NavMain ──────────────────────────────────────────────────────────────────
-
+function getBadgeStyles(badge: string) {
+  const normalized = badge.toLowerCase().trim()
+  if (normalized === "coming soon") {
+    return "bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400 border border-amber-500/10 dark:border-amber-500/20"
+  }
+  if (normalized === "beta") {
+    return "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400 border border-indigo-500/10 dark:border-indigo-500/20"
+  }
+  return "bg-muted text-muted-foreground border border-border"
+}
 
 export function NavMain({ items }: { items: NavItem[] }) {
   const pathname = usePathname()
@@ -385,14 +392,14 @@ export function NavMain({ items }: { items: NavItem[] }) {
                 >
                   <Link href={item.url} onClick={() => setOpenMobile(false)}>
                     <item.icon className="transition-transform duration-200" />
-                    <span>{item.title}</span>
+                    <span className="truncate">{item.title}</span>
+                    {item.badge && (
+                      <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none tracking-wide ml-auto ${getBadgeStyles(item.badge)}`}>
+                        {item.badge}
+                      </span>
+                    )}
                   </Link>
                 </SidebarMenuButton>
-                {item.badge && (
-                  <SidebarMenuBadge className="rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary py-0.5 animate-badge-pulse">
-                    {item.badge}
-                  </SidebarMenuBadge>
-                )}
               </SidebarMenuItem>
             )
           })}

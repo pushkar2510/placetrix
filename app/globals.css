@@ -381,41 +381,6 @@
   min-height: 0;
 }
 
-/* ─── Beta badge subtle pulse ────────────────────────────────────────────────── */
-
-@keyframes badge-pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.65;
-  }
-}
-
-.animate-badge-pulse {
-  animation: badge-pulse 2.4s ease-in-out infinite;
-}
-
-/* Hide badge during sidebar expansion to prevent sliding glitch */
-.group[data-state="expanded"] .animate-badge-pulse {
-  animation: badge-appear 0.6s ease-in-out, badge-pulse 2.4s ease-in-out 0.6s infinite;
-}
-
-@keyframes badge-appear {
-
-  0%,
-  80% {
-    opacity: 0;
-  }
-
-  100% {
-    opacity: 1;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .animate-nav-in {
     animation: none;
@@ -424,9 +389,5 @@
 
   .collapsible-content {
     transition: none;
-  }
-
-  .animate-badge-pulse {
-    animation: none;
   }
 }

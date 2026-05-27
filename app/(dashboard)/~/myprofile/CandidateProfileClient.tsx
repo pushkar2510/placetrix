@@ -583,7 +583,7 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
             .upsert(payload as any, { onConflict: "profile_id" });
           if (error) throw error;
 
-          const newDisplayName = [firstName.trim(), middleName.trim(), lastName.trim()]
+          const newDisplayName = [firstName.trim(), lastName.trim()]
             .filter(Boolean).join(" ") || userProfile.display_name;
           await supabase.from("profiles").update({ display_name: newDisplayName }).eq("id", userProfile.id);
           await supabase.auth.updateUser({ data: { display_name: newDisplayName, account_type: userProfile.account_type } });
