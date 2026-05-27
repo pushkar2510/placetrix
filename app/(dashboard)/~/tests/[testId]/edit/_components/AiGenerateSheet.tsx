@@ -359,10 +359,9 @@ export function AiGenerateSheet({
               </div>
 
               {generated.map((q, idx) => (
-                <div
+                <button
                   key={q._previewId}
-                  role="button"
-                  tabIndex={0}
+                  type="button"
                   onClick={() => toggleSelected(q._previewId)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -371,7 +370,7 @@ export function AiGenerateSheet({
                     }
                   }}
                   className={cn(
-                    "space-y-2 rounded-md border p-3 cursor-pointer transition-colors outline-none",
+                    "w-full text-left space-y-2 rounded-md border p-3 cursor-pointer transition-colors outline-none",
                     "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                     q._selected
                       ? "border-primary/40 bg-primary/5"
@@ -418,9 +417,9 @@ export function AiGenerateSheet({
 
                   {q._warnings.length > 0 && (
                     <div className="space-y-1 pl-6">
-                      {q._warnings.map((w, i) => (
+                      {q._warnings.map((w) => (
                         <p
-                          key={i}
+                          key={w}
                           className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400"
                         >
                           <AlertTriangle className="h-3 w-3 shrink-0" />
@@ -473,7 +472,7 @@ export function AiGenerateSheet({
                       )}
                     </div>
                   )}
-                </div>
+                </button>
               ))}
             </div>
           )}

@@ -31,7 +31,7 @@ function Card({ children }: { children: React.ReactNode }) {
 /** card header: title + description */
 function CardHead({ titleW = "w-36", descW = "w-56" }: { titleW?: string; descW?: string }) {
   return (
-    <div className="flex flex-col space-y-1.5 p-6">
+    <div className="flex flex-col gap-y-1.5 p-6">
       <Skeleton className={`h-5 ${titleW}`} />
       <Skeleton className={`h-4 ${descW}`} />
     </div>
@@ -93,7 +93,7 @@ export default function SettingsLoading() {
           <CardBody>
             <div className="flex items-center gap-4">
               {/* avatar circle */}
-              <Skeleton className="h-20 w-20 rounded-full shrink-0" />
+              <Skeleton className="size-20 rounded-full shrink-0" />
               <div className="space-y-2">
                 <Skeleton className="h-8 w-28 rounded-md" />
                 <Skeleton className="h-3.5 w-44" />

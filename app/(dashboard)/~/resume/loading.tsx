@@ -22,7 +22,7 @@ export default function ResumeLoading() {
         <div className="space-y-4">
           <Card className="p-5 space-y-4">
             <div className="flex items-center gap-2">
-              <Skeleton className="h-5 w-5 rounded" />
+              <Skeleton className="size-5 rounded" />
               <Skeleton className="h-4.5 w-32 rounded" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -39,10 +39,10 @@ export default function ResumeLoading() {
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Skeleton className="h-5 w-5 rounded" />
+                <Skeleton className="size-5 rounded" />
                 <Skeleton className="h-4 w-28 rounded" />
               </div>
-              <Skeleton className="h-4 w-4 rounded" />
+              <Skeleton className="size-4 rounded" />
             </Card>
           ))}
         </div>

@@ -721,7 +721,7 @@ function SubmittedScreen({
 
                 <div className="rounded-xl border bg-muted/40 p-5 text-sm">
                     <p className="font-semibold text-xl">{test.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 text-xs text-muted-foreground" suppressHydrationWarning>
                         Submitted on {new Date().toLocaleString("en-IN", {
                             day: "2-digit",
                             month: "short",

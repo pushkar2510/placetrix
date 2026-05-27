@@ -74,7 +74,7 @@ function ReadonlyField({ label, value }: { label: string; value?: string | null 
   return (
     <div className="space-y-0.5">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium">{value?.trim() ? value : <span className="text-muted-foreground font-normal">—</span>}</p>
+      <p className="text-sm font-medium">{value?.trim() ? value : <span className="text-muted-foreground font-normal">-</span>}</p>
     </div>
   )
 }
@@ -82,7 +82,7 @@ function ReadonlyField({ label, value }: { label: string; value?: string | null 
 function SectionComplete() {
   return (
     <Badge variant="secondary" className="h-8 px-3 gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800">
-      <CheckCircle className="h-3.5 w-3.5" />
+      <CheckCircle className="size-3.5" />
       Complete
     </Badge>
   )
@@ -91,7 +91,7 @@ function SectionComplete() {
 function SectionIncomplete() {
   return (
     <Badge variant="outline" className="h-8 px-3 gap-1.5 text-xs text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700">
-      <Info className="h-3.5 w-3.5" />
+      <Info className="size-3.5" />
       Not filled
     </Badge>
   )
@@ -104,9 +104,9 @@ function getStorageUrl(supabase: ReturnType<typeof createClient>, bucket: string
 }
 
 function UsernameStatusIcon({ status }: { status: UsernameStatus }) {
-  if (status === "checking") return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-  if (status === "available") return <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-  if (status === "taken" || status === "invalid") return <XCircle className="h-4 w-4 text-destructive" />
+  if (status === "checking") return <Loader2 className="size-4 animate-spin text-muted-foreground" />
+  if (status === "available") return <CheckCircle2 className="size-4 text-emerald-500" />
+  if (status === "taken" || status === "invalid") return <XCircle className="size-4 text-destructive" />
   return null
 }
 
@@ -123,7 +123,7 @@ function usernameStatusMessage(status: UsernameStatus): { text: string; classNam
 
 export function RecruiterProfileClient({ userProfile, initialData }: Props) {
   const supabase = createClient()
-  const router = useRouter()
+  const { refresh } = useRouter()
   const [isPending, startTransition] = useTransition()
 
   const isFirstTime = !initialData?.profile_updated
@@ -193,7 +193,8 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
   }
 
   useEffect(() => {
-    return () => { if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current) }
+    const timerRef = usernameDebounceRef
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
   }, [])
 
   // ── Section open/close ────────────────────────────────────────────────────
@@ -360,7 +361,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
 
         setErrors({})
         setEditingSection(null)
-        router.refresh()
+        refresh()
       } catch (err: any) {
         console.error("Save error:", err)
         toast.error(err?.message || "Failed to save. Please try again.")
@@ -395,7 +396,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
       setLogoSrc(`${newPublicUrl}?v=${timestamp}`)
       URL.revokeObjectURL(blobUrl)
       toast.success("Logo updated!")
-      router.refresh()
+      refresh()
     } catch (err) {
       console.error(err)
       toast.error("Failed to upload logo. Please try again.")
@@ -426,7 +427,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
         {/* Onboarding Banner */}
         {isFirstTime && !bannerDismissed && (
           <Alert className="border-primary/30 bg-primary/5">
-            <Info className="h-4 w-4 text-primary" />
+            <Info className="size-4 text-primary" />
             <AlertTitle className="text-primary">Welcome! Let's set up your recruiter profile</AlertTitle>
             <AlertDescription className="mt-1 flex items-start justify-between gap-4">
               <span className="text-muted-foreground text-sm">
@@ -436,10 +437,10 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="shrink-0 h-6 w-6"
+                className="shrink-0 size-6"
                 onClick={() => setBannerDismissed(true)}
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="size-3.5" />
               </Button>
             </AlertDescription>
           </Alert>
@@ -448,14 +449,14 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
         {/* Account Settings */}
         {!initialUsername.current ? (
           <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+            <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
               <div>
                 <CardTitle>Account Settings</CardTitle>
                 <CardDescription>Your unique username identifies you on the platform</CardDescription>
               </div>
               {!editing("account") && (
                 <Button variant="outline" size="sm" onClick={() => openSection("account")}>
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  <Pencil className="size-3.5 mr-1.5" />
                   Edit
                 </Button>
               )}
@@ -465,7 +466,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
                 <div className="max-w-sm space-y-2">
                   <Label htmlFor="username">Username</Label>
                   <div className="relative">
-                    <AtSign className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <AtSign className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                     <Input
                       id="username"
                       placeholder="your_company"
@@ -514,12 +515,12 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
         <Card>
           <CardHeader>
             <CardTitle>Company Logo</CardTitle>
-            <CardDescription>JPEG, PNG, or WEBP — max 2 MB</CardDescription>
+            <CardDescription>JPEG, PNG, or WEBP (max 2 MB)</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
               <div className="relative group">
-                <Avatar className="h-20 w-20 rounded-xl border">
+                <Avatar className="size-20 rounded-xl border">
                   <AvatarImage src={logoSrc ?? undefined} alt={companyName || "Logo"} className="object-cover" />
                   <AvatarFallback className="rounded-xl text-lg">{initials}</AvatarFallback>
                 </Avatar>
@@ -527,15 +528,16 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
                   type="button"
                   onClick={() => logoInputRef.current?.click()}
                   disabled={isUploadingLogo}
+                  aria-label="Change company logo"
                   className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  {isUploadingLogo ? <Loader2 className="h-5 w-5 animate-spin text-white" /> : <Camera className="h-5 w-5 text-white" />}
+                  {isUploadingLogo ? <Loader2 className="size-5 animate-spin text-white" /> : <Camera className="size-5 text-white" />}
                 </button>
-                <input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleLogoFileChange} />
+                <input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleLogoFileChange} aria-label="Upload company logo" />
               </div>
               <div className="space-y-1">
                 <Button variant="outline" size="sm" onClick={() => logoInputRef.current?.click()} disabled={isUploadingLogo}>
-                  <Upload className="mr-2 h-4 w-4" />{isUploadingLogo ? "Uploading…" : "Upload Logo"}
+                  <Upload className="mr-2 size-4" />{isUploadingLogo ? "Uploading…" : "Upload Logo"}
                 </Button>
                 <p className="text-xs text-muted-foreground">Square image recommended · max 2 MB</p>
               </div>
@@ -545,7 +547,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
 
         {/* Company Information */}
         <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
             <div>
               <CardTitle>Company Information</CardTitle>
               <CardDescription>Details about your organization</CardDescription>
@@ -554,7 +556,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
               {!editing("company") && (companyComplete ? <SectionComplete /> : <SectionIncomplete />)}
               {!editing("company") && (
                 <Button variant="outline" size="sm" onClick={() => openSection("company")}>
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  <Pencil className="size-3.5 mr-1.5" />
                   Edit
                 </Button>
               )}
@@ -636,7 +638,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
                 Cancel
               </Button>
               <Button size="sm" onClick={() => handleSaveSection("company")} disabled={isPending}>
-                {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                {isPending && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
                 Save Changes
               </Button>
             </CardFooter>
@@ -645,7 +647,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
 
         {/* Headquarters */}
         <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
             <div>
               <CardTitle>Headquarters</CardTitle>
               <CardDescription>Company location details</CardDescription>
@@ -654,7 +656,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
               {!editing("headquarters") && (hqComplete ? <SectionComplete /> : <SectionIncomplete />)}
               {!editing("headquarters") && (
                 <Button variant="outline" size="sm" onClick={() => openSection("headquarters")}>
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  <Pencil className="size-3.5 mr-1.5" />
                   Edit
                 </Button>
               )}
@@ -708,7 +710,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
                 Cancel
               </Button>
               <Button size="sm" onClick={() => handleSaveSection("headquarters")} disabled={isPending}>
-                {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                {isPending && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
                 Save Changes
               </Button>
             </CardFooter>
@@ -717,7 +719,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
 
         {/* Recruiter Details */}
         <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
             <div>
               <CardTitle>Recruiter Details</CardTitle>
               <CardDescription>Your personal details as a recruiter</CardDescription>
@@ -726,7 +728,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
               {!editing("recruiter") && (recruiterComplete ? <SectionComplete /> : <SectionIncomplete />)}
               {!editing("recruiter") && (
                 <Button variant="outline" size="sm" onClick={() => openSection("recruiter")}>
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  <Pencil className="size-3.5 mr-1.5" />
                   Edit
                 </Button>
               )}
@@ -787,7 +789,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
                 Cancel
               </Button>
               <Button size="sm" onClick={() => handleSaveSection("recruiter")} disabled={isPending}>
-                {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                {isPending && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
                 Save Changes
               </Button>
             </CardFooter>

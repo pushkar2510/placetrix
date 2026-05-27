@@ -83,8 +83,8 @@ interface ProfileState {
   principalName: string
   principalEmail: string
   principalPhone: string
-  courses: string[]
-  socialLinks: string[]
+  courses: { id: string; value: string }[]
+  socialLinks: { id: string; value: string }[]
   errors: Record<string, string>
 }
 
@@ -101,6 +101,12 @@ type ProfileAction =
   | { type: "SET_ERRORS"; errors: Record<string, string> }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function generateId() {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).substring(2, 9)
+}
 
 function RequiredMark() {
   return <span className="text-destructive ml-0.5">*</span>
@@ -176,8 +182,12 @@ function createInitialState(
     principalName: initialData?.principal_name ?? "",
     principalEmail: initialData?.principal_email ?? "",
     principalPhone: initialData?.principal_phone ?? "",
-    courses: initialData?.courses?.length ? initialData.courses : [""],
-    socialLinks: initialData?.social_links?.length ? initialData.social_links : [""],
+    courses: initialData?.courses?.length
+      ? initialData.courses.map((c: string) => ({ id: generateId(), value: c }))
+      : [{ id: generateId(), value: "" }],
+    socialLinks: initialData?.social_links?.length
+      ? initialData.social_links.map((l: string) => ({ id: generateId(), value: l }))
+      : [{ id: generateId(), value: "" }],
     errors: {},
   }
 }
@@ -190,11 +200,11 @@ function profileReducer(state: ProfileState, action: ProfileAction): ProfileStat
       return { ...state, ...action.fields }
     case "SET_COURSE": {
       const newCourses = [...state.courses]
-      newCourses[action.index] = action.value
+      newCourses[action.index] = { ...newCourses[action.index], value: action.value }
       return { ...state, courses: newCourses }
     }
     case "ADD_COURSE":
-      return { ...state, courses: [...state.courses, ""] }
+      return { ...state, courses: [...state.courses, { id: generateId(), value: "" }] }
     case "REMOVE_COURSE":
       return {
         ...state,
@@ -202,11 +212,11 @@ function profileReducer(state: ProfileState, action: ProfileAction): ProfileStat
       }
     case "SET_SOCIAL_LINK": {
       const newLinks = [...state.socialLinks]
-      newLinks[action.index] = action.value
+      newLinks[action.index] = { ...newLinks[action.index], value: action.value }
       return { ...state, socialLinks: newLinks }
     }
     case "ADD_SOCIAL_LINK":
-      return { ...state, socialLinks: [...state.socialLinks, ""] }
+      return { ...state, socialLinks: [...state.socialLinks, { id: generateId(), value: "" }] }
     case "REMOVE_SOCIAL_LINK":
       return {
         ...state,
@@ -239,9 +249,13 @@ function profileReducer(state: ProfileState, action: ProfileAction): ProfileStat
         resetFields.principalEmail = initialData?.principal_email ?? ""
         resetFields.principalPhone = initialData?.principal_phone ?? ""
       } else if (section === "courses") {
-        resetFields.courses = initialData?.courses?.length ? initialData.courses : [""]
+        resetFields.courses = initialData?.courses?.length
+          ? initialData.courses.map((c: string) => ({ id: generateId(), value: c }))
+          : [{ id: generateId(), value: "" }]
       } else if (section === "social") {
-        resetFields.socialLinks = initialData?.social_links?.length ? initialData.social_links : [""]
+        resetFields.socialLinks = initialData?.social_links?.length
+          ? initialData.social_links.map((l: string) => ({ id: generateId(), value: l }))
+          : [{ id: generateId(), value: "" }]
       }
       return { ...state, ...resetFields, editingSection: null }
     }
@@ -542,7 +556,7 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
 
 
         else if (section === "courses") {
-          const filteredCourses = courses.filter((c) => c.trim())
+          const filteredCourses = courses.map((c) => c.value.trim()).filter(Boolean)
           const { error } = await supabase
             .from("institute_profiles")
             .update({ courses: filteredCourses, profile_updated: true })
@@ -558,7 +572,7 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
         }
 
         else if (section === "social") {
-          const filteredLinks = socialLinks.filter((l) => l.trim())
+          const filteredLinks = socialLinks.map((l) => l.value.trim()).filter(Boolean)
           const { error } = await supabase
             .from("institute_profiles")
             .update({ social_links: filteredLinks, profile_updated: true })
@@ -1153,11 +1167,11 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
           <CardContent>
             {editing("courses") ? (
               <div className="space-y-3">
-                {courses.map((course, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                {courses.map((courseItem, index) => (
+                  <div key={courseItem.id} className="flex items-center gap-2">
                     <Input
                       placeholder="e.g. Computer Science"
-                      value={course}
+                      value={courseItem.value}
                       onChange={(e) => handleCourseChange(index, e.target.value)}
                     />
                     {courses.length > 1 && (
@@ -1173,15 +1187,26 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
               </div>
             ) : (
               <div>
-                {courses.filter(c => c.trim()).length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {courses.filter(c => c.trim()).map((course, i) => (
-                      <Badge key={i} variant="secondary">{course}</Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No courses added yet. Click Edit to add courses offered by your institution.</p>
-                )}
+                {(() => {
+                  const badges = courses.reduce<React.ReactNode[]>((acc, courseItem) => {
+                    const trimmed = courseItem.value.trim()
+                    if (trimmed) {
+                      acc.push(
+                        <Badge key={courseItem.id} variant="secondary">
+                          {trimmed}
+                        </Badge>
+                      )
+                    }
+                    return acc
+                  }, [])
+                  return badges.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">{badges}</div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No courses added yet. Click Edit to add courses offered by your institution.
+                    </p>
+                  )
+                })()}
               </div>
             )}
           </CardContent>
@@ -1220,10 +1245,10 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
           <CardContent>
             {editing("social") ? (
               <div className="space-y-3">
-                {socialLinks.map((link, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                {socialLinks.map((linkItem, index) => (
+                  <div key={linkItem.id} className="flex items-center gap-2">
                     <Input
-                      value={link}
+                      value={linkItem.value}
                       onChange={(e) => handleSocialLinkChange(index, e.target.value)}
                       placeholder="https://facebook.com/yourcollegepage"
                       type="url"
@@ -1239,23 +1264,30 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
               </div>
             ) : (
               <div>
-                {socialLinks.filter(l => l.trim()).length > 0 ? (
-                  <div className="space-y-1">
-                    {socialLinks.filter(l => l.trim()).map((link, i) => (
-                      <a
-                        key={i}
-                        href={link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block text-sm text-primary hover:underline truncate"
-                      >
-                        {link}
-                      </a>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No social links added yet.</p>
-                )}
+                {(() => {
+                  const links = socialLinks.reduce<React.ReactNode[]>((acc, linkItem) => {
+                    const trimmed = linkItem.value.trim()
+                    if (trimmed) {
+                      acc.push(
+                        <a
+                          key={linkItem.id}
+                          href={trimmed}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block text-sm text-primary hover:underline truncate"
+                        >
+                          {trimmed}
+                        </a>
+                      )
+                    }
+                    return acc
+                  }, [])
+                  return links.length > 0 ? (
+                    <div className="space-y-1">{links}</div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No social links added yet.</p>
+                  )
+                })()}
               </div>
             )}
           </CardContent>

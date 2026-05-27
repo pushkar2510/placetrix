@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useTransition, useRef, useCallback } from "react"
+import { useState, useEffect, useTransition, useRef, useCallback, useEffectEvent } from "react"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -103,12 +103,12 @@ function SortableHead<T extends string>({
         {label}
         {sortCol === col ? (
           sortDir === "asc" ? (
-            <ArrowUp className="h-3.5 w-3.5 text-foreground" />
+            <ArrowUp className="size-3.5 text-foreground" />
           ) : (
-            <ArrowDown className="h-3.5 w-3.5 text-foreground" />
+            <ArrowDown className="size-3.5 text-foreground" />
           )
         ) : (
-          <ArrowUpDown className="h-3.5 w-3.5 opacity-30 hover:opacity-100 transition-opacity" />
+          <ArrowUpDown className="size-3.5 opacity-30 hover:opacity-100 transition-opacity" />
         )}
       </div>
     </TableHead>
@@ -126,7 +126,7 @@ export function StudentsListClient({
   initialSortCol,
   initialSortDir,
 }: Props) {
-  const router = useRouter()
+  const { push } = useRouter()
   const pathname = usePathname()
 
   const [isPending, startTransition] = useTransition()
@@ -160,22 +160,24 @@ export function StudentsListClient({
         }
       })
       startTransition(() => {
-        router.push(`${pathname}?${params.toString()}`)
+        push(`${pathname}?${params.toString()}`)
       })
     },
-    [pathname, router]
+    [pathname, push]
   )
+
+  const onDebouncedSearch = useEffectEvent(() => {
+    isOwnUpdateRef.current = true
+    updateParams({ search: searchInput, page: 1 })
+  })
 
   // Debounce search input
   useEffect(() => {
     if (searchInput === initialSearch) return
 
-    const timer = setTimeout(() => {
-      isOwnUpdateRef.current = true
-      updateParams({ search: searchInput, page: 1 })
-    }, 400)
+    const timer = setTimeout(onDebouncedSearch, 400)
     return () => clearTimeout(timer)
-  }, [searchInput, initialSearch, updateParams])
+  }, [searchInput, initialSearch])
 
   const handleStatusFilterChange = (filter: "all" | "verified" | "pending") => {
     updateParams({ status: filter, page: 1 })
@@ -225,9 +227,9 @@ export function StudentsListClient({
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="relative w-full sm:max-w-xs">
           {isPending ? (
-            <Loader2 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground animate-spin" />
+            <Loader2 className="absolute left-2.5 top-2.5 size-4 text-muted-foreground animate-spin" />
           ) : (
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
           )}
           <Input
             placeholder="Search students..."
@@ -237,21 +239,23 @@ export function StudentsListClient({
           />
           {searchInput && (
             <button
+              type="button"
               onClick={() => {
                 isOwnUpdateRef.current = true
                 setSearchInput("")
                 updateParams({ search: "", page: 1 })
               }}
-              className="absolute right-2.5 top-2.5 h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-2.5 top-2.5 size-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
               title="Clear search"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="size-3.5" />
             </button>
           )}
         </div>
         <div className="flex items-center border rounded-md p-1 bg-muted/50">
           {(["all", "verified", "pending"] as const).map((filter) => (
             <button
+              type="button"
               key={filter}
               onClick={() => handleStatusFilterChange(filter)}
               className={cn(
@@ -297,7 +301,7 @@ export function StudentsListClient({
                   <TableRow key={student.profile_id}>
                     <TableCell className="overflow-hidden text-ellipsis">
                       <div className="flex items-center gap-3 min-w-0">
-                        <Avatar className="h-8 w-8 shrink-0">
+                        <Avatar className="size-8 shrink-0">
                           <AvatarImage src={student.profile_image_path || undefined} />
                           <AvatarFallback className="text-[10px]">
                             {student.display_name.charAt(0).toUpperCase()}
@@ -339,11 +343,11 @@ export function StudentsListClient({
                     <TableCell className="text-right shrink-0 pr-4">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" disabled={loadingId === student.profile_id}>
+                          <Button variant="ghost" size="icon" className="size-8" disabled={loadingId === student.profile_id}>
                             {loadingId === student.profile_id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <Loader2 className="size-3 animate-spin" />
                             ) : (
-                              <MoreHorizontal className="h-4 w-4" />
+                              <MoreHorizontal className="size-4" />
                             )}
                           </Button>
                         </DropdownMenuTrigger>
@@ -384,7 +388,7 @@ export function StudentsListClient({
               <div key={student.profile_id} className="rounded-lg border bg-card p-4 shadow-sm space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <Avatar className="h-10 w-10 shrink-0">
+                    <Avatar className="size-10 shrink-0">
                       <AvatarImage src={student.profile_image_path || undefined} />
                       <AvatarFallback className="text-xs">
                         {student.display_name.charAt(0).toUpperCase()}
@@ -398,11 +402,11 @@ export function StudentsListClient({
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled={loadingId === student.profile_id}>
+                      <Button variant="ghost" size="icon" className="size-8 shrink-0" disabled={loadingId === student.profile_id}>
                         {loadingId === student.profile_id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <Loader2 className="size-3 animate-spin" />
                         ) : (
-                          <MoreHorizontal className="h-4 w-4" />
+                          <MoreHorizontal className="size-4" />
                         )}
                       </Button>
                     </DropdownMenuTrigger>
@@ -465,7 +469,7 @@ export function StudentsListClient({
         )}
 
         {totalCount > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-1 px-1">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-1">
             <div className="text-xs text-muted-foreground">
               Showing <span className="font-medium">{Math.min(totalCount, (activePage - 1) * initialPageSize + 1)}</span> to{" "}
               <span className="font-medium">{Math.min(totalCount, activePage * initialPageSize)}</span> of{" "}
@@ -496,21 +500,21 @@ export function StudentsListClient({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
+                  className="size-8"
                   onClick={() => updateParams({ page: 1 })}
                   disabled={activePage === 1}
                 >
-                  <ChevronsLeft className="h-4 w-4" />
+                  <ChevronsLeft className="size-4" />
                   <span className="sr-only">First page</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
+                  className="size-8"
                   onClick={() => updateParams({ page: Math.max(1, activePage - 1) })}
                   disabled={activePage === 1}
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="size-4" />
                   <span className="sr-only">Previous page</span>
                 </Button>
 
@@ -521,21 +525,21 @@ export function StudentsListClient({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
+                  className="size-8"
                   onClick={() => updateParams({ page: Math.min(totalPages, activePage + 1) })}
                   disabled={activePage === totalPages || totalPages === 0}
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="size-4" />
                   <span className="sr-only">Next page</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
+                  className="size-8"
                   onClick={() => updateParams({ page: totalPages })}
                   disabled={activePage === totalPages || totalPages === 0}
                 >
-                  <ChevronsRight className="h-4 w-4" />
+                  <ChevronsRight className="size-4" />
                   <span className="sr-only">Last page</span>
                 </Button>
               </div>

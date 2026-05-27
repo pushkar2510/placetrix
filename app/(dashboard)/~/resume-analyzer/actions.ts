@@ -2,6 +2,7 @@
 
 import OpenAI from "openai"
 import { getUserProfile as getUser } from "@/lib/supabase/profile"
+import { after } from "next/server"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -226,17 +227,29 @@ Analyze this resume against the job description. Return the structured JSON eval
 
   let lastError: unknown
 
-  for (const model of MODEL_FALLBACK_CHAIN) {
+  async function tryModelIndex(index: number): Promise<ResumeAnalysisResult> {
+    if (index >= MODEL_FALLBACK_CHAIN.length) {
+      console.error("[analyzeResumeAction] All models exhausted.", lastError)
+      throw new Error(
+        lastError instanceof Error
+          ? `Analysis failed: ${lastError.message}`
+          : "Failed to analyze resume. Please try again."
+      )
+    }
+
+    const model = MODEL_FALLBACK_CHAIN[index]
     try {
       return await attemptWithModel(model)
     } catch (err) {
       lastError = err
 
       if (isRetryableOnNextModel(err)) {
-        console.warn(
-          `[analyzeResumeAction] ${model} rate-limited/unavailable, trying fallback…`
-        )
-        continue
+        after(() => {
+          console.warn(
+            `[analyzeResumeAction] ${model} rate-limited/unavailable, trying fallback…`
+          )
+        })
+        return tryModelIndex(index + 1)
       }
 
       // Non-rate-limit error: retry once on same model
@@ -244,18 +257,15 @@ Analyze this resume against the job description. Return the structured JSON eval
         return await attemptWithModel(model)
       } catch (retryErr) {
         lastError = retryErr
-        console.warn(
-          `[analyzeResumeAction] ${model} retry failed, trying fallback…`
-        )
+        after(() => {
+          console.warn(
+            `[analyzeResumeAction] ${model} retry failed, trying fallback…`
+          )
+        })
+        return tryModelIndex(index + 1)
       }
     }
   }
 
-  console.error("[analyzeResumeAction] All models exhausted.", lastError)
-
-  throw new Error(
-    lastError instanceof Error
-      ? `Analysis failed: ${lastError.message}`
-      : "Failed to analyze resume. Please try again."
-  )
+  return tryModelIndex(0)
 }

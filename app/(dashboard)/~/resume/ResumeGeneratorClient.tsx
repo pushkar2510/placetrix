@@ -9,7 +9,7 @@ import {
   useLayoutEffect,
   memo,
 } from "react"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion"
 import {
   DndContext,
   closestCenter,
@@ -162,13 +162,13 @@ interface StepConfig {
 }
 
 const STEPS: StepConfig[] = [
-  { id: "personal", label: "Personal Info", description: "Contact details and summary", icon: <User className="h-4 w-4" /> },
-  { id: "experience", label: "Experience", description: "Work history and achievements", icon: <Briefcase className="h-4 w-4" /> },
-  { id: "education", label: "Education", description: "Degrees and academic background", icon: <GraduationCap className="h-4 w-4" /> },
-  { id: "skills", label: "Skills", description: "Technical skills by category", icon: <Code2 className="h-4 w-4" /> },
-  { id: "projects", label: "Projects", description: "Side projects and open-source", icon: <FolderGit2 className="h-4 w-4" />, optional: true },
-  { id: "certifications", label: "Certifications", description: "Professional credentials", icon: <Award className="h-4 w-4" />, optional: true },
-  { id: "style", label: "Style & Layout", description: "Typography, colors, section order", icon: <Palette className="h-4 w-4" /> },
+  { id: "personal", label: "Personal Info", description: "Contact details and summary", icon: <User className="size-4" /> },
+  { id: "experience", label: "Experience", description: "Work history and achievements", icon: <Briefcase className="size-4" /> },
+  { id: "education", label: "Education", description: "Degrees and academic background", icon: <GraduationCap className="size-4" /> },
+  { id: "skills", label: "Skills", description: "Technical skills by category", icon: <Code2 className="size-4" /> },
+  { id: "projects", label: "Projects", description: "Side projects and open-source", icon: <FolderGit2 className="size-4" />, optional: true },
+  { id: "certifications", label: "Certifications", description: "Professional credentials", icon: <Award className="size-4" />, optional: true },
+  { id: "style", label: "Style & Layout", description: "Typography, colors, section order", icon: <Palette className="size-4" /> },
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -232,10 +232,10 @@ function TipCard({ tips }: { tips: string[] }) {
   return (
     <div className="border rounded-lg p-4 bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40">
       <p className="text-sm font-medium flex items-center gap-1.5 mb-2 text-amber-800 dark:text-amber-400">
-        <Sparkles className="h-3.5 w-3.5" /> Tips
+        <Sparkles className="size-3.5" /> Tips
       </p>
       <ul className="text-sm text-amber-900/70 dark:text-amber-300/70 space-y-1 list-disc list-inside leading-relaxed">
-        {tips.map((tip, i) => <li key={i}>{tip}</li>)}
+        {tips.map((tip) => <li key={tip}>{tip}</li>)}
       </ul>
     </div>
   )
@@ -266,20 +266,19 @@ function SortableCollapsibleEntry({
           aria-label="Drag to reorder"
           {...attributes} {...listeners}
         >
-          <GripVertical className="h-3.5 w-3.5" />
+          <GripVertical className="size-3.5" />
         </button>
 
         <div className="flex flex-1 items-center gap-2 min-w-0">
-          <div
-            role="button"
-            tabIndex={0}
+          <button
+            type="button"
             onClick={() => setOpen((v) => !v)}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen((v) => !v) } }}
-            className="flex-1 min-w-0 cursor-pointer"
+            className="flex-1 min-w-0 cursor-pointer text-left focus:outline-none"
           >
             <p className="text-sm font-medium truncate leading-tight">{title || "Untitled"}</p>
             {subtitle && <p className="text-xs text-muted-foreground truncate leading-tight mt-0.5">{subtitle}</p>}
-          </div>
+          </button>
 
           <div className="flex items-center gap-1 shrink-0">
             {canRemove && (
@@ -287,18 +286,18 @@ function SortableCollapsibleEntry({
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onRemove() }}
                 aria-label="Remove entry"
-                className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                className="size-7 flex items-center justify-center rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="size-3.5" />
               </button>
             )}
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
               aria-label={open ? "Collapse" : "Expand"}
-              className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground transition-colors"
+              className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground transition-colors"
             >
-              {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
             </button>
           </div>
         </div>
@@ -345,7 +344,7 @@ function SortableSectionRow({ id, label }: { id: string; label: string }) {
         aria-label="Drag to reorder"
         {...attributes} {...listeners}
       >
-        <GripVertical className="h-4 w-4" />
+        <GripVertical className="size-4" />
       </button>
       <span className="text-sm font-medium capitalize">{label}</span>
     </div>
@@ -359,34 +358,57 @@ function SortableSectionRow({ id, label }: { id: string; label: string }) {
 function BulletEditor({ bullets, onChange, placeholder = "Add a bullet point..." }: {
   bullets: string[]; onChange: (b: string[]) => void; placeholder?: string
 }) {
+  const idsRef = useRef<string[]>([])
+
+  if (bullets.length === 0) {
+    idsRef.current = []
+  } else {
+    if (idsRef.current.length > bullets.length) {
+      idsRef.current = idsRef.current.slice(0, bullets.length)
+    } else {
+      while (idsRef.current.length < bullets.length) {
+        idsRef.current.push(uid())
+      }
+    }
+  }
+
   return (
     <div className="space-y-2">
       <Label>Bullet Points</Label>
       <div className="space-y-2">
-        {bullets.map((b, i) => (
-          <div key={i} className="flex items-start gap-2">
-            <span className="mt-2.5 text-muted-foreground text-xs shrink-0 font-bold">•</span>
-            <Textarea
-              rows={2} value={b} placeholder={placeholder}
-              onChange={(e) => { const next = [...bullets]; next[i] = e.target.value; onChange(next) }}
-              className="flex-1 min-w-0 text-sm resize-none"
-            />
-            <button
-              type="button"
-              onClick={() => onChange(bullets.filter((_, j) => j !== i))}
-              aria-label="Remove bullet"
-              className="mt-2 h-7 w-7 flex items-center justify-center shrink-0 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ))}
+        {bullets.map((b, i) => {
+          const key = idsRef.current[i] || (idsRef.current[i] = uid())
+          return (
+            <div key={key} className="flex items-start gap-2">
+              <span className="mt-2.5 text-muted-foreground text-xs shrink-0 font-bold">•</span>
+              <Textarea
+                rows={2} value={b} placeholder={placeholder}
+                onChange={(e) => { const next = [...bullets]; next[i] = e.target.value; onChange(next) }}
+                className="flex-1 min-w-0 text-sm resize-none"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  idsRef.current.splice(i, 1)
+                  onChange(bullets.filter((_, j) => j !== i))
+                }}
+                aria-label="Remove bullet"
+                className="mt-2 size-7 flex items-center justify-center shrink-0 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </div>
+          )
+        })}
       </div>
       <Button
         type="button" variant="outline" size="sm" className="border-dashed w-full"
-        onClick={() => onChange([...bullets, ""])}
+        onClick={() => {
+          idsRef.current.push(uid())
+          onChange([...bullets, ""])
+        }}
       >
-        <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Bullet
+        <Plus className="size-3.5 mr-1.5" /> Add Bullet
       </Button>
     </div>
   )
@@ -396,6 +418,59 @@ function BulletEditor({ bullets, onChange, placeholder = "Add a bullet point..."
 // RESUME DOCUMENT
 // ─────────────────────────────────────────────────────────────────────────────
 
+const getSectionTitleStyle = (base: React.CSSProperties, thickRule: boolean, acc: string): React.CSSProperties => ({
+  ...base,
+  fontWeight: 700,
+  letterSpacing: "0.07em",
+  textTransform: "uppercase",
+  color: thickRule ? acc : "#222",
+  borderBottom: thickRule ? `2px solid ${acc}` : "1px solid #333",
+  paddingBottom: thickRule ? 3 : 2,
+  marginTop: 10,
+  marginBottom: 5,
+})
+
+function SectionTitle({ label, base, thickRule, accentColor }: { label: string; base: React.CSSProperties; thickRule: boolean; accentColor: string }) {
+  return (
+    <div style={getSectionTitleStyle(base, thickRule, accentColor)}>
+      {label}
+    </div>
+  )
+}
+
+function Row({ left, bold, italic, right, base, fs }: { left?: string; bold?: boolean; italic?: boolean; right?: string; base: React.CSSProperties; fs: number }) {
+  if (!left && !right) return null
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+      {left && <span style={{ ...base, fontWeight: bold ? 700 : 400, fontStyle: italic ? "italic" : "normal", minWidth: 0, flexShrink: 1 }}>{left}</span>}
+      {right && <span style={{ ...base, fontSize: fs * 0.9, color: "#555", flexShrink: 0, whiteSpace: "nowrap" }}>{right}</span>}
+    </div>
+  )
+}
+
+function Bullets({ items, base }: { items: string[]; base: React.CSSProperties }) {
+  const clean = items.filter(Boolean)
+  if (!clean.length) return null
+  return (
+    <ul style={{ margin: "3px 0 0 16px", padding: 0, listStyleType: "disc" }}>
+      {clean.map((b) => <li key={b} style={{ ...base, marginBottom: 1.5 }}>{b}</li>)}
+    </ul>
+  )
+}
+
+const emptyStateStyle: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 12,
+  color: "#d1d5db",
+  pointerEvents: "none",
+  userSelect: "none",
+}
+
 const ResumeDocument = memo(function ResumeDocument({ data, config }: { data: ResumeData; config: ResumeConfig }) {
   const { personal, summaryEnabled, summaryContent, experience, education, skills, projects, certifications, sectionOrder } = data
   const fs = config.fontSize
@@ -404,48 +479,22 @@ const ResumeDocument = memo(function ResumeDocument({ data, config }: { data: Re
   const mg = config.marginPx
   const base: React.CSSProperties = { fontFamily: font, fontSize: fs, lineHeight: 1.42, color: "#111" }
 
-  const SectionTitle = ({ label }: { label: string }) => (
-    <div style={{ ...base, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: config.thickRule ? acc : "#222", borderBottom: config.thickRule ? `2px solid ${acc}` : "1px solid #333", paddingBottom: config.thickRule ? 3 : 2, marginTop: 10, marginBottom: 5 }}>
-      {label}
-    </div>
-  )
-
-  const Row = ({ left, bold, italic, right }: { left?: string; bold?: boolean; italic?: boolean; right?: string }) => {
-    if (!left && !right) return null
-    return (
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-        {left && <span style={{ ...base, fontWeight: bold ? 700 : 400, fontStyle: italic ? "italic" : "normal", minWidth: 0, flexShrink: 1 }}>{left}</span>}
-        {right && <span style={{ ...base, fontSize: fs * 0.9, color: "#555", flexShrink: 0, whiteSpace: "nowrap" }}>{right}</span>}
-      </div>
-    )
-  }
-
-  const Bullets = ({ items }: { items: string[] }) => {
-    const clean = items.filter(Boolean)
-    if (!clean.length) return null
-    return (
-      <ul style={{ margin: "3px 0 0 16px", padding: 0, listStyleType: "disc" }}>
-        {clean.map((b, i) => <li key={i} style={{ ...base, marginBottom: 1.5 }}>{b}</li>)}
-      </ul>
-    )
-  }
-
   function renderSection(key: string): React.ReactNode {
     switch (key) {
       case "summary":
         if (!summaryEnabled || !summaryContent.trim()) return null
-        return <div key="summary"><SectionTitle label="Summary" /><p style={{ ...base, margin: 0 }}>{summaryContent}</p></div>
+        return <div key="summary"><SectionTitle label="Summary" base={base} thickRule={config.thickRule} accentColor={acc} /><p style={{ ...base, margin: 0 }}>{summaryContent}</p></div>
 
       case "experience": {
         const items = experience.filter((e) => e.company || e.title)
         if (!items.length) return null
         return (
-          <div key="experience"><SectionTitle label="Experience" />
+          <div key="experience"><SectionTitle label="Experience" base={base} thickRule={config.thickRule} accentColor={acc} />
             {items.map((exp, idx) => (
               <div key={exp.id} style={{ marginBottom: idx < items.length - 1 ? 8 : 0 }}>
-                <Row left={exp.company} bold right={[exp.startDate, exp.current ? "Present" : exp.endDate].filter(Boolean).join(" – ")} />
-                {(exp.title || exp.location) && <Row left={exp.title} italic right={exp.location} />}
-                <Bullets items={exp.bullets} />
+                <Row left={exp.company} bold right={[exp.startDate, exp.current ? "Present" : exp.endDate].filter(Boolean).join(" – ")} base={base} fs={fs} />
+                {(exp.title || exp.location) && <Row left={exp.title} italic right={exp.location} base={base} fs={fs} />}
+                <Bullets items={exp.bullets} base={base} />
               </div>
             ))}
           </div>
@@ -456,11 +505,11 @@ const ResumeDocument = memo(function ResumeDocument({ data, config }: { data: Re
         const items = education.filter((e) => e.institution)
         if (!items.length) return null
         return (
-          <div key="education"><SectionTitle label="Education" />
+          <div key="education"><SectionTitle label="Education" base={base} thickRule={config.thickRule} accentColor={acc} />
             {items.map((edu, idx) => (
               <div key={edu.id} style={{ marginBottom: idx < items.length - 1 ? 8 : 0 }}>
-                <Row left={edu.institution} bold right={[edu.startDate, edu.endDate].filter(Boolean).join(" – ")} />
-                {(edu.degree || edu.field || edu.location) && <Row left={[edu.degree, edu.field].filter(Boolean).join(", ") + (edu.honors ? ` · ${edu.honors}` : "")} italic right={edu.location} />}
+                <Row left={edu.institution} bold right={[edu.startDate, edu.endDate].filter(Boolean).join(" – ")} base={base} fs={fs} />
+                {(edu.degree || edu.field || edu.location) && <Row left={[edu.degree, edu.field].filter(Boolean).join(", ") + (edu.honors ? ` · ${edu.honors}` : "")} italic right={edu.location} base={base} fs={fs} />}
                 {edu.gpa && <p style={{ ...base, margin: "1px 0 0", fontSize: fs * 0.9, color: "#444" }}>GPA: {edu.gpa}</p>}
               </div>
             ))}
@@ -472,7 +521,7 @@ const ResumeDocument = memo(function ResumeDocument({ data, config }: { data: Re
         const items = skills.filter((s) => s.skills.trim())
         if (!items.length) return null
         return (
-          <div key="skills"><SectionTitle label="Skills" />
+          <div key="skills"><SectionTitle label="Skills" base={base} thickRule={config.thickRule} accentColor={acc} />
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {items.map((cat) => (
                 <div key={cat.id} style={{ ...base, display: "flex", gap: 5 }}>
@@ -489,7 +538,7 @@ const ResumeDocument = memo(function ResumeDocument({ data, config }: { data: Re
         const items = projects.filter((p) => p.name)
         if (!items.length) return null
         return (
-          <div key="projects"><SectionTitle label="Projects" />
+          <div key="projects"><SectionTitle label="Projects" base={base} thickRule={config.thickRule} accentColor={acc} />
             {items.map((proj, idx) => (
               <div key={proj.id} style={{ marginBottom: idx < items.length - 1 ? 8 : 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
@@ -501,7 +550,7 @@ const ResumeDocument = memo(function ResumeDocument({ data, config }: { data: Re
                   {proj.dateRange && <span style={{ ...base, fontSize: fs * 0.9, color: "#555", flexShrink: 0 }}>{proj.dateRange}</span>}
                 </div>
                 {proj.techStack && <p style={{ ...base, fontStyle: "italic", margin: 0 }}>{proj.techStack}</p>}
-                <Bullets items={proj.bullets} />
+                <Bullets items={proj.bullets} base={base} />
               </div>
             ))}
           </div>
@@ -512,7 +561,7 @@ const ResumeDocument = memo(function ResumeDocument({ data, config }: { data: Re
         const items = certifications.filter((c) => c.name)
         if (!items.length) return null
         return (
-          <div key="certifications"><SectionTitle label="Certifications" />
+          <div key="certifications"><SectionTitle label="Certifications" base={base} thickRule={config.thickRule} accentColor={acc} />
             {items.map((cert, idx) => (
               <div key={cert.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: idx < items.length - 1 ? 3 : 0 }}>
                 <span style={base}>
@@ -543,7 +592,7 @@ const ResumeDocument = memo(function ResumeDocument({ data, config }: { data: Re
   return (
     <div id="resume-doc" style={{ width: A4_W, minHeight: A4_H, background: "#fff", padding: `${mg}px`, boxSizing: "border-box", position: "relative", ...base }}>
       {empty && (
-        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#d1d5db", pointerEvents: "none", userSelect: "none" }}>
+        <div style={emptyStateStyle}>
           <FileText size={56} strokeWidth={1} />
           <span style={{ fontFamily: font, fontSize: 13, letterSpacing: "0.04em" }}>Fill in the form to see your resume</span>
         </div>
@@ -554,8 +603,8 @@ const ResumeDocument = memo(function ResumeDocument({ data, config }: { data: Re
           {personal.tagline && <div style={{ fontFamily: font, fontSize: fs * 0.95, fontStyle: "italic", color: "#555", marginBottom: 5 }}>{personal.tagline}</div>}
           {contactParts.length > 0 && (
             <div style={{ fontFamily: font, fontSize: fs * 0.88, color: "#444", lineHeight: 1.5 }}>
-              {contactParts.map((p, i) => (
-                <span key={i}>{i > 0 && <span style={{ margin: "0 5px", color: "#bbb" }}>|</span>}{p}</span>
+              {contactParts.map((p) => (
+                <span key={p}>{contactParts.indexOf(p) > 0 && <span style={{ margin: "0 5px", color: "#bbb" }}>|</span>}{p}</span>
               ))}
             </div>
           )}
@@ -626,7 +675,7 @@ const PreviewSheetContent = memo(function PreviewSheetContent({ data, config, on
   return (
     <>
       <SheetHeader className="px-4 pt-4 pb-3 shrink-0 border-b">
-        <SheetTitle className="text-base flex items-center gap-2"><Eye className="h-4 w-4" /> Resume Preview</SheetTitle>
+        <SheetTitle className="text-base flex items-center gap-2"><Eye className="size-4" /> Resume Preview</SheetTitle>
       </SheetHeader>
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-3">
         <div className="rounded-xl border bg-[#e4e7eb] p-3 md:p-5">
@@ -637,7 +686,7 @@ const PreviewSheetContent = memo(function PreviewSheetContent({ data, config, on
       </div>
       <div className="px-4 pb-5 pt-3 border-t shrink-0">
         <Button className="w-full h-10 gap-2" onClick={onExport}>
-          <Printer className="h-4 w-4" /> Export as PDF
+          <Printer className="size-4" /> Export as PDF
         </Button>
       </div>
     </>
@@ -657,54 +706,56 @@ function ResumeFloatingBar({
   onReset: () => void
 }) {
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 100, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="fixed bottom-0 left-0 right-0 z-50 md:bottom-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-auto"
-      >
-        {/* Mobile */}
-        <div className="flex items-center justify-between gap-3 w-full px-4 py-3 border-t border-border bg-background/95 backdrop-blur-md md:hidden">
-          <p className="text-sm text-muted-foreground truncate">Manage your resume</p>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button size="sm" onClick={onPreview} className="h-9 gap-1.5">
-              <Eye className="h-3.5 w-3.5" />
-              <span>Preview</span>
-            </Button>
+    <LazyMotion features={domAnimation}>
+      <AnimatePresence>
+        <m.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 100, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="fixed bottom-0 left-0 right-0 z-50 md:bottom-6 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-auto"
+        >
+          {/* Mobile */}
+          <div className="flex items-center justify-between gap-3 w-full px-4 py-3 border-t border-border bg-background/95 backdrop-blur-md md:hidden">
+            <p className="text-sm text-muted-foreground truncate">Manage your resume</p>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button size="sm" onClick={onPreview} className="h-9 gap-1.5">
+                <Eye className="size-3.5" />
+                <span>Preview</span>
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {/* Desktop */}
-        <div className="hidden md:flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-background/80 shadow-lg backdrop-blur-md whitespace-nowrap">
-          <span className="text-sm text-muted-foreground">Manage your resume</span>
-          <div className="flex items-center gap-2">
-            <Button size="sm" onClick={onPreview} className="h-8 gap-1.5">
-              <Eye className="h-3.5 w-3.5" />
-              Preview & Export
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground hover:text-foreground">
-                  <RotateCcw className="h-3.5 w-3.5" /> Reset
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Reset resume data?</AlertDialogTitle>
-                  <AlertDialogDescription>This will clear all fields and restore defaults. This action cannot be undone.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={onReset}>Reset</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+          {/* Desktop */}
+          <div className="hidden md:flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-background/80 shadow-lg backdrop-blur-md whitespace-nowrap">
+            <span className="text-sm text-muted-foreground">Manage your resume</span>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={onPreview} className="h-8 gap-1.5">
+                <Eye className="size-3.5" />
+                Preview & Export
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground hover:text-foreground">
+                    <RotateCcw className="size-3.5" /> Reset
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Reset resume data?</AlertDialogTitle>
+                    <AlertDialogDescription>This will clear all fields and restore defaults. This action cannot be undone.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={onReset}>Reset</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
-        </div>
-      </motion.div>
-    </AnimatePresence>
+        </m.div>
+      </AnimatePresence>
+    </LazyMotion>
   )
 }
 
@@ -727,12 +778,12 @@ function StepHeader({ step, index, isActive, isDone, onClick }: {
       )}
     >
       <div className={cn(
-        "h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold border-2 transition-all",
+        "size-8 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold border-2 transition-all",
         isDone && !isActive && "bg-emerald-500 border-emerald-500 text-white",
         isActive && "border-primary text-primary bg-primary/10",
         !isDone && !isActive && "border-muted-foreground/30 text-muted-foreground",
       )}>
-        {isDone && !isActive ? <CheckCircle2 className="h-4 w-4" /> : <span>{index + 1}</span>}
+        {isDone && !isActive ? <CheckCircle2 className="size-4" /> : <span>{index + 1}</span>}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -749,7 +800,7 @@ function StepHeader({ step, index, isActive, isDone, onClick }: {
         <p className="text-xs text-muted-foreground mt-0.5 truncate">{step.description}</p>
       </div>
       <div className="shrink-0 text-muted-foreground">
-        {isActive ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        {isActive ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
       </div>
     </button>
   )
@@ -770,10 +821,10 @@ function StepFooter({ isLast, isDone, onContinue, onSkip }: {
       }
       <Button type="button" size="sm" className="gap-2 min-w-[140px] justify-center" onClick={onContinue}>
         {isLast
-          ? <><Eye className="h-3.5 w-3.5" /> Preview & Export</>
+          ? <><Eye className="size-3.5" /> Preview & Export</>
           : isDone
-            ? <>Save & Continue <ChevronRight className="h-3.5 w-3.5" /></>
-            : <>Continue anyway <ChevronRight className="h-3.5 w-3.5" /></>
+            ? <>Save & Continue <ChevronRight className="size-3.5" /></>
+            : <>Continue anyway <ChevronRight className="size-3.5" /></>
         }
       </Button>
     </div>
@@ -937,7 +988,7 @@ export function ResumeGeneratorClient() {
 
   // ── Step content ──────────────────────────────────────────────────────────
 
-  function renderStepContent(id: StepId) {
+  function getStepContent(id: StepId) {
     const isLast = STEPS[STEPS.length - 1].id === id
     const done = isStepDone(id, data, visitedSteps)
 
@@ -956,31 +1007,31 @@ export function ResumeGeneratorClient() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Email <Req /></Label>
+                <Label className="flex items-center gap-1.5"><Mail className="size-3.5" /> Email <Req /></Label>
                 <Input type="email" placeholder="jane@example.com" value={data.personal.email} onChange={(e) => setPersonal("email", e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Phone <Req /></Label>
+                <Label className="flex items-center gap-1.5"><Phone className="size-3.5" /> Phone <Req /></Label>
                 <Input placeholder="+1 (555) 000-0000" value={data.personal.phone} onChange={(e) => setPersonal("phone", e.target.value)} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> Location <Req /></Label>
+              <Label className="flex items-center gap-1.5"><MapPin className="size-3.5" /> Location <Req /></Label>
               <Input placeholder="San Francisco, CA" value={data.personal.location} onChange={(e) => setPersonal("location", e.target.value)} />
             </div>
             <Separator />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="flex items-center gap-1.5"><Linkedin className="h-3.5 w-3.5" /> LinkedIn</Label>
+                <Label className="flex items-center gap-1.5"><Linkedin className="size-3.5" /> LinkedIn</Label>
                 <Input placeholder="linkedin.com/in/janedoe" value={data.personal.linkedin} onChange={(e) => setPersonal("linkedin", e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label className="flex items-center gap-1.5"><Github className="h-3.5 w-3.5" /> GitHub</Label>
+                <Label className="flex items-center gap-1.5"><Github className="size-3.5" /> GitHub</Label>
                 <Input placeholder="github.com/janedoe" value={data.personal.github} onChange={(e) => setPersonal("github", e.target.value)} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" /> Portfolio / Website</Label>
+              <Label className="flex items-center gap-1.5"><Globe className="size-3.5" /> Portfolio / Website</Label>
               <Input placeholder="janedoe.dev" value={data.personal.portfolio} onChange={(e) => setPersonal("portfolio", e.target.value)} />
             </div>
           </div>
@@ -1038,10 +1089,10 @@ export function ResumeGeneratorClient() {
                       <div className="space-y-2"><Label>End Date</Label>
                         <Input placeholder="Dec 2024" disabled={exp.current} value={exp.current ? "Present" : exp.endDate}
                           onChange={(e) => setExp(exp.id, "endDate", e.target.value)} />
-                        <label className="flex items-center gap-2 cursor-pointer mt-1.5">
-                          <Checkbox checked={exp.current} onCheckedChange={(v) => setExp(exp.id, "current", v === true)} />
-                          <span className="text-sm text-muted-foreground">Currently here</span>
-                        </label>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <Checkbox id={`current-${exp.id}`} checked={exp.current} onCheckedChange={(v) => setExp(exp.id, "current", v === true)} />
+                          <Label htmlFor={`current-${exp.id}`} className="cursor-pointer text-sm font-normal text-muted-foreground">Currently here</Label>
+                        </div>
                       </div>
                     </div>
                     <BulletEditor bullets={exp.bullets} onChange={(b) => setExp(exp.id, "bullets", b)}
@@ -1052,7 +1103,7 @@ export function ResumeGeneratorClient() {
             </SortableContext>
           </DndContext>
           <Button variant="outline" className="w-full border-dashed" onClick={addExp}>
-            <Plus className="h-4 w-4 mr-2" /> Add Experience
+            <Plus className="size-4 mr-2" /> Add Experience
           </Button>
           <TipCard tips={[
             "Start each bullet with a strong action verb: Built, Designed, Led, Reduced.",
@@ -1102,7 +1153,7 @@ export function ResumeGeneratorClient() {
             </SortableContext>
           </DndContext>
           <Button variant="outline" className="w-full border-dashed" onClick={addEdu}>
-            <Plus className="h-4 w-4 mr-2" /> Add Education
+            <Plus className="size-4 mr-2" /> Add Education
           </Button>
           <TipCard tips={[
             "Include GPA only if it's 3.5 or above — lower GPAs are better left out.",
@@ -1133,7 +1184,7 @@ export function ResumeGeneratorClient() {
             </SortableContext>
           </DndContext>
           <Button variant="outline" className="w-full border-dashed" onClick={addSkill}>
-            <Plus className="h-4 w-4 mr-2" /> Add Category
+            <Plus className="size-4 mr-2" /> Add Category
           </Button>
           <TipCard tips={[
             "Group skills by category — makes scanning easy for both ATS and humans.",
@@ -1162,10 +1213,10 @@ export function ResumeGeneratorClient() {
                       <Input placeholder="Jan 2024 – Mar 2024" value={proj.dateRange} onChange={(e) => setProj(proj.id, "dateRange", e.target.value)} /></div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" /> Live URL</Label>
+                        <Label className="flex items-center gap-1.5"><Globe className="size-3.5" /> Live URL</Label>
                         <Input placeholder="myapp.vercel.app" value={proj.liveUrl} onChange={(e) => setProj(proj.id, "liveUrl", e.target.value)} /></div>
                       <div className="space-y-2">
-                        <Label className="flex items-center gap-1.5"><Github className="h-3.5 w-3.5" /> Repo URL</Label>
+                        <Label className="flex items-center gap-1.5"><Github className="size-3.5" /> Repo URL</Label>
                         <Input placeholder="github.com/user/repo" value={proj.repoUrl} onChange={(e) => setProj(proj.id, "repoUrl", e.target.value)} /></div>
                     </div>
                     <BulletEditor bullets={proj.bullets} onChange={(b) => setProj(proj.id, "bullets", b)}
@@ -1176,7 +1227,7 @@ export function ResumeGeneratorClient() {
             </SortableContext>
           </DndContext>
           <Button variant="outline" className="w-full border-dashed" onClick={addProj}>
-            <Plus className="h-4 w-4 mr-2" /> Add Project
+            <Plus className="size-4 mr-2" /> Add Project
           </Button>
           <TipCard tips={[
             "Include a live URL or GitHub link so recruiters can verify your work.",
@@ -1212,7 +1263,7 @@ export function ResumeGeneratorClient() {
             </SortableContext>
           </DndContext>
           <Button variant="outline" className="w-full border-dashed" onClick={addCert}>
-            <Plus className="h-4 w-4 mr-2" /> Add Certification
+            <Plus className="size-4 mr-2" /> Add Certification
           </Button>
           <TipCard tips={[
             "Include the Credential ID so recruiters can verify it instantly.",
@@ -1227,30 +1278,33 @@ export function ResumeGeneratorClient() {
         <div className="space-y-6">
           <div className="space-y-4">
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Typography</p>
-            <div className="space-y-2"><Label>Font Family</Label>
+            <div className="space-y-2">
+              <Label htmlFor="font-family-select">Font Family</Label>
               <Select value={config.font} onValueChange={(v) => setConf("font", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="font-family-select"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="garamond">EB Garamond — Classic Serif (Recommended)</SelectItem>
-                  <SelectItem value="palatino">Palatino — Elegant Serif</SelectItem>
-                  <SelectItem value="lato">Lato — Clean Sans-Serif</SelectItem>
+                  <SelectItem value="garamond">EB Garamond: Classic Serif (Recommended)</SelectItem>
+                  <SelectItem value="palatino">Palatino: Elegant Serif</SelectItem>
+                  <SelectItem value="lato">Lato: Clean Sans-Serif</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Font Size</Label>
+              <div className="space-y-2">
+                <Label htmlFor="font-size-select">Font Size</Label>
                 <Select value={String(config.fontSize)} onValueChange={(v) => setConf("fontSize", Number(v))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="font-size-select"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="10">10pt — Compact</SelectItem>
-                    <SelectItem value="11">11pt — Standard</SelectItem>
-                    <SelectItem value="12">12pt — Spacious</SelectItem>
+                    <SelectItem value="10">10pt (Compact)</SelectItem>
+                    <SelectItem value="11">11pt (Standard)</SelectItem>
+                    <SelectItem value="12">12pt (Spacious)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2"><Label>Margins</Label>
+              <div className="space-y-2">
+                <Label htmlFor="margins-select">Margins</Label>
                 <Select value={String(config.marginPx)} onValueChange={(v) => setConf("marginPx", Number(v))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="margins-select"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="32">Narrow</SelectItem>
                     <SelectItem value="48">Normal</SelectItem>
@@ -1267,7 +1321,12 @@ export function ResumeGeneratorClient() {
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Accent Color</p>
             <div className="flex items-center gap-3 flex-wrap">
               {ACCENT_PRESETS.map((color) => (
-                <button key={color} type="button" title={color} onClick={() => setConf("accentColor", color)}
+                <button
+                  key={color}
+                  type="button"
+                  title={color}
+                  onClick={() => setConf("accentColor", color)}
+                  aria-label={`Select accent color ${color}`}
                   className={cn(
                     "h-7 w-7 rounded-full border-2 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-foreground/30",
                     config.accentColor === color ? "border-foreground scale-110 ring-2 ring-offset-1 ring-foreground/30" : "border-transparent"
@@ -1277,6 +1336,7 @@ export function ResumeGeneratorClient() {
               ))}
               <label
                 title="Custom color"
+                aria-label="Custom accent color picker"
                 className={cn(
                   "h-7 w-7 rounded-full border-2 cursor-pointer transition-all hover:scale-110 relative overflow-hidden focus-within:ring-2 focus-within:ring-offset-1 focus-within:ring-foreground/30 shrink-0",
                   !ACCENT_PRESETS.includes(config.accentColor)
@@ -1284,8 +1344,13 @@ export function ResumeGeneratorClient() {
                     : "border-dashed border-muted-foreground/40"
                 )}
                 style={{ background: !ACCENT_PRESETS.includes(config.accentColor) ? config.accentColor : "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)" }}>
-                <input type="color" value={config.accentColor} onChange={(e) => setConf("accentColor", e.target.value)}
-                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                <input
+                  type="color"
+                  value={config.accentColor}
+                  onChange={(e) => setConf("accentColor", e.target.value)}
+                  aria-label="Custom accent color"
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                />
               </label>
             </div>
           </div>
@@ -1376,7 +1441,7 @@ export function ResumeGeneratorClient() {
                 <div className="overflow-hidden">
                   {isActive && (
                     <div className="px-5 pb-6 pt-2 border-t">
-                      {renderStepContent(step.id)}
+                      {getStepContent(step.id)}
                     </div>
                   )}
                 </div>
@@ -1384,7 +1449,7 @@ export function ResumeGeneratorClient() {
 
               {!isActive && isDone && (
                 <div className="px-5 py-2 border-t bg-muted/20 flex items-center gap-2">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                  <CheckCircle2 className="size-3 text-emerald-500 shrink-0" />
                   <p className="text-xs text-muted-foreground truncate">{getDoneSummary(step.id)}</p>
                 </div>
               )}

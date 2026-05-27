@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -55,27 +56,33 @@ function SortableHeadLoading<T extends string>({
         {label}
         {sortCol === col ? (
           sortDir === "asc" ? (
-            <ArrowUp className="h-3.5 w-3.5 text-foreground" />
+            <ArrowUp className="size-3.5 text-foreground" />
           ) : (
-            <ArrowDown className="h-3.5 w-3.5 text-foreground" />
+            <ArrowDown className="size-3.5 text-foreground" />
           )
         ) : (
-          <ArrowUpDown className="h-3.5 w-3.5 opacity-30" />
+          <ArrowUpDown className="size-3.5 opacity-30" />
         )}
       </div>
     </TableHead>
   )
 }
 
-export default function StudentsLoading() {
-  const searchParams = useSearchParams()
-  const search = searchParams?.get("search") || ""
-  const status = (searchParams?.get("status") || "all") as "all" | "verified" | "pending"
-  const sortBy = searchParams?.get("sortBy") || "created"
-  const sortOrder = (searchParams?.get("sortOrder") || "desc") as "asc" | "desc"
-  const pageSize = searchParams?.get("size") || "10"
-  const page = searchParams?.get("page") || "1"
-
+function StudentsSkeleton({
+  search,
+  status,
+  sortBy,
+  sortOrder,
+  pageSize,
+  page,
+}: {
+  search: string
+  status: "all" | "verified" | "pending"
+  sortBy: string
+  sortOrder: "asc" | "desc"
+  pageSize: string
+  page: string
+}) {
   const pageNum = parseInt(page, 10)
   const isFirstPage = pageNum <= 1
 
@@ -93,7 +100,7 @@ export default function StudentsLoading() {
         {/* Search & Status Filters */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
             <Input
               placeholder="Search students..."
               defaultValue={search}
@@ -101,8 +108,8 @@ export default function StudentsLoading() {
               readOnly
             />
             {search && (
-              <div className="absolute right-2.5 top-2.5 h-4 w-4 flex items-center justify-center text-muted-foreground pointer-events-none">
-                <X className="h-3.5 w-3.5" />
+              <div className="absolute right-2.5 top-2.5 size-4 flex items-center justify-center text-muted-foreground pointer-events-none">
+                <X className="size-3.5" />
               </div>
             )}
           </div>
@@ -110,6 +117,7 @@ export default function StudentsLoading() {
           <div className="flex items-center border rounded-md p-1 bg-muted/50 pointer-events-none">
             {(["all", "verified", "pending"] as const).map((filter) => (
               <button
+                type="button"
                 key={filter}
                 className={cn(
                   "px-3 py-1 text-xs font-medium rounded-sm capitalize transition-all",
@@ -151,7 +159,7 @@ export default function StudentsLoading() {
                   {/* Student Column */}
                   <TableCell className="overflow-hidden text-ellipsis">
                     <div className="flex items-center gap-3 min-w-0">
-                      <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                      <Skeleton className="size-8 rounded-full shrink-0" />
                       <div className="flex flex-col min-w-0 w-full justify-center">
                         <div className="h-5 flex items-center">
                           <Skeleton className="h-3.5 w-24 rounded" />
@@ -199,8 +207,8 @@ export default function StudentsLoading() {
                   {/* Actions Column */}
                   <TableCell className="text-right shrink-0 pr-4">
                     <div className="flex justify-end pr-0">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" disabled>
-                        <MoreHorizontal className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" className="size-8" disabled>
+                        <MoreHorizontal className="size-4" />
                       </Button>
                     </div>
                   </TableCell>
@@ -216,7 +224,7 @@ export default function StudentsLoading() {
             <div key={i} className="rounded-lg border bg-card p-4 shadow-sm space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                  <Skeleton className="size-10 rounded-full shrink-0" />
                   <div className="flex flex-col min-w-0 justify-center">
                     <div className="h-5 flex items-center">
                       <Skeleton className="h-3.5 w-24 rounded" />
@@ -226,8 +234,8 @@ export default function StudentsLoading() {
                     </div>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled>
-                  <MoreHorizontal className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="size-8 shrink-0" disabled>
+                  <MoreHorizontal className="size-4" />
                 </Button>
               </div>
 
@@ -267,9 +275,9 @@ export default function StudentsLoading() {
         </div>
 
         {/* Pagination Footer Skeleton */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-1 px-1">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-1">
           <div className="text-xs text-muted-foreground">
-            Showing — to — of — students
+            Showing ... to ... of ... students
           </div>
           
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
@@ -284,34 +292,76 @@ export default function StudentsLoading() {
             
             <div className="flex items-center gap-1">
               <Button
+                type="button"
                 variant="outline"
                 size="icon"
-                className={cn("h-8 w-8", !isFirstPage && "pointer-events-none")}
+                className={cn("size-8", !isFirstPage && "pointer-events-none")}
                 disabled={isFirstPage}
               >
-                <ChevronsLeft className="h-4 w-4" />
+                <ChevronsLeft className="size-4" />
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="icon"
-                className={cn("h-8 w-8", !isFirstPage && "pointer-events-none")}
+                className={cn("size-8", !isFirstPage && "pointer-events-none")}
                 disabled={isFirstPage}
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="size-4" />
               </Button>
               <div className="flex items-center justify-center text-xs font-medium min-w-[80px]">
-                Page {page} of —
+                Page {page} of ...
               </div>
-              <Button variant="outline" size="icon" className="h-8 w-8 pointer-events-none">
-                <ChevronRight className="h-4 w-4" />
+              <Button type="button" variant="outline" size="icon" className="size-8 pointer-events-none">
+                <ChevronRight className="size-4" />
               </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8 pointer-events-none">
-                <ChevronsRight className="h-4 w-4" />
+              <Button type="button" variant="outline" size="icon" className="size-8 pointer-events-none">
+                <ChevronsRight className="size-4" />
               </Button>
             </div>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+function StudentsLoadingContent() {
+  const searchParams = useSearchParams()
+  const search = searchParams?.get("search") || ""
+  const status = (searchParams?.get("status") || "all") as "all" | "verified" | "pending"
+  const sortBy = searchParams?.get("sortBy") || "created"
+  const sortOrder = (searchParams?.get("sortOrder") || "desc") as "asc" | "desc"
+  const pageSize = searchParams?.get("size") || "10"
+  const page = searchParams?.get("page") || "1"
+
+  return (
+    <StudentsSkeleton
+      search={search}
+      status={status}
+      sortBy={sortBy}
+      sortOrder={sortOrder}
+      pageSize={pageSize}
+      page={page}
+    />
+  )
+}
+
+export default function StudentsLoading() {
+  return (
+    <Suspense
+      fallback={
+        <StudentsSkeleton
+          search=""
+          status="all"
+          sortBy="created"
+          sortOrder="desc"
+          pageSize="10"
+          page="1"
+        />
+      }
+    >
+      <StudentsLoadingContent />
+    </Suspense>
   )
 }

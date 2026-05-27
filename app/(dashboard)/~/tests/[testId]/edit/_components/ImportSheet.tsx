@@ -355,8 +355,8 @@ export function ImportSheet({ open, onOpenChange, onImport }: Props) {
 
                     {hasErrors && (
                       <div className="space-y-1 pl-6">
-                        {q._errors.map((e, i) => (
-                          <p key={i} className="flex items-center gap-1.5 text-xs text-destructive">
+                        {q._errors.map((e) => (
+                          <p key={e} className="flex items-center gap-1.5 text-xs text-destructive">
                             <AlertCircle className="h-3 w-3 shrink-0" /> {e}
                           </p>
                         ))}
@@ -365,8 +365,8 @@ export function ImportSheet({ open, onOpenChange, onImport }: Props) {
 
                     {!hasErrors && hasWarnings && (
                       <div className="space-y-1 pl-6">
-                        {q._warnings.map((w, i) => (
-                          <p key={i} className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                        {q._warnings.map((w) => (
+                          <p key={w} className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                             <AlertTriangle className="h-3 w-3 shrink-0" /> {w}
                           </p>
                         ))}
