@@ -28,7 +28,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { useBreadcrumbLabels } from "@/components/breadcrumb-context"
 import { cn } from "@/lib/utils"
 
 function formatDateTime(dt: string) {
@@ -101,11 +100,6 @@ function SortableHead({
 
 export function ApplicationsClient({ applications, postingId, jobTitle }: { applications: ApplicationDetails[], postingId: string, jobTitle: string }) {
   const router = useRouter()
-  const { setLabel } = useBreadcrumbLabels()
-
-  useEffect(() => {
-    setLabel(`/~/postings/${postingId}/applications`, `Applicants for ${jobTitle}`)
-  }, [postingId, jobTitle, setLabel])
 
   const [isPending, startTransition] = useTransition()
   const [selectedApp, setSelectedApp] = useState<ApplicationDetails | null>(null)

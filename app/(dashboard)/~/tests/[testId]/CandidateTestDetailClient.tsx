@@ -5,7 +5,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { type ReactNode, useMemo, useCallback, useEffect } from "react"
-import { useBreadcrumbLabels } from "@/components/breadcrumb-context"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -228,12 +227,6 @@ interface Props {
 }
 
 export function CandidateTestDetailClient({ test, attempt, serverNow }: Props) {
-  const { setLabel } = useBreadcrumbLabels()
-
-  useEffect(() => {
-    setLabel(`/~/tests/${test.id}`, test.title)
-  }, [test.id, test.title, setLabel])
-
   const isSubmitted = attempt?.status === "submitted"
   const isInProgress = attempt?.status === "in_progress"
 
