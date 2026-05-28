@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import {
   Icon, IconBell, IconBriefcase, IconBuildingSkyscraper, IconChartBar,
   IconClipboardList, IconDashboard, IconDotsVertical, IconFileDescription,
-  IconFolder, IconHelp, IconHome, IconLogout, IconNotification, IconReport,
+  IconFolder, IconHelp, IconHome, IconLogout, IconNotification,
   IconSearch, IconSettings, IconShieldCheck, IconUser, IconUserCircle,
   IconUsers, IconUsersGroup, IconCreditCard, IconCalendarEvent, IconSchool,
   IconBriefcase2, IconFileAnalytics, IconTargetArrow,
@@ -83,7 +83,6 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "Tests", url: "/~/tests", icon: IconChartBar },
     { title: "Events", url: "/~/events", icon: IconCalendarEvent },
     { title: "LogicLab", url: "/~/logiclab", icon: IconCode, badge: "Beta" },
-    { title: "Reports", url: "/~/reports", icon: IconReport },
     { title: "Recruiters", url: "/~/recruiters", icon: IconBriefcase },
   ],
   admin: [
@@ -95,7 +94,6 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "LogicLab", url: "/~/logiclab", icon: IconCode, badge: "Beta" },
     { title: "Events", url: "/~/events", icon: IconCalendarEvent },
     { title: "Analytics", url: "/~/analytics", icon: IconFileAnalytics },
-    { title: "Reports", url: "/~/reports", icon: IconReport },
   ],
   recruiter: [
     { title: "Home", url: "/~/home", icon: IconHome },
@@ -104,7 +102,6 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "Drives", url: "/~/drives", icon: IconFolder },
     { title: "Tests", url: "/~/tests", icon: IconChartBar },
     { title: "LogicLab", url: "/~/logiclab", icon: IconCode, badge: "Beta" },
-    { title: "Reports", url: "/~/reports", icon: IconReport },
   ],
 }
 
