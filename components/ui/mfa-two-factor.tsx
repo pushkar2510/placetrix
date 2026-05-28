@@ -21,13 +21,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { OTPInput } from "@/components/ui/otp-input";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,14 +33,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
+// import { Badge } from "@/components/ui/badge";
 import {
   Loader2,
-  ShieldCheck,
-  ShieldOff,
-  ShieldPlus,
-  Smartphone,
+  Copy,
+  Check,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -67,7 +60,6 @@ export function MfaTwoFactor() {
   const [enrolledFactor, setEnrolledFactor] = useState<TotpFactor | null>(null);
 
   // Enrollment flow state
-  const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
   const [qrCode, setQrCode] = useState(""); // SVG data URI
   const [secret, setSecret] = useState(""); // fallback manual secret
   const [factorId, setFactorId] = useState("");
@@ -75,6 +67,7 @@ export function MfaTwoFactor() {
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
+  const [copiedSecret, setCopiedSecret] = useState(false);
 
   // ─── Load factor status ────────────────────────────────────────────────────
 
@@ -107,8 +100,18 @@ export function MfaTwoFactor() {
     setVerifyCode("");
     setVerifyError(null);
     setShowSecret(false);
+    setCopiedSecret(false);
 
     try {
+      // Clean up any unverified factors to prevent "name already exists" errors
+      const { data: listData, error: listError } = await supabase.auth.mfa.listFactors();
+      if (!listError && listData?.all) {
+        const unverified = listData.all.filter((f: any) => f.status === "unverified" && f.factor_type === "totp");
+        for (const factor of unverified) {
+          await supabase.auth.mfa.unenroll({ factorId: factor.id });
+        }
+      }
+
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
         friendlyName: "Authenticator App",
@@ -120,7 +123,6 @@ export function MfaTwoFactor() {
       setQrCode(data.totp.qr_code);
       setSecret(data.totp.secret);
       setMfaState("enrolling");
-      setEnrollDialogOpen(true);
     } catch (err: any) {
       toast.error(err.message ?? "Failed to start 2FA setup.");
     }
@@ -150,7 +152,6 @@ export function MfaTwoFactor() {
 
       // Success — factor is now verified/active
       toast.success("Two-factor authentication enabled!");
-      setEnrollDialogOpen(false);
       setVerifyCode("");
       await loadFactors();
     } catch (err: any) {
@@ -171,10 +172,34 @@ export function MfaTwoFactor() {
         // Ignore — cleanup is best-effort
       }
     }
-    setEnrollDialogOpen(false);
+    setMfaState("idle");
     setVerifyCode("");
     setVerifyError(null);
     await loadFactors();
+  };
+
+  const handleCopySecret = async () => {
+    if (!secret) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(secret);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = secret;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      setCopiedSecret(true);
+      toast.success("Secret key copied to clipboard");
+      setTimeout(() => setCopiedSecret(false), 2000);
+    } catch (err) {
+      toast.error("Failed to copy secret key");
+    }
   };
 
   // ─── Unenrollment ─────────────────────────────────────────────────────────
@@ -202,177 +227,218 @@ export function MfaTwoFactor() {
 
   if (mfaState === "loading") {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span>Loading 2FA status…</span>
+      <div className="flex items-center gap-2.5 py-6 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        <span>Checking two-factor authentication status…</span>
       </div>
     );
   }
 
   return (
-    <>
-      {/* ── Status row ─────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <p className="font-medium text-sm">
+    <div className="space-y-4">
+      {/* ── Status Container ─────────────────────────────────────────────────── */}
+      {mfaState !== "enrolling" && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-foreground">
+                Status: {mfaState === "enrolled" ? "Active" : "Disabled"}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-normal max-w-xl">
               {mfaState === "enrolled"
-                ? "Two-factor authentication is active"
-                : "Enable two-factor authentication"}
+                ? "Your account is extra secure. A unique 6-digit verification code from your authenticator app will be required each time you sign in."
+                : "Protect your account from unauthorized access by requiring a 6-digit verification code from your authenticator app at login."}
             </p>
-            {mfaState === "enrolled" && (
-              <Badge className="h-4.5 px-1.5 text-[10px] rounded-sm bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-0 font-medium">
-                <ShieldCheck className="h-2.5 w-2.5 mr-0.5" />
-                Active
-              </Badge>
+          </div>
+
+          <div className="shrink-0 flex items-center pt-3 sm:pt-0 mt-2 sm:mt-0">
+            {mfaState === "enrolled" ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5 hover:border-destructive transition-colors"
+                  >
+                    Disable 2FA
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Disable two-factor authentication?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will remove the extra layer of security on your account.
+                      You will only need your password to log in. You can re-enable this at any time.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={handleUnenroll}
+                    >
+                      Disable 2FA
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <Button
+                size="sm"
+                className="shadow-sm hover:shadow"
+                onClick={handleStartEnroll}
+              >
+                Enable 2FA
+              </Button>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">
-            {mfaState === "enrolled"
-              ? "A verification code from your authenticator app is required each time you sign in."
-              : "Protect your account with an authenticator app (Google Authenticator, Authy, etc.)."}
-          </p>
         </div>
+      )}
 
-        {mfaState === "enrolled" ? (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" className="shrink-0 gap-1.5 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5">
-                <ShieldOff className="h-3.5 w-3.5" />
-                Remove 2FA
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Remove two-factor authentication?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Your account will only be protected by your password after this.
-                  You can re-enable 2FA at any time from Settings.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={handleUnenroll}
-                >
-                  Remove 2FA
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        ) : (
-          <Button
-            size="sm"
-            className="shrink-0 gap-1.5"
-            onClick={handleStartEnroll}
-          >
-            <ShieldPlus className="h-3.5 w-3.5" />
-            Enable 2FA
-          </Button>
-        )}
-      </div>
+      {/* ── Enrollment Flow Inline ──────────────────────────────────────────────── */}
+      {mfaState === "enrolling" && (
+        <div>
+          <div className="space-y-5 pt-2">
+            {/* Step-by-step instructions */}
+            <div className="space-y-5">
 
-      {/* ── Enrollment Dialog ──────────────────────────────────────────────── */}
-      <Dialog
-        open={enrollDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) handleCancelEnroll();
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                <Smartphone className="h-4 w-4 text-primary" />
-              </div>
-              Set up authenticator app
-            </DialogTitle>
-            <DialogDescription>
-              Scan the QR code below with your authenticator app, then enter the
-              6-digit code to confirm.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-5 py-2">
-            {/* QR Code */}
-            {qrCode && (
-              <div className="flex flex-col items-center gap-3">
-                <div className="rounded-xl border bg-white p-3 shadow-sm">
-                  {/* Supabase returns an SVG string — render as inline img via data URI */}
-                  <img
-                    src={qrCode}
-                    alt="Scan this QR code with your authenticator app"
-                    className="h-44 w-44 block"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground text-center max-w-xs">
-                  Use{" "}
-                  <span className="font-medium text-foreground">
-                    Google Authenticator
+              {/* Step 1 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
+                    1
                   </span>
-                  ,{" "}
-                  <span className="font-medium text-foreground">Authy</span>, or
-                  any TOTP app to scan this code.
-                </p>
+                  <p className="text-xs font-semibold text-foreground">
+                    Install an authenticator app
+                  </p>
+                </div>
+                <div className="sm:pl-7 pl-0 text-xs text-muted-foreground leading-normal">
+                  Download any compatible app like{" "}
+                  <span className="font-medium text-foreground">Google Authenticator</span>,{" "}
+                  <span className="font-medium text-foreground">Authy</span>, or{" "}
+                  <span className="font-medium text-foreground">Microsoft Authenticator</span>.
+                </div>
               </div>
-            )}
 
-            {/* Manual secret toggle */}
-            <div className="rounded-lg border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
-              <button
-                type="button"
-                onClick={() => setShowSecret((v) => !v)}
-                className="underline underline-offset-4 hover:text-foreground transition-colors"
-              >
-                {showSecret ? "Hide" : "Can't scan? Enter the code manually"}
-              </button>
-              {showSecret && (
-                <p className="mt-2 font-mono text-foreground break-all select-all">
-                  {secret}
-                </p>
-              )}
-            </div>
+              {/* Step 2 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
+                    2
+                  </span>
+                  <p className="text-xs font-semibold text-foreground">
+                    Scan the QR Code
+                  </p>
+                </div>
+                <div className="sm:pl-7 pl-0 space-y-3">
+                  <p className="text-xs text-muted-foreground leading-normal">
+                    Scan the QR code below using your app's camera.
+                  </p>
 
-            {/* Verify code input */}
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-center">
-                Enter the 6-digit code from your app
-              </p>
-              <OTPInput
-                length={6}
-                value={verifyCode}
-                onChange={(v) => {
-                  setVerifyCode(v);
-                  if (verifyError) setVerifyError(null);
-                }}
-                disabled={isVerifying}
-              />
-              {verifyError && (
-                <p className="text-xs text-destructive text-center rounded-md bg-destructive/10 px-3 py-2">
-                  {verifyError}
-                </p>
-              )}
+                  {/* QR Code Container */}
+                  {qrCode && (
+                    <div className="flex flex-col items-center gap-2 py-1">
+                      <div className="rounded-xl border bg-white p-3.5 shadow-sm transition-all hover:shadow-md">
+                        <img
+                          src={qrCode}
+                          alt="MFA QR Code"
+                          className="h-36 w-36 sm:h-40 sm:w-40 block select-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manual Key Section */}
+                  <div className="rounded-lg border bg-muted/30 p-2.5 text-xs w-full overflow-hidden min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowSecret(!showSecret)}
+                      className="flex items-center gap-1.5 font-medium text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 outline-none text-left w-full truncate"
+                    >
+                      {showSecret ? "Hide manual configuration key" : "Can't scan QR code? Show key"}
+                    </button>
+                    {showSecret && (
+                      <div className="mt-2.5 flex items-center justify-between gap-2 rounded-md bg-background border p-2 font-mono w-full min-w-0">
+                        <span className="text-foreground break-all select-all text-[11px] flex-1 min-w-0 pr-1">
+                          {secret}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleCopySecret}
+                          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+                        >
+                          {copiedSecret ? (
+                            <Check className="h-3.5 w-3.5 text-emerald-500" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
+                    3
+                  </span>
+                  <p className="text-xs font-semibold text-foreground">
+                    Verify code
+                  </p>
+                </div>
+                <div className="sm:pl-7 pl-0 space-y-2.5">
+                  <p className="text-xs text-muted-foreground leading-normal font-normal">
+                    Enter the 6-digit verification code generated by your app.
+                  </p>
+
+                  <div className="space-y-2.5">
+                    <OTPInput
+                      length={6}
+                      value={verifyCode}
+                      onChange={(v) => {
+                        setVerifyCode(v);
+                        if (verifyError) setVerifyError(null);
+                      }}
+                      disabled={isVerifying}
+                      className="py-1"
+                    />
+                    {verifyError && (
+                      <p className="text-xs text-destructive text-center rounded-md bg-destructive/10 px-3 py-2 font-medium animate-in fade-in zoom-in-95 duration-150">
+                        {verifyError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2">
+            <div className="flex justify-end gap-2.5 pt-4 border-t mt-4">
               <Button
                 variant="outline"
-                className="flex-1"
+                size="sm"
+                className="h-9 text-xs px-4"
                 onClick={handleCancelEnroll}
                 disabled={isVerifying}
               >
                 Cancel
               </Button>
               <Button
-                className="flex-1"
+                size="sm"
+                className="h-9 text-xs px-4"
                 onClick={handleVerify}
                 disabled={isVerifying || verifyCode.length < 6}
               >
                 {isVerifying ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                     Verifying…
                   </>
                 ) : (
@@ -381,8 +447,8 @@ export function MfaTwoFactor() {
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
+        </div>
+      )}
+    </div>
   );
 }
