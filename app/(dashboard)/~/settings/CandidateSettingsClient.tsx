@@ -23,6 +23,7 @@ import {
   Monitor, Smartphone, Tablet, RefreshCw, LogOut, MapPin,
   ShieldAlert, CalendarClock,
 } from "lucide-react";
+import { MfaTwoFactor } from "@/components/ui/mfa-two-factor";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -448,13 +449,7 @@ export function CandidateSettingsClient({ userProfile, initialData }: Props) {
                 <CardDescription>Add an extra layer of security to your account</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-sm">Enable 2FA</p>
-                    <p className="text-sm text-muted-foreground">Require a verification code when signing in</p>
-                  </div>
-                  <Switch disabled />
-                </div>
+                <MfaTwoFactor />
               </CardContent>
             </Card>
           </TabsContent>

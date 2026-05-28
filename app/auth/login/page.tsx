@@ -2,16 +2,22 @@
 //
 // Login flow:
 //
-//   login-form   → signInWithPassword()
-//                  ✓ confirmed   → redirect /~
-//                  ✗ unconfirmed → resend OTP → otp-entry
+//   login-form    → signInWithPassword()
+//                   ✓ confirmed, no MFA  → redirect /~
+//                   ✓ confirmed, has MFA → mfa-challenge
+//                   ✗ unconfirmed        → resend OTP → otp-entry
 //
-//   otp-entry    → verifyOtp({ email, token, type: 'signup' })
-//                  ✓ verified    → session active → redirect /~
+//   otp-entry     → verifyOtp({ email, token, type: 'signup' })
+//                   ✓ verified    → session active → redirect /~
 //
-//   OR: Continue with Google → signInWithOAuth() → /auth/callback → /~
+//   mfa-challenge → mfa.listFactors() → mfa.challenge() → mfa.verify()
+//                   ✓ verified    → session aal2 → redirect /~
 //
-//   OR: Google One Tap (floating prompt) → signInWithIdToken() → /~
+//   OR: Continue with Google → signInWithOAuth() → /auth/callback
+//       → middleware AAL check → /auth/mfa (if MFA enrolled) → /~
+//
+//   OR: Google One Tap → signInWithIdToken() → /~
+//       → middleware AAL check → /auth/mfa (if MFA enrolled) → /~
 //
 // Industry note: never grant access to an unconfirmed account.
 "use client";
@@ -35,11 +41,12 @@ import {
   Loader2Icon,
   LockIcon,
   MailIcon,
+  ShieldCheckIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { GoogleOneTap } from "@/components/google-one-tap";
 
-type PageState = "login-form" | "otp-entry";
+type PageState = "login-form" | "otp-entry" | "mfa-challenge";
 
 const RESEND_COOLDOWN = 60;
 
@@ -135,6 +142,15 @@ function LoginContent() {
         throw error;
       }
 
+      // Check if the user has MFA enrolled and needs to verify it.
+      // getAuthenticatorAssuranceLevel() is very fast and rarely hits the network.
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aalData?.currentLevel === "aal1" && aalData?.nextLevel === "aal2") {
+        // User has MFA enrolled — show the TOTP challenge screen
+        setPageState("mfa-challenge");
+        return;
+      }
+
       router.push(next);
       router.refresh();
     } catch (err: unknown) {
@@ -207,6 +223,85 @@ function LoginContent() {
       setIsGoogleLoading(false);
     }
   };
+
+  // ── MFA Challenge screen ───────────────────────────────────────────────────
+  if (pageState === "mfa-challenge") {
+    return (
+      <div className="mx-auto space-y-6 sm:w-sm">
+        <div className="flex flex-col items-center space-y-3 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+            <ShieldCheckIcon className="h-7 w-7 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <h1 className="font-bold text-2xl tracking-wide">Two-Factor Authentication</h1>
+            <p className="text-base text-muted-foreground">
+              Enter the 6-digit code from your authenticator app.
+            </p>
+          </div>
+        </div>
+
+        <form
+          className="space-y-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (otp.length < 6) { setError("Please enter the full 6-digit code."); return; }
+            setError(null);
+            setIsLoading(true);
+            try {
+              const supabase = createClient();
+              const { data: factorsData, error: listErr } = await supabase.auth.mfa.listFactors();
+              if (listErr) throw listErr;
+              const totpFactor = factorsData.totp.find((f: any) => f.status === "verified");
+              if (!totpFactor) { router.push(next); router.refresh(); return; }
+              const { data: challengeData, error: challengeErr } = await supabase.auth.mfa.challenge({ factorId: totpFactor.id });
+              if (challengeErr) throw challengeErr;
+              const { error: verifyErr } = await supabase.auth.mfa.verify({ factorId: totpFactor.id, challengeId: challengeData.id, code: otp });
+              if (verifyErr) throw verifyErr;
+              router.push(next);
+              router.refresh();
+            } catch (err: unknown) {
+              setError(err instanceof Error ? err.message : "Invalid code. Please try again.");
+              setOtp("");
+            } finally {
+              setIsLoading(false);
+            }
+          }}
+        >
+          <OTPInput length={6} value={otp} onChange={setOtp} disabled={isLoading} />
+
+          {error && (
+            <p className="text-sm text-destructive rounded-md bg-destructive/10 px-3 py-2 text-center">
+              {error}
+            </p>
+          )}
+
+          <Button className="w-full" type="submit" disabled={isLoading || otp.length < 6}>
+            {isLoading ? (
+              <><Loader2Icon className="mr-2 h-4 w-4 animate-spin" />Verifying…</>
+            ) : (
+              "Verify & Sign In"
+            )}
+          </Button>
+        </form>
+
+        <div className="rounded-md border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
+          <p>
+            Open your authenticator app and enter the current 6-digit code for this account.
+            Codes refresh every 30 seconds.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          disabled={isLoading}
+          onClick={() => { setPageState("login-form"); setOtp(""); setError(null); }}
+          className="w-full text-center text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Back to sign in
+        </button>
+      </div>
+    );
+  }
 
   // ── OTP screen ─────────────────────────────────────────────────────────────
   if (pageState === "otp-entry") {

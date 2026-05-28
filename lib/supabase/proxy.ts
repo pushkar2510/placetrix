@@ -16,6 +16,12 @@ const PROTECTED_PATHS = ["/~"] as const;
 /** Routes that should NOT be visited while authenticated. */
 const AUTH_PATHS = ["/auth"] as const;
 
+/**
+ * Auth sub-routes that are part of a flow and must be reachable even when
+ * the user has an active session (e.g. MFA challenge, OAuth callback, confirm).
+ */
+const AUTH_FLOW_PATHS = ["/auth/callback", "/auth/confirm", "/auth/mfa"] as const;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isProtected(pathname: string): boolean {
@@ -24,6 +30,10 @@ function isProtected(pathname: string): boolean {
 
 function isAuthPage(pathname: string): boolean {
   return AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
+function isAuthFlowPage(pathname: string): boolean {
+  return AUTH_FLOW_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
 // ─── updateSession ─────────────────────────────────────────────────────────────
@@ -106,7 +116,8 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
 
   // ── Protection: Redirects ──────────────────────────────────────────────────
-  
+
+  // 3a. No session → redirect to login (GET only to avoid double-redirect on POST)
   if (isProtected(pathname) && !user && request.method === "GET") {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/auth/login";
@@ -119,12 +130,32 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     return redirectRes;
   }
 
-  const isFlowRoute = pathname.includes("/auth/callback") || pathname.includes("/auth/confirm");
+  // 3b. Session present on protected route — check MFA assurance level.
+  //     If the user has enrolled MFA (nextLevel=aal2) but this session hasn't verified
+  //     it yet (currentLevel=aal1), redirect to the TOTP challenge page.
+  //     This covers BOTH password logins and Google OAuth logins.
+  //     getAuthenticatorAssuranceLevel() is documented as "very fast, rarely uses network."
+  if (isProtected(pathname) && user && request.method === "GET") {
+    const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalData?.currentLevel === "aal1" && aalData?.nextLevel === "aal2") {
+      const mfaUrl = request.nextUrl.clone();
+      mfaUrl.pathname = "/auth/mfa";
+      mfaUrl.searchParams.set("next", pathname);
+      const redirectRes = NextResponse.redirect(mfaUrl);
+      supabaseResponse.cookies.getAll().forEach((c) => {
+        const { name, value, ...options } = c;
+        redirectRes.cookies.set(name, value, options);
+      });
+      return redirectRes;
+    }
+  }
 
-  if (isAuthPage(pathname) && !isFlowRoute && user) {
+  // 3c. Authenticated user visits an auth page (e.g. /auth/login) → send to dashboard.
+  //     Exception: flow pages like /auth/callback, /auth/confirm, /auth/mfa are always allowed.
+  if (isAuthPage(pathname) && !isAuthFlowPage(pathname) && user) {
     const homeUrl = request.nextUrl.clone();
     homeUrl.pathname = "/~";
-    homeUrl.search = ""; 
+    homeUrl.search = "";
     const redirectRes = NextResponse.redirect(homeUrl);
     supabaseResponse.cookies.getAll().forEach((c) => {
       const { name, value, ...options } = c;
