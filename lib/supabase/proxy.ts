@@ -68,7 +68,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
           // Write updated cookies back onto the request object …
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)

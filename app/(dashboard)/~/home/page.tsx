@@ -106,7 +106,7 @@ export default async function HomePage() {
 
   // ── Candidate ──────────────────────────────────────────────────────────────
   if (profile.account_type === "candidate") {
-    const { data } = await supabase.rpc("get_candidate_home_stats", {
+    const { data } = await supabase.rpc("get_candidate_home_stats" as any, {
       p_profile_id: profile.id,
     });
 
@@ -206,7 +206,7 @@ export default async function HomePage() {
 
   // ── Institute ──────────────────────────────────────────────────────────────
   if (profile.account_type === "institute") {
-    const { data } = await supabase.rpc("get_institute_home_stats", {
+    const { data } = await supabase.rpc("get_institute_home_stats" as any, {
       p_profile_id: profile.id,
     });
 
@@ -298,7 +298,7 @@ export default async function HomePage() {
 
   // ── Recruiter ───────────────────────────────────────────────────────────────
   if (profile.account_type === "recruiter") {
-    const { data: rp } = await supabase
+    const { data: rp } = await (supabase as any)
       .from("recruiter_profiles")
       .select("profile_complete, profile_updated")
       .eq("profile_id", profile.id)
