@@ -427,7 +427,7 @@ export function MfaTwoFactor() {
                         if (verifyError) setVerifyError(null);
                       }}
                       disabled={isVerifying}
-                      className="py-1"
+                      className="py-1 sm:justify-start"
                     />
                     {verifyError && (
                       <p className="text-xs text-destructive text-center rounded-md bg-destructive/10 px-3 py-2 font-medium animate-in fade-in zoom-in-95 duration-150">

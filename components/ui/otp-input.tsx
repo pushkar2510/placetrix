@@ -58,7 +58,7 @@ export function OTPInput({
   };
 
   return (
-    <div className={cn("flex gap-1.5 justify-center sm:justify-start", className)}>
+    <div className={cn("flex gap-1.5 justify-center", className)}>
       {Array.from({ length }).map((_, i) => (
         <input
           key={i}
