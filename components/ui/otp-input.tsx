@@ -58,7 +58,7 @@ export function OTPInput({
   };
 
   return (
-    <div className={cn("flex gap-1.5 justify-center", className)}>
+    <div className={cn("flex gap-1.5 justify-center sm:justify-start", className)}>
       {Array.from({ length }).map((_, i) => (
         <input
           key={i}
@@ -76,10 +76,10 @@ export function OTPInput({
           onFocus={(e) => e.target.select()}
           disabled={disabled}
           className={cn(
-            "h-11 w-9 rounded-md border bg-background text-center font-mono text-base font-semibold",
-            "focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring",
+            "h-11 w-10 rounded-md border border-input bg-background shadow-sm text-center font-mono text-base font-semibold text-foreground",
+            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring",
             "disabled:cursor-not-allowed disabled:opacity-50",
-            "transition-colors"
+            "hover:bg-accent/20 transition-colors"
           )}
         />
       ))}

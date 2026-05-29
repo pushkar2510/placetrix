@@ -66,6 +66,9 @@ export function MfaTwoFactor() {
   const [verifyCode, setVerifyCode] = useState("");
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isStartingEnroll, setIsStartingEnroll] = useState(false);
+  const [isUnenrolling, setIsUnenrolling] = useState(false);
+  const [showDisableDialog, setShowDisableDialog] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const [copiedSecret, setCopiedSecret] = useState(false);
 
@@ -101,6 +104,7 @@ export function MfaTwoFactor() {
     setVerifyError(null);
     setShowSecret(false);
     setCopiedSecret(false);
+    setIsStartingEnroll(true);
 
     try {
       // Clean up any unverified factors to prevent "name already exists" errors
@@ -115,6 +119,7 @@ export function MfaTwoFactor() {
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
         friendlyName: "Authenticator App",
+        issuer: "Placetrix",
       });
       if (error) throw error;
 
@@ -125,6 +130,8 @@ export function MfaTwoFactor() {
       setMfaState("enrolling");
     } catch (err: any) {
       toast.error(err.message ?? "Failed to start 2FA setup.");
+    } finally {
+      setIsStartingEnroll(false);
     }
   };
 
@@ -206,6 +213,7 @@ export function MfaTwoFactor() {
 
   const handleUnenroll = async () => {
     if (!enrolledFactor) return;
+    setIsUnenrolling(true);
 
     try {
       const { error } = await supabase.auth.mfa.unenroll({
@@ -217,9 +225,12 @@ export function MfaTwoFactor() {
       await supabase.auth.refreshSession();
 
       toast.success("Two-factor authentication removed.");
+      setShowDisableDialog(false);
       await loadFactors();
     } catch (err: any) {
       toast.error(err.message ?? "Failed to remove 2FA.");
+    } finally {
+      setIsUnenrolling(false);
     }
   };
 
@@ -242,7 +253,10 @@ export function MfaTwoFactor() {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-foreground">
-                Status: {mfaState === "enrolled" ? "Active" : "Disabled"}
+                Status:{" "}
+                <span className={mfaState === "enrolled" ? "text-emerald-500" : "text-muted-foreground"}>
+                  {mfaState === "enrolled" ? "Active" : "Disabled"}
+                </span>
               </span>
             </div>
             <p className="text-xs text-muted-foreground leading-normal max-w-xl">
@@ -254,7 +268,7 @@ export function MfaTwoFactor() {
 
           <div className="shrink-0 flex items-center pt-3 sm:pt-0 mt-2 sm:mt-0">
             {mfaState === "enrolled" ? (
-              <AlertDialog>
+              <AlertDialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
@@ -273,13 +287,21 @@ export function MfaTwoFactor() {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
+                    <AlertDialogCancel disabled={isUnenrolling}>Cancel</AlertDialogCancel>
+                    <Button
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={handleUnenroll}
+                      disabled={isUnenrolling}
                     >
-                      Disable 2FA
-                    </AlertDialogAction>
+                      {isUnenrolling ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          Disabling…
+                        </>
+                      ) : (
+                        "Disable 2FA"
+                      )}
+                    </Button>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -288,8 +310,16 @@ export function MfaTwoFactor() {
                 size="sm"
                 className="shadow-sm hover:shadow"
                 onClick={handleStartEnroll}
+                disabled={isStartingEnroll}
               >
-                Enable 2FA
+                {isStartingEnroll ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    Setting up…
+                  </>
+                ) : (
+                  "Enable 2FA"
+                )}
               </Button>
             )}
           </div>
@@ -305,15 +335,12 @@ export function MfaTwoFactor() {
 
               {/* Step 1 */}
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-                    1
-                  </span>
-                  <p className="text-xs font-semibold text-foreground">
-                    Install an authenticator app
+                <div className="flex items-center">
+                  <p className="text-sm font-semibold text-foreground">
+                    1. Install an authenticator app
                   </p>
                 </div>
-                <div className="sm:pl-7 pl-0 text-xs text-muted-foreground leading-normal">
+                <div className="text-xs text-muted-foreground leading-normal">
                   Download any compatible app like{" "}
                   <span className="font-medium text-foreground">Google Authenticator</span>,{" "}
                   <span className="font-medium text-foreground">Authy</span>, or{" "}
@@ -323,27 +350,24 @@ export function MfaTwoFactor() {
 
               {/* Step 2 */}
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-                    2
-                  </span>
-                  <p className="text-xs font-semibold text-foreground">
-                    Scan the QR Code
+                <div className="flex items-center">
+                  <p className="text-sm font-semibold text-foreground">
+                    2. Scan the QR Code
                   </p>
                 </div>
-                <div className="sm:pl-7 pl-0 space-y-3">
+                <div className="space-y-3">
                   <p className="text-xs text-muted-foreground leading-normal">
                     Scan the QR code below using your app's camera.
                   </p>
 
                   {/* QR Code Container */}
                   {qrCode && (
-                    <div className="flex flex-col items-center gap-2 py-1">
+                    <div className="flex flex-col items-center sm:items-start gap-2 py-1">
                       <div className="rounded-xl border bg-white p-3.5 shadow-sm transition-all hover:shadow-md">
                         <img
                           src={qrCode}
                           alt="MFA QR Code"
-                          className="h-36 w-36 sm:h-40 sm:w-40 block select-none"
+                          className="h-44 w-44 sm:h-48 sm:w-48 block select-none"
                         />
                       </div>
                     </div>
@@ -384,15 +408,12 @@ export function MfaTwoFactor() {
 
               {/* Step 3 */}
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-                    3
-                  </span>
-                  <p className="text-xs font-semibold text-foreground">
-                    Verify code
+                <div className="flex items-center">
+                  <p className="text-sm font-semibold text-foreground">
+                    3. Verify code
                   </p>
                 </div>
-                <div className="sm:pl-7 pl-0 space-y-2.5">
+                <div className="space-y-2.5">
                   <p className="text-xs text-muted-foreground leading-normal font-normal">
                     Enter the 6-digit verification code generated by your app.
                   </p>
@@ -420,7 +441,7 @@ export function MfaTwoFactor() {
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-2.5 pt-4 border-t mt-4">
+            <div className="flex justify-end gap-2.5 pt-4 mt-4">
               <Button
                 variant="outline"
                 size="sm"
