@@ -252,7 +252,7 @@ export function MfaTwoFactor() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground">
+              <span className="text-sm font-semibold text-foreground">
                 Status:{" "}
                 <span className={mfaState === "enrolled" ? "text-emerald-500" : "text-muted-foreground"}>
                   {mfaState === "enrolled" ? "Active" : "Disabled"}
