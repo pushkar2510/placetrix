@@ -65,7 +65,8 @@ function profileFromClaims(
   return {
     id: sub,
     email: email ?? "",
-    display_name: (meta.full_name as string)
+    display_name: (meta.display_name as string)
+      ?? (meta.full_name as string)
       ?? (meta.name as string)
       ?? email
       ?? "User",
@@ -89,9 +90,9 @@ function profileFromAuthUser(
   return {
     id,
     email: user.email ?? "",
-    display_name: (meta.full_name as string)
+    display_name: (meta.display_name as string)
+      ?? (meta.full_name as string)
       ?? (meta.name as string)
-      ?? (meta.display_name as string)
       ?? user.email
       ?? "User",
     avatar_path: (meta.avatar_path as string) ?? (meta.avatar_url as string) ?? (meta.picture as string) ?? null,
@@ -181,30 +182,10 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
   }
 
   if (user) {
-    // Try to fetch the fresh profile from the database first to ensure consistency (e.g. avatar/name updates)
-    const { data: profile, error: dbError } = await supabase
-      .from("profiles")
-      .select("id, display_name, email, account_type, avatar_path, username")
-      .eq("id", user.sub)
-      .single();
-
-    if (!dbError && profile) {
-      return profile as UserProfile;
-    }
-
-    // Fallback: If DB is unreachable, use user_metadata from JWT claims
-    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
-    if (meta.display_name && meta.account_type) {
-      return {
-        id: user.sub as string,
-        display_name: meta.display_name as string,
-        email: user.email as string,
-        account_type: meta.account_type as AccountType,
-        avatar_path: (meta.avatar_path as string) ?? (meta.avatar_url as string) ?? (meta.picture as string) ?? null,
-        username: (meta.username as string) ?? null,
-      };
-    }
-
+    // ── Zero-Latency Profile Pattern ──
+    // We completely skip querying the "profiles" table. Since all profile updates
+    // (avatar, name) also call supabase.auth.updateUser(), the user's JWT metadata
+    // is guaranteed to be fresh. This saves 1 DB query per page load!
     return profileFromAuthUser(user as any);
   }
 

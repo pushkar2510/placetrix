@@ -31,7 +31,7 @@ import { type EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
   const next = searchParams.get("next") ?? "/~";
@@ -39,9 +39,26 @@ export async function GET(request: NextRequest) {
   // Validate redirect target.
   const safeNext = next.startsWith("/") ? next : "/~";
 
+  // Explicitly define your base URL using an environment variable or request url.
+  // This bypasses the Docker 0.0.0.0 internal binding issue entirely.
+  const getBaseUrl = () => {
+    const requestUrl = new URL(request.url);
+    if (requestUrl.hostname === "localhost" || requestUrl.hostname === "127.0.0.1") {
+      return `${requestUrl.protocol}//${requestUrl.host}`;
+    }
+    let url =
+      process.env.NEXT_PUBLIC_SITE_URL ??
+      process.env.NEXT_PUBLIC_VERCEL_URL ??
+      "http://localhost:3000";
+    url = url.startsWith("http") ? url : `https://${url}`;
+    return url.charAt(url.length - 1) === "/" ? url.slice(0, -1) : url;
+  };
+
+  const baseUrl = getBaseUrl();
+
   if (!token_hash || !type) {
     return NextResponse.redirect(
-      `${origin}/auth/error?error=${encodeURIComponent(
+      `${baseUrl}/auth/error?error=${encodeURIComponent(
         "Invalid verification link — missing token or type."
       )}`
     );
@@ -53,7 +70,7 @@ export async function GET(request: NextRequest) {
   if (error) {
     console.error("[auth/confirm] verifyOtp error:", error.message);
     return NextResponse.redirect(
-      `${origin}/auth/error?error=${encodeURIComponent(error.message)}`
+      `${baseUrl}/auth/error?error=${encodeURIComponent(error.message)}`
     );
   }
 
@@ -61,9 +78,9 @@ export async function GET(request: NextRequest) {
   // the session was established via a legitimate reset link.
   if (type === "recovery") {
     return NextResponse.redirect(
-      `${origin}/auth/change-password?mode=recovery`
+      `${baseUrl}/auth/change-password?mode=recovery`
     );
   }
 
-  return NextResponse.redirect(`${origin}${safeNext}`);
+  return NextResponse.redirect(`${baseUrl}${safeNext}`);
 }

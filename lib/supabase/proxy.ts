@@ -89,6 +89,10 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
       global: {
         headers: globalHeaders,
       },
+      auth: {
+        // @ts-ignore - this flag exists in newer versions to disable the warning
+        suppressGetSessionWarning: true,
+      },
     }
   );
 
