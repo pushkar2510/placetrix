@@ -101,7 +101,7 @@ const resources = [
   },
   {
     title: "Help Center",
-    href: "/help-center",
+    href: "/~/gethelp",
   }
 ];
 

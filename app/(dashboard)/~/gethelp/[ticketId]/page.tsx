@@ -1,15 +1,20 @@
 import { getTicketAction } from "@/app/(dashboard)/~/gethelp/actions";
-import TicketDetailClient from "../../gethelp/[ticketId]/TicketDetailClient";
+import TicketDetailClient from "./TicketDetailClient";
 import { notFound, redirect } from "next/navigation";
 import { getUserProfile } from "@/lib/supabase/profile";
 
-export default async function SupportTicketDetailPage(props: { params: Promise<{ ticketId: string }> }) {
+export default async function GetHelpTicketDetailPage(props: { params: Promise<{ ticketId: string }> }) {
   const params = await props.params;
 
-  // Validate user is logged in and is admin
+  // Validate user is logged in
   const profile = await getUserProfile();
-  if (!profile || profile.account_type !== "admin") {
-    redirect("/~/home");
+  if (!profile) {
+    redirect("/auth/login");
+  }
+
+  // Redirect admin to support route
+  if (profile.account_type === "admin") {
+    redirect(`/~/support/${params.ticketId}`);
   }
 
   // Validate ticketId is a UUID to prevent malformed requests
@@ -20,6 +25,11 @@ export default async function SupportTicketDetailPage(props: { params: Promise<{
 
   const data = await getTicketAction(params.ticketId);
   if (!data) {
+    return notFound();
+  }
+
+  // Double check that this ticket belongs to the user
+  if (data.ticket.user_id !== profile.id) {
     return notFound();
   }
 

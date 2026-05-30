@@ -43,7 +43,7 @@ export async function getTicketAction(ticketId: string) {
 
   const { data: ticket, error: ticketError } = await supabase
     .from("tickets")
-    .select("*, profiles(avatar_path)")
+    .select("*, profiles(avatar_path, display_name, email)")
     .eq("id", ticketId)
     .single();
 
@@ -53,7 +53,7 @@ export async function getTicketAction(ticketId: string) {
 
   const { data: messages, error: messagesError } = await supabase
     .from("ticket_messages")
-    .select("*, profiles(avatar_path)")
+    .select("*, profiles(avatar_path, display_name, email)")
     .eq("ticket_id", ticketId)
     .order("created_at", { ascending: true });
 
@@ -199,4 +199,3 @@ export async function updateTicketStatusAction(ticketId: string, status: "open" 
 
   return true;
 }
-

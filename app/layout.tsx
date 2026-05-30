@@ -27,7 +27,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         ><TooltipProvider>{children}
-            <Toaster position="bottom-right"/>
+            <Toaster position="top-center" />
           </TooltipProvider>
         </ThemeProvider>
       </body>

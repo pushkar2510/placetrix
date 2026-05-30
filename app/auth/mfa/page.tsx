@@ -178,7 +178,7 @@ function MfaContent() {
         <p className="text-xs text-muted-foreground text-center">
           Lost access to your authenticator app?{" "}
           <Link
-            href="/help-center"
+            href="/~/gethelp"
             className="underline underline-offset-4 hover:text-foreground"
           >
             Contact support

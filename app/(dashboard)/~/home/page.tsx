@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { RecentSupportTickets } from "./RecentSupportTickets";
 import {
   ArrowRight,
   BookOpen,
@@ -304,16 +305,12 @@ export default async function HomePage() {
       institutesCount,
       recruitersCount,
       pendingTicketsCount,
-      activeJobsCount,
-      attemptsCount,
       recentTicketsRes
     ] = await Promise.all([
       (supabase as any).from("profiles").select("*", { count: "exact", head: true }).eq("account_type", "candidate"),
       (supabase as any).from("profiles").select("*", { count: "exact", head: true }).eq("account_type", "institute"),
       (supabase as any).from("profiles").select("*", { count: "exact", head: true }).eq("account_type", "recruiter"),
       (supabase as any).from("tickets").select("*", { count: "exact", head: true }).in("status", ["open", "in_progress"]),
-      (supabase as any).from("job_postings").select("*", { count: "exact", head: true }).eq("status", "active"),
-      (supabase as any).from("test_attempts").select("*", { count: "exact", head: true }),
       (supabase as any).from("tickets").select("*").order("created_at", { ascending: false }).limit(5),
     ]);
 
@@ -322,8 +319,6 @@ export default async function HomePage() {
       institutes: institutesCount.count ?? 0,
       recruiters: recruitersCount.count ?? 0,
       pendingTickets: pendingTicketsCount.count ?? 0,
-      activeJobs: activeJobsCount.count ?? 0,
-      attempts: attemptsCount.count ?? 0,
     };
 
     const recentTickets = recentTicketsRes.data || [];
@@ -331,7 +326,7 @@ export default async function HomePage() {
     return (
       <div className="flex flex-col gap-6 px-4 py-8 md:px-8">
         <div className="flex flex-col gap-1.5">
-          <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Admin Console</h1>
+          <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Home</h1>
           <p className="text-sm text-muted-foreground">
             Platform overview and recent support ticket queue
           </p>
@@ -339,7 +334,7 @@ export default async function HomePage() {
 
         <div className="space-y-6">
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard
               icon={<Users className="h-4 w-4" />}
               label="Candidates"
@@ -356,16 +351,6 @@ export default async function HomePage() {
               value={stats.recruiters}
             />
             <StatCard
-              icon={<ListCheck className="h-4 w-4" />}
-              label="Test Attempts"
-              value={stats.attempts}
-            />
-            <StatCard
-              icon={<BookOpen className="h-4 w-4" />}
-              label="Active Jobs"
-              value={stats.activeJobs}
-            />
-            <StatCard
               icon={<PlayCircle className="h-4 w-4" />}
               label="Pending Tickets"
               value={stats.pendingTickets}
@@ -377,57 +362,13 @@ export default async function HomePage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold tracking-tight text-foreground">Recent Support Tickets</h2>
-              <Link href="/help-center" className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
-                Go to Ticket Center
+              <Link href="/~/support" className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+                Go to Support Queue
                 <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
 
-            {recentTickets.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                No support tickets found in the system.
-              </div>
-            ) : (
-              <div className="rounded-lg border bg-card overflow-hidden">
-                <div className="divide-y">
-                  {recentTickets.map((ticket: any) => (
-                    <div
-                      key={ticket.id}
-                      className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="space-y-1 min-w-0 pr-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-muted-foreground">#{ticket.ticket_number}</span>
-                          <span className="text-xs text-zinc-300 dark:text-zinc-700">&bull;</span>
-                          <span className="text-xs font-semibold text-zinc-500 bg-zinc-100 dark:bg-zinc-800/80 px-2 py-0.5 rounded-full">{ticket.email}</span>
-                        </div>
-                        <p className="text-sm font-medium text-foreground truncate">{ticket.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Opened on {new Date(ticket.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className={cn(
-                          "rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase border",
-                          ticket.status === "open" ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border-blue-200/60 dark:border-blue-800/40" :
-                          ticket.status === "in_progress" ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/40" :
-                          ticket.status === "resolved" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/40" :
-                          "bg-zinc-50 text-zinc-700 dark:bg-zinc-500/10 dark:text-zinc-400 border-zinc-200/60 dark:border-zinc-800/40"
-                        )}>
-                          {ticket.status.replace("_", " ")}
-                        </span>
-                        <Link href={`/help-center/ticket/${ticket.id}`}>
-                          <Button size="sm" variant="outline" className="h-8 text-xs font-semibold">
-                            View
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <RecentSupportTickets initialTickets={recentTickets} />
           </div>
         </div>
       </div>

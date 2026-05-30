@@ -305,7 +305,7 @@ function MobileNav({
                   </a>
 
                   <Link
-                    href="/help-center"
+                    href="/~/gethelp"
                     onClick={closeMenu}
                     className="flex h-11 items-center justify-between rounded-xl px-3 text-sm font-medium text-zinc-800 hover:bg-black/[0.04] dark:text-zinc-100 dark:hover:bg-white/[0.06]"
                   >
@@ -887,7 +887,7 @@ const resources = [
   },
   {
     title: "Help Center",
-    href: "/help-center",
+    href: "/~/gethelp",
   },
 ];
 

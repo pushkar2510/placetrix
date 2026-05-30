@@ -88,11 +88,6 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
   admin: [
     { title: "Home", url: "/~/home", icon: IconHome },
     { title: "Users", url: "/~/users", icon: IconUsers },
-    { title: "Groups", url: "/~/groups", icon: IconUsersGroup },
-    { title: "Drives", url: "/~/drives", icon: IconFolder },
-    { title: "Tests", url: "/~/tests", icon: IconChartBar },
-    { title: "LogicLab", url: "/~/logiclab/admin", icon: IconCode, badge: "Beta" },
-    { title: "Events", url: "/~/events", icon: IconCalendarEvent },
     { title: "Analytics", url: "/~/analytics", icon: IconFileAnalytics },
     { title: "Support Queue", url: "/~/support", icon: IconHelp },
   ],
@@ -110,7 +105,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
 const NAV_SECONDARY: NavItem[] = [
   { title: "Notifications", url: "/~/notifications", icon: IconBell },
   { title: "Settings", url: "/~/settings", icon: IconSettings },
-  { title: "Get Help", url: "/help-center", icon: IconHelp },
+  { title: "Get Help", url: "/~/gethelp", icon: IconHelp },
 ]
 
 
@@ -436,8 +431,6 @@ export function NavSecondary({
               >
                 <Link
                   href={item.url}
-                  target={item.title === "Get Help" ? "_blank" : undefined}
-                  rel={item.title === "Get Help" ? "noopener noreferrer" : undefined}
                   onClick={() => setOpenMobile(false)}
                 >
                   <item.icon />
