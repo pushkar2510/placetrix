@@ -1,4 +1,5 @@
-import { CandidateCourse } from "./components/CandidateCourse"
+import { CandidateCourseClient } from "./CandidateCourseClient"
+import { INITIAL_COURSES } from "./types"
 
 export const metadata = {
   title: "Courses",
@@ -6,5 +7,5 @@ export const metadata = {
 }
 
 export default function CoursesPage() {
-  return <CandidateCourse />
+  return <CandidateCourseClient initialCourses={INITIAL_COURSES} />
 }

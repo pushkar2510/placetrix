@@ -288,7 +288,7 @@ async function fetchInstituteTests(
   query = searchFilter(query)
   if (activeTab === "all") {
     query = query
-      .order("available_from", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false, nullsFirst: false })
       .order("title", { ascending: true })
   } else if (activeTab === "drafts") {
     query = query.order("title", { ascending: true })
