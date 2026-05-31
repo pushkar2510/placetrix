@@ -121,7 +121,11 @@ export async function middleware(request: NextRequest) {
 
   if (systemStatus === "maintenance") {
     // Already on the maintenance page — render it, don't loop.
-    if (pathname.startsWith("/maintenance")) return NextResponse.next();
+    if (pathname.startsWith("/maintenance")) {
+      const res = NextResponse.next();
+      res.headers.set("Cache-Control", "no-store, max-age=0");
+      return res;
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/maintenance";
     url.search = "";
@@ -132,7 +136,11 @@ export async function middleware(request: NextRequest) {
 
   if (systemStatus === "connection_error") {
     // Already on the connection-error page — render it, don't loop.
-    if (pathname.startsWith("/connection-error")) return NextResponse.next();
+    if (pathname.startsWith("/connection-error")) {
+      const res = NextResponse.next();
+      res.headers.set("Cache-Control", "no-store, max-age=0");
+      return res;
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/connection-error";
     url.search = "";

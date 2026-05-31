@@ -127,6 +127,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     loginUrl.pathname = "/auth/login";
     loginUrl.searchParams.set("next", pathname);
     const redirectRes = NextResponse.redirect(loginUrl);
+    redirectRes.headers.set("Cache-Control", "no-store, max-age=0");
     supabaseResponse.cookies.getAll().forEach((c) => {
       const { name, value, ...options } = c;
       redirectRes.cookies.set(name, value, options);
@@ -146,6 +147,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
       mfaUrl.pathname = "/auth/mfa";
       mfaUrl.searchParams.set("next", pathname);
       const redirectRes = NextResponse.redirect(mfaUrl);
+      redirectRes.headers.set("Cache-Control", "no-store, max-age=0");
       supabaseResponse.cookies.getAll().forEach((c) => {
         const { name, value, ...options } = c;
         redirectRes.cookies.set(name, value, options);
@@ -161,6 +163,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     homeUrl.pathname = "/~";
     homeUrl.search = "";
     const redirectRes = NextResponse.redirect(homeUrl);
+    redirectRes.headers.set("Cache-Control", "no-store, max-age=0");
     supabaseResponse.cookies.getAll().forEach((c) => {
       const { name, value, ...options } = c;
       redirectRes.cookies.set(name, value, options as any);
