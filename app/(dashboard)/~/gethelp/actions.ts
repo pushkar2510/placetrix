@@ -41,11 +41,15 @@ export async function getTicketAction(ticketId: string) {
     return null;
   }
 
-  const { data: ticket, error: ticketError } = await supabase
-    .from("tickets")
-    .select("*, profiles(avatar_path, display_name, email)")
-    .eq("id", ticketId)
-    .single();
+  const { data: profile } = await supabase.from("profiles").select("account_type").eq("id", userId).single();
+  const isAdmin = profile?.account_type === "admin";
+
+  let query = supabase.from("tickets").select("*, profiles(avatar_path, display_name, email)").eq("id", ticketId);
+  if (!isAdmin) {
+    query = query.eq("user_id", userId);
+  }
+  
+  const { data: ticket, error: ticketError } = await query.single();
 
   if (ticketError || !ticket) {
     return null;
@@ -121,11 +125,18 @@ export async function validateTicketAction(ticketInput: string) {
   const input = ticketInput.trim();
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input);
 
-  const query = supabase.from("tickets").select("id").limit(1);
+  const { data: profile } = await supabase.from("profiles").select("account_type").eq("id", userData.user.id).single();
+  const isAdmin = profile?.account_type === "admin";
+
+  let query = supabase.from("tickets").select("id").limit(1);
   if (isUuid) {
-    query.eq("id", input);
+    query = query.eq("id", input);
   } else {
-    query.eq("ticket_number", input);
+    query = query.eq("ticket_number", input);
+  }
+  
+  if (!isAdmin) {
+    query = query.eq("user_id", userData.user.id);
   }
 
   const { data, error } = await query.single();

@@ -683,7 +683,7 @@ export function ProblemIDEClient({
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <Link 
-            href="/~/logiclab/problems"
+            href="/~/logiclab"
             className="flex items-center justify-center h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all shrink-0"
             title="Back to Problems"
           >

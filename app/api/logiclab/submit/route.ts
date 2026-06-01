@@ -44,11 +44,18 @@ function getDeterministicMetrics(code: string, languageId: number | string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { problem_id, code, language_id, user_id } = await req.json()
+    const { problem_id, code, language_id } = await req.json()
+    const supabase = (await createClient()) as any
 
-    if (!problem_id || !code || !language_id || !user_id) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+    }
+    const user_id = user.id
+
+    if (!problem_id || !code || !language_id) {
       return NextResponse.json(
-        { success: false, error: "Missing required fields: problem_id, code, language_id, user_id" },
+        { success: false, error: "Missing required fields: problem_id, code, language_id" },
         { status: 400 }
       )
     }
@@ -71,8 +78,6 @@ export async function POST(req: NextRequest) {
     }
 
     const judge0Endpoint = process.env.NEXT_PUBLIC_JUDGE0_ENDPOINT || "http://187.127.171.46:2358"
-
-    const supabase = (await createClient()) as any
 
     // 1. Fetch problem data (driver code + time/memory limits + test cases)
     const { data: problems, error: problemError } = await (supabase as any)

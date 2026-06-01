@@ -20,6 +20,7 @@
 //   SUPABASE_SERVICE_ROLE_KEY — service role key (server-only, never NEXT_PUBLIC_)
 
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 
 export async function POST(request: NextRequest) {
   // ── 1. Authenticate the caller ────────────────────────────────────────────
@@ -33,7 +34,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!secret || secret !== expectedSecret) {
+  if (!secret) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const secretBuffer = Buffer.from(secret);
+  const expectedBuffer = Buffer.from(expectedSecret);
+
+  if (secretBuffer.length !== expectedBuffer.length || !timingSafeEqual(secretBuffer, expectedBuffer)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
