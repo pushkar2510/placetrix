@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
     }
 
     const pLimit = (await import('p-limit')).default
-    const limit = pLimit(10) // 10 concurrent requests
+    const limit = pLimit(2) // 2 concurrent requests to prevent dropping connections
 
     const runTestCase = async (tc: any, i: number) => {
       const encodedStdin = Buffer.from(tc.input || "").toString("base64")

@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
       const results: any[] = []
 
       const pLimit = (await import('p-limit')).default
-      const limit = pLimit(10)
+      const limit = pLimit(2)
 
       const runTestCase = async (tc: any, i: number) => {
         const encodedStdin = Buffer.from(tc.input || "").toString("base64")
