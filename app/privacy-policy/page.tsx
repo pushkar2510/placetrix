@@ -290,7 +290,7 @@ function MobileNav({
                   </a>
 
                   <Link
-                    href="/~/gethelp"
+                    href="/help-center"
                     onClick={closeMenu}
                     className="flex h-11 items-center justify-between rounded-xl px-3 text-sm font-medium text-zinc-800 hover:bg-black/[0.04] dark:text-zinc-100 dark:hover:bg-white/[0.06]"
                   >
@@ -649,7 +649,7 @@ function CTASection() {
                 className={cn("rounded-full", NAV_BUTTON)}
                 asChild
               >
-                <Link href="/~/gethelp">Help Center</Link>
+                <Link href="/help-center">Help Center</Link>
               </Button>
             </div>
           </div>
@@ -667,7 +667,7 @@ const company = [
 
 const resources = [
   { title: "Pricing", href: "/pricing" },
-  { title: "Help Center", href: "/~/gethelp" },
+  { title: "Help Center", href: "/help-center" },
 ];
 
 const socialLinks = [

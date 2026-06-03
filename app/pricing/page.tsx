@@ -507,7 +507,7 @@ function CurrentPlanSection() {
                                         className={cn("rounded-full", NAV_BUTTON)}
                                         asChild
                                     >
-                                        <Link href="/~/gethelp">Help Center</Link>
+                                        <Link href="/help-center">Help Center</Link>
                                     </Button>
                                 </div>
                             </div>
@@ -668,7 +668,7 @@ const companyLinks = [
 
 const resourceLinks = [
     { title: "Pricing", href: "/pricing" },
-    { title: "Help Center", href: "/~/gethelp" },
+    { title: "Help Center", href: "/help-center" },
 ];
 
 const socialLinks = [

@@ -23,6 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { UserProfile } from "@/lib/supabase/profile";
 import { getUserProfileAction } from "@/lib/supabase/profile";
 import { buildStorageUrl } from "@/lib/storage";
+import BorderGlow from "@/components/BorderGlow";
 
 const Galaxy = dynamic(() => import("@/components/Galaxy"), {
   ssr: false,
@@ -406,141 +407,7 @@ function HeaderShell({
   return <HeaderVisual user={user} isLoading={isLoading} />;
 }
 
-type TermsContentSection = {
-  id: string;
-  title: string;
-  paragraphs: string[];
-};
-
-const TERMS_SECTIONS: TermsContentSection[] = [
-  {
-    id: "acceptance-of-terms",
-    title: "Acceptance of Terms",
-    paragraphs: [
-      "By accessing or using PlaceTrix, you agree to these Terms and Conditions. If that sounds fair, great. If not, the platform should not be used until you are comfortable with the terms.",
-      "These terms apply to visitors, registered users, students, institutions, and anyone else using PlaceTrix services through the website or related offerings.",
-    ],
-  },
-  {
-    id: "eligibility-and-account",
-    title: "Eligibility & Accounts",
-    paragraphs: [
-      "You are responsible for making sure the information you provide during registration is accurate and up to date. Please do not impersonate someone else, create misleading accounts, or unleash chaos for sport.",
-      "You are also responsible for maintaining the confidentiality of your account credentials and for activity that happens under your account unless caused by our own failure to protect it.",
-    ],
-  },
-  {
-    id: "platform-use",
-    title: "Use of the Platform",
-    paragraphs: [
-      "PlaceTrix is provided to support learning, preparation, assessments, and related academic or placement workflows. You agree to use the platform in a lawful, respectful, and reasonable manner.",
-      "You must not misuse the service by attempting unauthorised access, scraping restricted data, introducing malicious code, reverse engineering protected systems, disrupting other users, or using the platform in ways that break applicable law.",
-      "In short: use the platform like a responsible human, not like a stress test with Wi-Fi.",
-    ],
-  },
-  {
-    id: "content-and-submissions",
-    title: "Content & Submissions",
-    paragraphs: [
-      "If you upload, submit, or share content through PlaceTrix, you remain responsible for that content and must have the necessary rights to provide it.",
-      "You must not submit content that is unlawful, harmful, defamatory, abusive, infringing, misleading, or otherwise inappropriate for an educational platform.",
-      "We may remove or restrict content that violates these terms or creates risk for users, institutions, or the platform.",
-    ],
-  },
-  {
-    id: "intellectual-property",
-    title: "Intellectual Property",
-    paragraphs: [
-      "PlaceTrix, including its branding, design, software, workflows, text, graphics, and platform content, is owned by 360 View Tech or its licensors unless stated otherwise.",
-      "You may not copy, modify, distribute, reproduce, resell, or exploit platform materials except as permitted by law or with prior written permission.",
-      "Translation: you can use the platform, but you do not get to walk off with the furniture.",
-    ],
-  },
-  {
-    id: "availability-and-changes",
-    title: "Availability & Changes",
-    paragraphs: [
-      "We work hard to keep PlaceTrix available, reliable, and useful, but we do not guarantee uninterrupted access at all times. Maintenance, updates, bugs, outages, and internet-related gremlins can happen.",
-      "We may modify, suspend, improve, or discontinue parts of the platform from time to time, with or without notice where appropriate.",
-    ],
-  },
-  {
-    id: "payments-and-plans",
-    title: "Payments & Plans",
-    paragraphs: [
-      "If PlaceTrix offers paid plans, premium features, subscriptions, or institution-based billing, the applicable pricing and billing terms will be presented at the point of purchase or agreement.",
-      "You agree to pay any valid charges associated with the services you select. Unless stated otherwise, fees are non-refundable except where required by law or expressly promised by us.",
-    ],
-  },
-  {
-    id: "privacy",
-    title: "Privacy",
-    paragraphs: [
-      "Your use of PlaceTrix is also subject to our Privacy Policy, which explains how we collect, use, and protect personal information.",
-      "If there is ever a question about data handling, the Privacy Policy and these Terms should be read together like two slightly more organised roommates.",
-    ],
-  },
-  {
-    id: "disclaimers",
-    title: "Disclaimers",
-    paragraphs: [
-      "PlaceTrix is provided on an 'as is' and 'as available' basis to the extent permitted by applicable law. We do not guarantee that the platform will always be error-free, uninterrupted, or perfectly suited to every user's exact expectations.",
-      "We provide learning tools, preparation features, and platform functionality, but we do not guarantee exam outcomes, placement outcomes, grades, admissions, or career results. We help with preparation; we do not control the universe.",
-    ],
-  },
-  {
-    id: "limitation-of-liability",
-    title: "Limitation of Liability",
-    paragraphs: [
-      "To the maximum extent permitted by law, 360 View Tech and its affiliates, team members, partners, and service providers will not be liable for indirect, incidental, special, consequential, or punitive damages arising from your use of, or inability to use, PlaceTrix.",
-      "This includes, where applicable, loss of data, loss of opportunity, loss of revenue, interruption of service, or other commercial or personal impacts not directly caused by wilful misconduct or legal obligations that cannot be excluded.",
-    ],
-  },
-  {
-    id: "termination",
-    title: "Suspension & Termination",
-    paragraphs: [
-      "We may suspend, restrict, or terminate access to PlaceTrix if we reasonably believe a user has violated these terms, created security risks, misused the platform, or acted in a way that harms users or the service.",
-      "You may stop using the platform at any time. Certain provisions, including intellectual property, disclaimers, limitation of liability, and other clauses that logically survive, will continue to apply after termination.",
-    ],
-  },
-  {
-    id: "governing-law",
-    title: "Governing Law",
-    paragraphs: [
-      "These Terms and Conditions are governed by the applicable laws of India, unless a different legal framework is required by a specific agreement or mandatory law.",
-      "Any disputes related to these terms will be subject to the jurisdiction of the appropriate courts, unless otherwise required by law.",
-    ],
-  },
-  {
-    id: "contact-us",
-    title: "Contact Us",
-    paragraphs: [
-      "If you have questions about these Terms and Conditions, account use, platform rules, or anything else that sounds legal enough to deserve a proper answer, contact us at 360viewtech@gmail.com.",
-    ],
-  },
-];
-
-function renderParagraph(paragraph: string) {
-  if (!paragraph.includes("360viewtech@gmail.com")) return paragraph;
-
-  const parts = paragraph.split("360viewtech@gmail.com");
-
-  return (
-    <>
-      {parts[0]}
-      <a
-        href="mailto:360viewtech@gmail.com"
-        className="font-medium text-zinc-900 underline underline-offset-2 dark:text-white"
-      >
-        360viewtech@gmail.com
-      </a>
-      {parts[1]}
-    </>
-  );
-}
-
-function TermsHeroSection() {
+function HelpHeroSection() {
   return (
     <section
       className={cn(
@@ -551,76 +418,102 @@ function TermsHeroSection() {
       <div className={CONTENT}>
         <div className="mx-auto max-w-3xl text-center">
           <p className="mb-2 text-xs font-medium uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-            Terms & Conditions
+            Help Center
           </p>
           <h1
             className="font-cirka text-balance text-3xl font-semibold tracking-tight md:text-5xl"
           >
-            A few ground rules, minus the dramatic legal fog.
+            Here to help you get back on track.
           </h1>
           <p className="mt-3 text-sm leading-7 text-stone-600 dark:text-stone-300 md:text-base md:leading-8">
-            These terms explain how PlaceTrix can be used, what we expect from
-            users, and what responsibilities sit with both sides. We kept it as
-            clear as possible because nobody enjoys decoding legal wallpaper.
+            Whether you have questions about tests, account access, login troubles, or technical issues, we are committed to keeping your preparation journey smooth.
           </p>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-            <span className="rounded-full border border-black/10 bg-black/[0.03] px-3 py-1.5 text-xs text-zinc-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-400">
-              Effective: May 24, 2026
-            </span>
-            <span className="rounded-full border border-black/10 bg-black/[0.03] px-3 py-1.5 text-xs text-zinc-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-400">
-              PlaceTrix
-            </span>
-          </div>
         </div>
       </div>
     </section>
   );
 }
 
-function TermsBodySection() {
-  return (
-    <section
-      className={cn(
-        "bg-white text-zinc-950 dark:bg-black dark:text-white",
-        SECTION_Y
-      )}
-    >
-      <div className={CONTENT}>
-        <article className="rounded-3xl border border-black/10 bg-white/95 p-6 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.03] md:p-8 lg:p-10">
-          <div className="mb-8 flex flex-wrap gap-2">
-            {TERMS_SECTIONS.map((section) => (
-              <a
-                key={section.id}
-                href={`#${section.id}`}
-                className="rounded-full border border-black/10 bg-black/[0.03] px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-black/[0.06] dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-300 dark:hover:bg-white/[0.09]"
-              >
-                {section.title}
-              </a>
-            ))}
-          </div>
+function HelpBodySection() {
+  const { resolvedTheme } = useTheme();
+  const mounted = useMounted();
+  const glowEnabled = mounted && resolvedTheme === "dark";
 
-          <div className="space-y-10">
-            {TERMS_SECTIONS.map((section, index) => (
-              <React.Fragment key={section.id}>
-                {index !== 0 && (
-                  <div className="h-px w-full bg-black/[0.06] dark:bg-white/[0.07]" />
-                )}
-                <div id={section.id} className="scroll-mt-28">
-                  <h2
-                    className="font-cirka text-balance text-2xl font-semibold tracking-tight md:text-3xl"
+  return (
+    <section className={cn("bg-white text-zinc-950 dark:bg-black dark:text-white", SECTION_Y)}>
+      <div className={CONTENT}>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:gap-8">
+
+          {/* Card 1: Signed In support */}
+          <BorderGlow
+            className="group h-full rounded-3xl"
+            glowColor="140 75% 50%"
+            backgroundColor="transparent"
+            borderRadius={24}
+            glowRadius={glowEnabled ? 14 : 0}
+            glowIntensity={glowEnabled ? 1.2 : 0}
+            fillOpacity={glowEnabled ? 0.08 : 0}
+            coneSpread={glowEnabled ? 14 : 0}
+          >
+            <article className="h-full rounded-3xl bg-white/95 p-6 backdrop-blur-sm transition-all duration-300 dark:bg-white/[0.03] md:p-8 flex flex-col justify-between">
+              <div>
+                <h3 className="text-xl font-semibold tracking-[-0.02em] text-zinc-900 dark:text-white">
+                  Create a Support Ticket
+                </h3>
+                <p className="mt-3 text-sm leading-7 text-stone-600 dark:text-stone-300 md:text-base md:leading-8">
+                  If you are already registered and can sign in, the fastest way to get help is to create a support ticket inside your dashboard.
+                  This allows us to track your issue, see your profile details, and assist you directly inside the platform.
+                </p>
+              </div>
+              <div className="mt-8">
+                <Button size="lg" className="w-full rounded-full font-medium" asChild>
+                  <Link href="/~/gethelp">
+                    Create Ticket
+                  </Link>
+                </Button>
+              </div>
+            </article>
+          </BorderGlow>
+
+          {/* Card 2: Contact support via email */}
+          <BorderGlow
+            className="group h-full rounded-3xl"
+            glowColor="140 75% 50%"
+            backgroundColor="transparent"
+            borderRadius={24}
+            glowRadius={glowEnabled ? 14 : 0}
+            glowIntensity={glowEnabled ? 1.2 : 0}
+            fillOpacity={glowEnabled ? 0.08 : 0}
+            coneSpread={glowEnabled ? 14 : 0}
+          >
+            <article className="h-full rounded-3xl bg-white/95 p-6 backdrop-blur-sm transition-all duration-300 dark:bg-white/[0.03] md:p-8 flex flex-col justify-between">
+              <div>
+                <h3 className="text-xl font-semibold tracking-[-0.02em] text-zinc-900 dark:text-white">
+                  Lost Access or General Issues?
+                </h3>
+                <p className="mt-3 text-sm leading-7 text-stone-600 dark:text-stone-300 md:text-base md:leading-8">
+                  Cannot sign in? Having issues with two-factor authentication (MFA), account activation, password resets, or general inquiries?
+                  Don&apos;t worry. You can reach our support team directly via email at{" "}
+                  <a
+                    href="mailto:360viewtech@gmail.com"
+                    className="font-medium text-zinc-900 underline underline-offset-2 dark:text-white"
                   >
-                    {section.title}
-                  </h2>
-                  <div className="mt-4 space-y-3 text-sm leading-7 text-stone-600 dark:text-stone-300 md:text-base md:leading-8">
-                    {section.paragraphs.map((paragraph, i) => (
-                      <p key={`${section.id}-${i}`}>{renderParagraph(paragraph)}</p>
-                    ))}
-                  </div>
-                </div>
-              </React.Fragment>
-            ))}
-          </div>
-        </article>
+                    360viewtech@gmail.com
+                  </a>
+                  . Please provide your registered email and a detailed description of the problem.
+                </p>
+              </div>
+              <div className="mt-8">
+                <Button size="lg" variant="outline" className={cn("w-full rounded-full font-medium", NAV_BUTTON)} asChild>
+                  <a href="mailto:360viewtech@gmail.com">
+                    Email Support
+                  </a>
+                </Button>
+              </div>
+            </article>
+          </BorderGlow>
+
+        </div>
       </div>
     </section>
   );
@@ -656,17 +549,15 @@ function CTASection() {
 
           <div className="relative z-20 mx-auto max-w-2xl">
             <p className="mb-2 text-xs font-medium uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-              Need help?
+              Need more help?
             </p>
             <h2
               className="font-cirka text-balance text-3xl font-semibold tracking-tight md:text-5xl"
             >
-              Questions about the rules?
+              Contact our support team.
             </h2>
             <p className="mx-auto mt-3 text-sm leading-7 text-stone-600 dark:text-stone-300 md:text-base md:leading-8">
-              Reach out for clarification on accounts, platform use, terms, or
-              anything else covered here. We will keep it clear, helpful, and
-              easy to understand.
+              We aim to resolve all account access, billing, and technical issues within a reasonable time. Reach out via support ticket or email for a clear, human reply.
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <Button size="lg" className="rounded-full font-medium" asChild>
@@ -678,7 +569,7 @@ function CTASection() {
                 className={cn("rounded-full", NAV_BUTTON)}
                 asChild
               >
-                <Link href="/help-center">Help Center</Link>
+                <Link href="/auth/login">Go to Login</Link>
               </Button>
             </div>
           </div>
@@ -696,7 +587,7 @@ const company = [
 
 const resources = [
   { title: "Pricing", href: "/pricing" },
-  { title: "Help Center", href: "/help-center" }
+  { title: "Help Center", href: "/help-center" },
 ];
 
 const socialLinks = [
@@ -746,13 +637,13 @@ function Footer() {
             <span className="text-xs text-zinc-500 dark:text-zinc-400">Resources</span>
             <div className="mt-2 flex flex-col gap-2">
               {resources.map(({ href, title }) => (
-                <a
+                <Link
                   className="w-max text-sm text-zinc-700 hover:underline dark:text-zinc-300"
                   href={href}
                   key={title}
                 >
                   {title}
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -761,13 +652,13 @@ function Footer() {
             <span className="text-xs text-zinc-500 dark:text-zinc-400">Company</span>
             <div className="mt-2 flex flex-col gap-2">
               {company.map(({ href, title }) => (
-                <a
+                <Link
                   className="w-max text-sm text-zinc-700 hover:underline dark:text-zinc-300"
                   href={href}
                   key={title}
                 >
                   {title}
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -784,7 +675,7 @@ function Footer() {
   );
 }
 
-export default function TermsAndConditionsPage() {
+export default function HelpCenterPage() {
   return (
     <div
       suppressHydrationWarning
@@ -792,8 +683,8 @@ export default function TermsAndConditionsPage() {
     >
       <HeaderShell />
       <main className="flex flex-col">
-        <TermsHeroSection />
-        <TermsBodySection />
+        <HelpHeroSection />
+        <HelpBodySection />
         <CTASection />
       </main>
       <Footer />
