@@ -45,14 +45,14 @@ async function getSystemStatus(): Promise<SystemStatus> {
 
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
     const res = await fetch(
       `${supabaseUrl}/rest/v1/app_config?key=eq.maintenance_mode&select=value`,
       {
         headers: {
-          apikey: supabaseAnonKey,
-          Authorization: `Bearer ${supabaseAnonKey}`,
+          apikey: supabasePublishableKey,
+          Authorization: `Bearer ${supabasePublishableKey}`,
         },
         // Do not cache at the fetch layer — we handle caching ourselves
         cache: "no-store",
