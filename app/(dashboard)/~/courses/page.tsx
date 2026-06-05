@@ -3,61 +3,10 @@ import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { CandidateCourseClient } from "./CandidateCourseClient"
 import { AdminCoursesListClient } from "./AdminCoursesListClient"
-import { INITIAL_COURSES } from "./types"
 
 export const metadata = {
   title: "Courses",
   description: "Placement Skills & Courses",
-}
-
-// Simple Helper to seed initial courses if DB is empty
-async function seedInitialCoursesIfEmpty(supabase: any, adminId: string) {
-  const { data: countRes } = await supabase.from("courses").select("id", { count: "exact", head: true })
-  if (countRes && countRes.length > 0) return // Already seeded or populated
-
-  console.log("Seeding initial courses into database...")
-
-  for (const courseItem of INITIAL_COURSES) {
-    const courseId = crypto.randomUUID()
-    const { error: cError } = await supabase.from("courses").insert({
-      id: courseId,
-      title: courseItem.title,
-      description: courseItem.description,
-      category: courseItem.category,
-      level: courseItem.level,
-      duration: courseItem.duration,
-      type: courseItem.type,
-      badge: courseItem.badge || null,
-      instructor_name: courseItem.instructor.name,
-      is_published: true,
-      created_by: adminId,
-      updated_at: new Date().toISOString()
-    })
-
-    if (cError) {
-      console.error(`Error seeding course ${courseItem.title}:`, cError)
-      continue
-    }
-
-    // Insert modules
-    if (courseItem.modules && courseItem.modules.length > 0) {
-      const modulesToInsert = courseItem.modules.map((mod, idx) => ({
-        course_id: courseId,
-        title: mod.title,
-        description: mod.description || null,
-        duration: mod.duration || null,
-        type: mod.type || "text",
-        content: `# ${mod.title}\n\nThis is a standard reading module for the course **${courseItem.title}**.\n\n### Learning Objectives\n- Understand the key components of this topic.\n- Complete reading guidelines.\n- Mark as completed in the curriculum dashboard.`,
-        order_index: idx,
-        updated_at: new Date().toISOString()
-      }))
-
-      const { error: mError } = await supabase.from("course_modules").insert(modulesToInsert)
-      if (mError) {
-        console.error(`Error seeding modules for course ${courseItem.title}:`, mError)
-      }
-    }
-  }
 }
 
 export default async function CoursesPage() {
@@ -70,8 +19,6 @@ export default async function CoursesPage() {
 
   // 1. If admin, render the admin dashboard list view
   if (profile.account_type === "admin") {
-    // Check if courses are empty, seed if so
-    await seedInitialCoursesIfEmpty(supabase, profile.id)
 
     const { data: courses, error } = await (supabase as any)
       .from("courses")
