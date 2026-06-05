@@ -11,7 +11,7 @@ import {
   IconUsers, IconUsersGroup, IconCreditCard, IconCalendarEvent, IconSchool,
   IconBriefcase2, IconFileAnalytics, IconTargetArrow,
   IconSun, IconMoon, IconDeviceLaptop, IconCheck, IconChevronRight, IconTools,
-  IconCode, IconBook,
+  IconCode, IconBook, IconTrophy,
 } from "@tabler/icons-react"
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
@@ -79,6 +79,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
   institute: [
     { title: "Home", url: "/~/home", icon: IconHome },
     { title: "Students", url: "/~/students", icon: IconSchool },
+    { title: "Placement", url: "/~/placement-management", icon: IconTrophy },
     { title: "Drives", url: "/~/drives", icon: IconFolder },
     { title: "Tests", url: "/~/tests", icon: IconChartBar },
     { title: "Events", url: "/~/events", icon: IconCalendarEvent },
