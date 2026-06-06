@@ -69,11 +69,18 @@ function profileFromClaims(
   };
 
   // app_metadata is server-only (not user-editable) — always prefer it for account_type.
-  // user_metadata is a fallback for legacy tokens; never default to "candidate" here.
+  // user_metadata is a fallback for legacy tokens.
   const account_type =
     (appMeta.account_type as AccountType)
     ?? (meta.account_type as AccountType)
     ?? null;
+
+  // If account_type is completely absent from the JWT (e.g. token issued before the
+  // app_metadata backfill) we return null rather than silently defaulting to
+  // "candidate". In online mode the caller will have already resolved account_type
+  // via the DB; this branch is only reached in the offline fast-path where a DB
+  // lookup is impossible, so null is the honest answer.
+  if (!account_type) return null;
 
   return {
     id: sub,
@@ -85,9 +92,7 @@ function profileFromClaims(
       ?? "User",
     avatar_path: (meta.avatar_path as string) ?? (meta.avatar_url as string) ?? (meta.picture as string) ?? null,
     username: (meta.username as string) ?? null,
-    // If account_type is missing from JWT claims entirely, return null so the
-    // caller falls back to a DB lookup rather than guessing "candidate".
-    account_type: account_type ?? "candidate",
+    account_type: account_type as AccountType,
   };
 }
 
@@ -270,9 +275,22 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
 /**
  * Server Action wrapper for getUserProfile.
  * Allows client components to fetch the profile on mount.
+ *
+ * Uses the same wasRefreshedInMiddleware guard as getUserProfile() to avoid
+ * triggering a "refresh_token_already_used" error when middleware already
+ * refreshed the token during the same request lifecycle.
  */
 export async function getUserProfileAction() {
   const supabase = await createClient();
-  await supabase.auth.getUser(); // known auth helper check
+
+  // Only hit the Auth server if middleware has not already done so for this
+  // request. Calling getUser() on a just-refreshed token races with the
+  // browser receiving the new cookies and can produce refresh_token_already_used.
+  const head = await headers();
+  const wasRefreshedInMiddleware = head.get("x-supabase-refreshed") === "true";
+  if (!wasRefreshedInMiddleware) {
+    await supabase.auth.getUser();
+  }
+
   return await getUserProfile();
 }
