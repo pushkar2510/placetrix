@@ -68,8 +68,10 @@ export default async function PlacementManagementPage(props: {
       course_name,
       passout_year,
       profile_image_path,
+      phone_number,
       profiles!inner (
-        display_name
+        display_name,
+        email
       )
     `,
       { count: "exact" }
@@ -158,12 +160,19 @@ export default async function PlacementManagementPage(props: {
   // ── Fetch pt_mt_info separately for the returned profile IDs ───────────
   const profileIds: string[] = (rawData || []).map((r: any) => r.profile_id)
 
-  const ptMap = new Map<string, { company_name: string | null; ctc: number | null }>()
+  const ptMap = new Map<string, {
+    company_name: string | null
+    ctc: number | null
+    offer_letter_date: string | null
+    job_role: string | null
+    offer_type: string | null
+    location: string | null
+  }>()
 
   if (profileIds.length > 0) {
     const { data: ptData, error: ptError } = await (supabase as any)
       .from("pt_mt_info")
-      .select("candidate_uuid, company_name, ctc")
+      .select("candidate_uuid, company_name, ctc, offer_letter_date, job_role, offer_type, location")
       .in("candidate_uuid", profileIds)
 
     if (ptError) {
@@ -174,6 +183,10 @@ export default async function PlacementManagementPage(props: {
       ptMap.set(row.candidate_uuid, {
         company_name: row.company_name ?? null,
         ctc: row.ctc ?? null,
+        offer_letter_date: row.offer_letter_date ?? null,
+        job_role: row.job_role ?? null,
+        offer_type: row.offer_type ?? null,
+        location: row.location ?? null,
       })
     }
   }
@@ -184,10 +197,16 @@ export default async function PlacementManagementPage(props: {
     return {
       profile_id: r.profile_id,
       display_name: r.profiles?.display_name ?? "Unknown",
+      email: r.profiles?.email ?? null,
+      phone_number: r.phone_number ?? null,
       course_name: r.course_name,
       passout_year: r.passout_year,
       company_name: pt?.company_name ?? null,
       ctc: pt?.ctc ?? null,
+      offer_letter_date: pt?.offer_letter_date ?? null,
+      job_role: pt?.job_role ?? null,
+      offer_type: pt?.offer_type ?? null,
+      location: pt?.location ?? null,
       profile_image_path: r.profile_image_path
         ? supabase.storage.from("avatars").getPublicUrl(r.profile_image_path).data.publicUrl
         : null,

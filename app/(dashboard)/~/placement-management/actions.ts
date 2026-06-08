@@ -8,6 +8,10 @@ export interface UpsertPlacementInfoInput {
   candidateUuid: string
   companyName: string | null
   ctc: number | null
+  offerLetterDate: string | null   // ISO date string "YYYY-MM-DD" or null
+  jobRole: string | null
+  offerType: "on_campus" | "off_campus" | "internship" | "ppo" | "freelance" | null
+  location: string | null
 }
 
 export async function upsertPlacementInfo(input: UpsertPlacementInfoInput) {
@@ -37,6 +41,10 @@ export async function upsertPlacementInfo(input: UpsertPlacementInfoInput) {
         candidate_uuid: input.candidateUuid,
         company_name: input.companyName || null,
         ctc: input.ctc ?? null,
+        offer_letter_date: input.offerLetterDate || null,
+        job_role: input.jobRole?.trim() || null,
+        offer_type: input.offerType || null,
+        location: input.location?.trim() || null,
       },
       { onConflict: "candidate_uuid" }
     )
