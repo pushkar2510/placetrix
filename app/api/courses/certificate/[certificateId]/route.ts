@@ -27,7 +27,7 @@ export async function GET(request: NextRequest, props: RouteParams) {
     .select(`
       id,
       issued_at,
-      courses(title),
+      courses(title, instructor_name),
       profiles(display_name)
     `)
     .eq("id", certificateId)
@@ -41,8 +41,10 @@ export async function GET(request: NextRequest, props: RouteParams) {
     })
   }
 
+  const courseData = certificate.courses as any
   const recipientName = certificate.profiles?.display_name || "Candidate"
-  const courseTitle = certificate.courses?.title || "Training Track"
+  const courseTitle = courseData?.title || "Training Track"
+  const instructorName = courseData?.instructor_name || "Course Instructor"
   const issueDateStr = new Date(certificate.issued_at).toLocaleDateString("en-IN", {
     year: "numeric",
     month: "long",
@@ -50,12 +52,28 @@ export async function GET(request: NextRequest, props: RouteParams) {
   })
 
   try {
+    const ownerPassword = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2)
+
     // Generate landscape A4 PDF: A4 size is 841.89 pt width x 595.28 pt height
     const doc = new jsPDF({
       orientation: "landscape",
       unit: "pt",
       format: "a4",
       putOnlyUsedFonts: true,
+      encryption: {
+        userPassword: "",
+        ownerPassword: ownerPassword,
+        userPermissions: ["print"]
+      }
+    })
+
+    // Set metadata properties
+    doc.setProperties({
+      title: `${courseTitle} Certificate of Completion`,
+      subject: `PlaceTrix Academy Course Completion Certificate`,
+      author: instructorName,
+      creator: "PlaceTrix System",
+      keywords: "certificate, verification, placetrix, academy"
     })
 
     const width = 841.89
@@ -90,8 +108,8 @@ export async function GET(request: NextRequest, props: RouteParams) {
     // ─── Content ───
 
     // 1. Logo/Branding Header
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(14)
+    doc.setFont("times", "bold")
+    doc.setFontSize(13)
     doc.setTextColor(180, 83, 9) // Gold
     doc.text("P L A C E T R I X   A C A D E M Y", centerX, 80, { align: "center" })
 
@@ -101,20 +119,20 @@ export async function GET(request: NextRequest, props: RouteParams) {
     doc.line(centerX - 100, 100, centerX + 100, 100)
 
     // 2. Certificate Type Title
-    doc.setFont("helvetica", "bold")
+    doc.setFont("times", "bold")
     doc.setFontSize(28)
     doc.setTextColor(30, 27, 75) // Navy
     doc.text("CERTIFICATE OF COMPLETION", centerX, 150, { align: "center" })
 
     // 3. Presentation label
-    doc.setFont("helvetica", "normal")
-    doc.setFontSize(10)
+    doc.setFont("times", "italic")
+    doc.setFontSize(11)
     doc.setTextColor(113, 113, 122) // Zinc 500
-    doc.text("THIS IS PROUDLY PRESENTED TO", centerX, 195, { align: "center" })
+    doc.text("This is proudly presented to", centerX, 195, { align: "center" })
 
     // 4. Candidate Name
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(26)
+    doc.setFont("times", "bolditalic")
+    doc.setFontSize(28)
     doc.setTextColor(180, 83, 9) // Gold
     doc.text(recipientName, centerX, 240, { align: "center" })
 
@@ -124,52 +142,55 @@ export async function GET(request: NextRequest, props: RouteParams) {
     doc.line(centerX - 120, 252, centerX + 120, 252)
 
     // 5. Completion Description Text
-    doc.setFont("helvetica", "normal")
+    doc.setFont("times", "italic")
     doc.setFontSize(12)
     doc.setTextColor(63, 63, 70) // Zinc 700
     doc.text("for successfully fulfilling all training curriculum requirements and completing the course", centerX, 290, { align: "center" })
 
     // 6. Course Title
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(20)
+    doc.setFont("times", "bold")
+    doc.setFontSize(22)
     doc.setTextColor(30, 27, 75) // Navy
     // Handle multi-line title mapping if needed
     const wrappedTitle = doc.splitTextToSize(courseTitle.toUpperCase(), width - 200)
     doc.text(wrappedTitle, centerX, 335, { align: "center" })
 
     // 7. Issued On Date
-    doc.setFont("helvetica", "normal")
+    doc.setFont("times", "italic")
     doc.setFontSize(11)
     doc.setTextColor(113, 113, 122)
     doc.text(`Issued on ${issueDateStr}`, centerX, 395, { align: "center" })
 
-    // 8. Signatures Placeholder Lines
-    // Left side: Director
+    // 8. Signatures Section
+    // Left side: Instructor
     doc.setDrawColor(200, 200, 200)
     doc.setLineWidth(1)
     doc.line(120, 480, 280, 480)
-    doc.setFont("helvetica", "bold")
+    doc.setFont("times", "bold")
+    doc.setFontSize(10)
+    doc.setTextColor(63, 63, 70)
+    doc.text(instructorName.toUpperCase(), 200, 495, { align: "center" })
+    doc.setFont("times", "italic")
     doc.setFontSize(9)
-    doc.setTextColor(63, 63, 70)
-    doc.text("DR. EVELYN VANCE", 200, 495, { align: "center" })
-    doc.setFont("helvetica", "normal")
     doc.setTextColor(113, 113, 122)
-    doc.text("Director, PlaceTrix Academy", 200, 508, { align: "center" })
+    doc.text("Course Instructor", 200, 508, { align: "center" })
 
-    // Right side: Registrar
+    // Right side: Certification Authority
     doc.line(width - 280, 480, width - 120, 480)
-    doc.setFont("helvetica", "bold")
+    doc.setFont("times", "bold")
+    doc.setFontSize(10)
     doc.setTextColor(63, 63, 70)
-    doc.text("MARCUS CHEN", width - 200, 495, { align: "center" })
-    doc.setFont("helvetica", "normal")
+    doc.text("PLACETRIX ACADEMY", width - 200, 495, { align: "center" })
+    doc.setFont("times", "italic")
+    doc.setFontSize(9)
     doc.setTextColor(113, 113, 122)
-    doc.text("Registrar of Assessments", width - 200, 508, { align: "center" })
+    doc.text("Official Certification Authority", width - 200, 508, { align: "center" })
 
     // 9. Bottom Metadata (Verification & Unique ID)
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://placetrix.app"
     const verifyLink = `${siteUrl}/verify/${certificateId}`
 
-    doc.setFont("helvetica", "normal")
+    doc.setFont("times", "normal")
     doc.setFontSize(7.5)
     doc.setTextColor(140, 140, 140)
     doc.text(`Certificate ID: ${certificateId}`, 45, 545)

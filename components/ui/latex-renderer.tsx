@@ -239,7 +239,56 @@ export function LatexRenderer({ content = "", className }: LatexRendererProps) {
         list.push(
           <div key={`verbatim-${i}`} className="bg-muted/50 border border-border/50 rounded-lg overflow-hidden my-3 font-mono text-xs">
             <pre className="p-3 overflow-x-auto text-foreground/80 whitespace-pre scrollbar-thin">
-              {codeContent.trim()}
+              <code>{codeContent.trim()}</code>
+            </pre>
+          </div>
+        )
+        
+        i = j // Advance outer loop index
+        continue
+      }
+
+      // Handle listings code environment
+      if (trimmed.startsWith("\\begin{lstlisting}")) {
+        flushLists(String(i))
+        
+        let language = ""
+        let caption = ""
+        const optionsMatch = trimmed.match(/\\begin\{lstlisting\}\s*\[([\s\S]*?)\]/)
+        if (optionsMatch) {
+          const optionsStr = optionsMatch[1]
+          const pairRegex = /(\w+)\s*=\s*(?:\{([^}]*)\}|"([^"]*)"|([^,\s}]+))/g
+          let match
+          while ((match = pairRegex.exec(optionsStr)) !== null) {
+            const key = match[1].toLowerCase()
+            const val = match[2] ?? match[3] ?? match[4]
+            if (key === "language") {
+              language = val
+            } else if (key === "caption") {
+              caption = val
+            }
+          }
+        }
+        
+        let codeContent = ""
+        let j = i + 1
+        while (j < lines.length && !lines[j].trim().startsWith("\\end{lstlisting}")) {
+          codeContent += lines[j] + "\n"
+          j++
+        }
+        
+        list.push(
+          <div key={`lstlisting-${i}`} className="bg-muted/50 border border-border/50 rounded-lg overflow-hidden my-4 font-mono text-xs">
+            {(caption || language) && (
+              <div className="flex items-center justify-between border-b border-border/50 bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground font-sans">
+                <span>{caption || "Code Listing"}</span>
+                {language && <span className="uppercase tracking-wider font-semibold text-[10px]">{language}</span>}
+              </div>
+            )}
+            <pre className="p-3 overflow-x-auto text-foreground/80 whitespace-pre scrollbar-thin">
+              <code className={language ? `language-${language.toLowerCase()}` : ""}>
+                {codeContent.trim()}
+              </code>
             </pre>
           </div>
         )

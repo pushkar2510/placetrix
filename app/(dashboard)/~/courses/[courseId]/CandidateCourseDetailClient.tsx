@@ -56,7 +56,7 @@ interface Props {
 // ─── Local-storage key helper ─────────────────────────────────────────────────
 const storageKey = (courseId: string) => `placetrix_module_progress_${courseId}`
 
-export function CandidateCoursesInnerClient({ course, isEnrolled, certificateId, userProfile }: Props) {
+export function CandidateCourseDetailClient({ course, isEnrolled, certificateId, userProfile }: Props) {
   const router = useRouter()
   const [isEnrolling, setIsEnrolling] = useState(false)
 

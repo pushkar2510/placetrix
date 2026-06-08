@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   BookOpen, Plus, Search, X, PenLine, Trash2, Clock, Users, CheckCircle, AlertCircle,
-  ArrowUpDown, TrendingUp, Layers, BarChart2, ChevronsUpDown
+  ArrowUpDown, TrendingUp, Layers, BarChart2, ChevronsUpDown, Eye
 } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -428,7 +428,7 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in duration-300">
               {filteredAndSortedCourses.map((course) => {
                 const coverUrl = course.cover_image_path ? buildStorageUrl("course-covers", course.cover_image_path) : null
 
@@ -495,22 +495,7 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
 
                         {/* Bottom Stats + Actions */}
                         <CardContent className="mt-auto pt-4 pb-4 px-4">
-                          <div className="border-t border-border/40 pt-3.5 w-full space-y-3">
-                            {/* Stats row */}
-                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                              <span className="inline-flex items-center gap-1">
-                                <Clock className="h-3 w-3 text-muted-foreground/60" />
-                                {course.duration}
-                              </span>
-                              <span className="inline-flex items-center gap-1">
-                                <BookOpen className="h-3 w-3 text-muted-foreground/60" />
-                                {course.modules_count} {course.modules_count === 1 ? "module" : "modules"}
-                              </span>
-                              <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
-                                <Users className="h-3 w-3 text-primary/60" />
-                                {course.enrollments_count} enrolled
-                              </span>
-                            </div>
+                          <div className="border-t border-border/40 pt-3.5 w-full">
 
                             {/* Action buttons */}
                             <div className="flex gap-2">
@@ -520,9 +505,9 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
                                 size="sm"
                                 className="flex-1 text-xs rounded-full h-8"
                               >
-                                <Link href={`/~/courses/${course.id}/edit`}>
-                                  <PenLine className="h-3.5 w-3.5 mr-1" />
-                                  Edit Course
+                                <Link href={`/~/courses/${course.id}`}>
+                                  <Eye className="h-3.5 w-3.5 mr-1" />
+                                  View Course
                                 </Link>
                               </Button>
                               <Button
