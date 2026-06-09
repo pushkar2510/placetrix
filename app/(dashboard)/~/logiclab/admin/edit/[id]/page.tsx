@@ -19,7 +19,7 @@ export default async function EditProblemPage({ params }: PageProps) {
   const profile = await getUserProfile()
   if (!profile) redirect("/auth/login")
 
-  const isAdmin = profile.account_type === "admin" || profile.account_type === "institute"
+  const isAdmin = profile.account_type === "admin"
   if (!isAdmin) redirect("/~/logiclab")
 
   const supabase = (await createClient()) as any

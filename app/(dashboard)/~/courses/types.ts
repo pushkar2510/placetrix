@@ -14,18 +14,14 @@ export interface Course {
   level: "Beginner" | "Intermediate" | "Advanced"
   duration: string
   type: "Specialization" | "Professional Certificate" | "Course"
-  badge?: string
-  partner: {
-    name: string
-    logo: string
-    logoBg: string
-  }
+  cover_image_path?: string
   instructor: {
     name: string
     role: string
-    avatar: string
+    avatar: string | null
   }
   modules: Module[]
+  isEnrolled?: boolean
 }
 
 export const INITIAL_COURSES: Course[] = [
@@ -36,12 +32,6 @@ export const INITIAL_COURSES: Course[] = [
     level: "Advanced",
     duration: "24h 15m",
     type: "Specialization",
-    badge: "Popular",
-    partner: {
-      name: "CS Foundation",
-      logo: "C",
-      logoBg: "bg-indigo-600"
-    },
     instructor: {
       name: "Dr. Evelyn Vance",
       role: "Ex-Google Staff Engineer",
@@ -89,12 +79,6 @@ export const INITIAL_COURSES: Course[] = [
     level: "Intermediate",
     duration: "18h 30m",
     type: "Professional Certificate",
-    badge: "Bestseller",
-    partner: {
-      name: "Vercel & Supabase Partner",
-      logo: "S",
-      logoBg: "bg-emerald-600"
-    },
     instructor: {
       name: "Marcus Chen",
       role: "Lead Frontend Architect",
@@ -134,12 +118,6 @@ export const INITIAL_COURSES: Course[] = [
     level: "Beginner",
     duration: "6h 45m",
     type: "Course",
-    badge: "Job Skills",
-    partner: {
-      name: "Placetrix Academy",
-      logo: "P",
-      logoBg: "bg-amber-600"
-    },
     instructor: {
       name: "Sarah Jenkins",
       role: "HR Director at Tech Corp",
@@ -179,12 +157,6 @@ export const INITIAL_COURSES: Course[] = [
     level: "Advanced",
     duration: "14h 20m",
     type: "Specialization",
-    badge: "Bestseller",
-    partner: {
-      name: "Scale Architect Group",
-      logo: "A",
-      logoBg: "bg-purple-600"
-    },
     instructor: {
       name: "Alex Mercer",
       role: "Principal Infrastructure Architect",
@@ -216,12 +188,6 @@ export const INITIAL_COURSES: Course[] = [
     level: "Beginner",
     duration: "32h 45m",
     type: "Professional Certificate",
-    badge: "Job Skills",
-    partner: {
-      name: "Google",
-      logo: "G",
-      logoBg: "bg-red-500"
-    },
     instructor: {
       name: "Sarah Jenkins",
       role: "Lead Google Data Analyst",
@@ -245,12 +211,6 @@ export const INITIAL_COURSES: Course[] = [
     level: "Beginner",
     duration: "8h 12m",
     type: "Course",
-    badge: "Bestseller",
-    partner: {
-      name: "Google",
-      logo: "G",
-      logoBg: "bg-red-500"
-    },
     instructor: {
       name: "Marcus Chen",
       role: "Google Course Instructor",
@@ -274,12 +234,6 @@ export const INITIAL_COURSES: Course[] = [
     level: "Beginner",
     duration: "10h 15m",
     type: "Specialization",
-    badge: "Popular",
-    partner: {
-      name: "University of Michigan",
-      logo: "M",
-      logoBg: "bg-blue-600"
-    },
     instructor: {
       name: "Dr. Evelyn Vance",
       role: "UMich Adjunct Professor",
@@ -303,12 +257,6 @@ export const INITIAL_COURSES: Course[] = [
     level: "Beginner",
     duration: "6h 20m",
     type: "Course",
-    badge: "Bestseller",
-    partner: {
-      name: "University of Michigan",
-      logo: "M",
-      logoBg: "bg-blue-600"
-    },
     instructor: {
       name: "Alex Mercer",
       role: "UMich Course Instructor",

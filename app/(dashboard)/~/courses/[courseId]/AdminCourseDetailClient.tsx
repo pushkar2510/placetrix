@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   ArrowLeft, BookOpen, Clock, Users, CheckCircle2, Award, PenLine,
-  Search, X, FileText, BarChart2, TrendingUp, GraduationCap,
+  Search, X, FileText, BarChart2, GraduationCap,
   ArrowUp, ArrowDown, ArrowUpDown, ChevronRight, ChevronLeft,
-  Filter, Mail, Calendar,
+  Calendar,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,7 +18,8 @@ import { Input } from "@/components/ui/input"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
-import { cn } from "@/lib/utils"
+import { cn, formatDuration } from "@/lib/utils"
+import { CourseCover } from "../components/CourseCover"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface Module {
@@ -49,7 +50,6 @@ interface AdminCourseDetail {
   level: string
   duration: string
   type: string
-  badge?: string
   cover_image_path?: string
   instructor_name: string
   is_published: boolean
@@ -77,16 +77,14 @@ function StatCard({
   accent?: string
 }) {
   return (
-    <Card className={cn("rounded-xl py-0 border", accent)}>
-      <CardContent className="p-4 space-y-1">
-        <div className="flex items-center gap-1.5 text-muted-foreground">
-          {icon}
-          <p className="text-xs font-medium">{label}</p>
-        </div>
-        <p className="text-2xl font-bold tabular-nums text-foreground">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
-      </CardContent>
-    </Card>
+    <div className={cn("flex items-start gap-3 px-4 py-3.5 rounded-xl border bg-card", accent)}>
+      <div className="shrink-0 mt-0.5">{icon}</div>
+      <div className="min-w-0">
+        <p className="text-xl font-bold tabular-nums text-foreground leading-none">{value}</p>
+        <p className="text-xs font-medium text-muted-foreground mt-0.5">{label}</p>
+        {sub && <p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{sub}</p>}
+      </div>
+    </div>
   )
 }
 
@@ -107,7 +105,7 @@ function SortableHead({
     <TableHead
       onClick={() => onSort(col)}
       className={cn(
-        "text-xs font-semibold select-none cursor-pointer hover:bg-muted/60 transition-colors",
+        "text-xs font-semibold select-none cursor-pointer hover:bg-muted/60 transition-colors whitespace-nowrap",
         align === "right" && "text-right",
         align === "center" && "text-center",
       )}
@@ -216,7 +214,7 @@ export function AdminCourseDetailClient({ course, students }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-8 md:px-8 animate-in fade-in duration-300">
+    <div className="flex flex-col gap-6 px-4 py-6 md:px-8 md:py-8 animate-in fade-in duration-300">
 
       {/* Back + Edit header */}
       <div className="flex items-center justify-between gap-4">
@@ -239,63 +237,67 @@ export function AdminCourseDetailClient({ course, students }: Props) {
       </div>
 
       {/* Course identity header */}
-      <div className="flex flex-col gap-2 border-b pb-5 border-border/60">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-[10px] text-muted-foreground">
-            {course.level}
-          </Badge>
-          <Badge
-            className={cn(
-              "text-[9px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border",
-              course.is_published
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-            )}
-          >
-            {course.is_published ? "Published" : "Draft"}
-          </Badge>
-          {course.badge && (
-            <Badge variant="secondary" className="text-[9px] uppercase tracking-wider font-semibold px-2 py-0.5">
-              {course.badge}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center border-b pb-5 border-border/60">
+        <div className="md:col-span-3 flex flex-col gap-2 order-2 md:order-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+              {course.level}
             </Badge>
-          )}
+            <Badge
+              className={cn(
+                "text-[9px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border",
+                course.is_published
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+              )}
+            >
+              {course.is_published ? "Published" : "Draft"}
+            </Badge>
+          </div>
+
+          <h1 className="text-2xl md:text-3xl font-bold font-cirka tracking-tight text-foreground">
+            {course.title}
+          </h1>
+
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
+            {course.description}
+          </p>
+
+          <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <GraduationCap className="h-3.5 w-3.5" />
+              {course.instructor_name}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5" />
+              {formatDuration(course.duration)}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" />
+              {course.modules.length} {course.modules.length === 1 ? "module" : "modules"}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5" />
+              Created {formatDate(course.created_at)}
+            </span>
+          </div>
         </div>
 
-        <h1 className="text-2xl md:text-3xl font-bold font-cirka tracking-tight text-foreground">
-          {course.title}
-        </h1>
-
-        <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-          {course.description}
-        </p>
-
-        <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <GraduationCap className="h-3.5 w-3.5" />
-            {course.instructor_name}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Clock className="h-3.5 w-3.5" />
-            {course.duration}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <BookOpen className="h-3.5 w-3.5" />
-            {course.modules.length} {course.modules.length === 1 ? "module" : "modules"}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Calendar className="h-3.5 w-3.5" />
-            Created {formatDate(course.created_at)}
-          </span>
+        <div className="w-full max-w-sm md:max-w-none mx-auto order-1 md:order-2">
+          <div className="aspect-video w-full overflow-hidden rounded-xl border border-border/50 dark:border-zinc-800/80 relative shadow-xs">
+            <CourseCover coverImagePath={course.cover_image_path} title={course.title} />
+          </div>
         </div>
       </div>
 
       {/* Stats bar */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          icon={<Users className="h-3.5 w-3.5" />}
+          icon={<Users className="h-3.5 w-3.5 text-primary" />}
           label="Total Enrolled"
           value={stats.total}
           sub={stats.inProgress > 0 ? `${stats.inProgress} in progress` : "No active learners"}
+          accent="border-primary/15"
         />
         <StatCard
           icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />}
@@ -343,7 +345,7 @@ export function AdminCourseDetailClient({ course, students }: Props) {
                 placeholder="Search by name or email..."
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(0) }}
-                className="pl-9 pr-9 text-sm"
+                className="pl-9 pr-9"
               />
               {search && (
                 <button
@@ -356,7 +358,7 @@ export function AdminCourseDetailClient({ course, students }: Props) {
             </div>
 
             {/* Completion filter */}
-            <div className="flex items-center gap-1 bg-muted rounded-lg p-1 h-9 shrink-0">
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1 h-9 shrink-0 overflow-x-auto scrollbar-none">
               {(["all", "completed", "in-progress", "not-started"] as const).map(f => (
                 <button
                   key={f}
@@ -397,83 +399,85 @@ export function AdminCourseDetailClient({ course, students }: Props) {
             </div>
           ) : (
             <div className="rounded-xl border border-border/50 overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30 hover:bg-muted/30">
-                    <SortableHead col="name" label="Student" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                    <SortableHead col="enrolled_at" label="Enrolled" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                    <SortableHead col="completion" label="Progress" align="center" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                    <SortableHead col="certificate" label="Certificate" align="center" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pageRows.map(student => {
-                    const isCompleted = student.completion_pct === 100
-                    const isStarted = student.completion_pct > 0
-                    return (
-                      <TableRow key={student.enrollment_id} className="hover:bg-muted/20">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                              {(student.display_name ?? student.email).charAt(0).toUpperCase()}
+              {/* Horizontal scroll for small screens */}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <SortableHead col="name" label="Student" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                      <SortableHead col="enrolled_at" label="Enrolled" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                      <SortableHead col="completion" label="Progress" align="center" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                      <SortableHead col="certificate" label="Certificate" align="center" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pageRows.map(student => {
+                      const isCompleted = student.completion_pct === 100
+                      const isStarted = student.completion_pct > 0
+                      return (
+                        <TableRow key={student.enrollment_id} className="hover:bg-muted/20">
+                          <TableCell className="min-w-[180px]">
+                            <div className="flex items-center gap-3">
+                              <div className="h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                                {(student.display_name ?? student.email).charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                  {student.display_name ?? "—"}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {student.email}
+                                </p>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">
-                                {student.display_name ?? "—"}
-                              </p>
-                              <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                                <Mail className="h-3 w-3 shrink-0" />
-                                {student.email}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {formatDate(student.enrolled_at)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex flex-col items-center gap-1.5 w-28 mx-auto">
-                            <div className="flex items-center justify-between w-full text-[10px]">
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap min-w-[100px]">
+                            {formatDate(student.enrolled_at)}
+                          </TableCell>
+                          <TableCell className="text-center min-w-[130px]">
+                            <div className="flex flex-col items-center gap-1.5 w-28 mx-auto">
+                              <div className="flex items-center justify-between w-full text-[10px]">
+                                <span className={cn(
+                                  "font-semibold",
+                                  isCompleted ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
+                                )}>
+                                  {student.completion_pct}%
+                                </span>
+                                <span className="text-muted-foreground">
+                                  {student.modules_completed}/{student.total_modules}
+                                </span>
+                              </div>
+                              <Progress
+                                value={student.completion_pct}
+                                className={cn(
+                                  "h-1.5 w-full bg-muted",
+                                  isCompleted && "[&>[data-slot=progress-indicator]]:bg-emerald-500"
+                                )}
+                              />
                               <span className={cn(
-                                "font-semibold",
-                                isCompleted ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
+                                "text-[9px] font-semibold uppercase tracking-wider",
+                                isCompleted ? "text-emerald-500" : isStarted ? "text-primary" : "text-muted-foreground/60"
                               )}>
-                                {student.completion_pct}%
-                              </span>
-                              <span className="text-muted-foreground">
-                                {student.modules_completed}/{student.total_modules}
+                                {isCompleted ? "Completed" : isStarted ? "In Progress" : "Not Started"}
                               </span>
                             </div>
-                            <Progress
-                              value={student.completion_pct}
-                              className={cn(
-                                "h-1.5 w-full bg-muted",
-                                isCompleted && "[&>[data-slot=progress-indicator]]:bg-emerald-500"
-                              )}
-                            />
-                            <span className={cn(
-                              "text-[9px] font-semibold uppercase tracking-wider",
-                              isCompleted ? "text-emerald-500" : isStarted ? "text-primary" : "text-muted-foreground/60"
-                            )}>
-                              {isCompleted ? "Completed" : isStarted ? "In Progress" : "Not Started"}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {student.has_certificate ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                              <Award className="h-3 w-3" />
-                              Issued
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground/50">—</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+                          </TableCell>
+                          <TableCell className="text-center min-w-[100px]">
+                            {student.has_certificate ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                                <Award className="h-3 w-3" />
+                                Issued
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground/50">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
 
               {/* Pagination */}
               {totalPages > 1 && (
@@ -508,7 +512,7 @@ export function AdminCourseDetailClient({ course, students }: Props) {
         </div>
 
         {/* Right: Sidebar — Course Info + Syllabus */}
-        <div className="space-y-6">
+        <div className="space-y-4">
 
           {/* Course info card */}
           <Card className="border border-border/50 bg-card rounded-xl shadow-xs">
@@ -517,20 +521,22 @@ export function AdminCourseDetailClient({ course, students }: Props) {
                 Course Info
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-0 divide-y divide-border/40 text-xs">
-              {[
-                { label: "Type", value: course.type },
-                { label: "Level", value: course.level },
-                { label: "Duration", value: course.duration },
-                { label: "Instructor", value: course.instructor_name },
-                { label: "Modules", value: `${course.modules.length}` },
-                { label: "Status", value: course.is_published ? "Published" : "Draft" },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex justify-between py-2.5">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="font-medium text-foreground text-right">{value}</span>
-                </div>
-              ))}
+            <CardContent className="p-0">
+              <div className="divide-y divide-border/40 text-xs px-4">
+                {[
+                  { label: "Type", value: course.type },
+                  { label: "Level", value: course.level },
+                  { label: "Duration", value: formatDuration(course.duration) },
+                  { label: "Instructor", value: course.instructor_name },
+                  { label: "Modules", value: `${course.modules.length}` },
+                  { label: "Status", value: course.is_published ? "Published" : "Draft" },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between py-2.5">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="font-medium text-foreground text-right">{value}</span>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
@@ -545,7 +551,7 @@ export function AdminCourseDetailClient({ course, students }: Props) {
             <CardContent className="p-0">
               <div className="divide-y divide-border/40">
                 {course.modules.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-6">No modules added yet.</p>
+                  <p className="text-xs text-muted-foreground text-center py-6 px-4">No modules added yet.</p>
                 ) : (
                   course.modules.map((mod, i) => (
                     <div key={mod.id} className="flex items-start gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
@@ -559,7 +565,7 @@ export function AdminCourseDetailClient({ course, students }: Props) {
                           {mod.duration && (
                             <>
                               <span className="text-muted-foreground/30">·</span>
-                              <span>{mod.duration}</span>
+                              <span>{formatDuration(mod.duration)}</span>
                             </>
                           )}
                         </div>

@@ -63,6 +63,51 @@ async function loadGaramondFonts(): Promise<{
   }
 }
 
+/** Draw the PlaceTrix logo vectors scaled and positioned on the PDF */
+function drawPlaceTrixLogo(doc: jsPDF, x: number, y: number, width: number) {
+  const scale = width / 234
+  const sx = (px: number) => x + px * scale
+  const sy = (py: number) => y + py * scale
+
+  // Use unified dark slate-900 (15, 23, 42) for the brand mark
+  doc.setFillColor(15, 23, 42)
+
+  // Path 1
+  doc.moveTo(sx(3.78965), sy(131.389))
+  doc.lineTo(sx(49.3376), sy(57.9376))
+  doc.curveTo(sx(53.1673), sy(51.7618), sx(59.9207), sy(48), sx(67.1876), sy(48))
+  doc.lineTo(sx(137.213), sy(48))
+  doc.curveTo(sx(140.37), sy(48), sx(142.283), sy(51.4846), sx(140.588), sy(54.1475))
+  doc.lineTo(sx(121.179), sy(84.6475))
+  doc.curveTo(sx(120.445), sy(85.8013), sx(119.172), sy(86.5), sx(117.804), sy(86.5))
+  doc.lineTo(sx(78.2496), sy(86.5))
+  doc.curveTo(sx(76.8527), sy(86.5), sx(75.5571), sy(87.2287), sx(74.8315), sy(88.4223))
+  doc.lineTo(sx(50.8424), sy(127.888))
+  doc.curveTo(sx(47.2146), sy(133.857), sx(40.7363), sy(137.5), sx(33.752), sy(137.5))
+  doc.lineTo(sx(7.1871), sy(137.5))
+  doc.curveTo(sx(4.05169), sy(137.5), sx(2.13726), sy(134.053), sx(3.78965), sy(131.389))
+  doc.close()
+  doc.fill()
+
+  // Path 2
+  doc.moveTo(sx(57.0333), sy(32.8693))
+  doc.lineTo(sx(72.9628), sy(8.65652))
+  doc.curveTo(sx(76.107), sy(3.87731), sx(81.4442), sy(1), sx(87.1649), sy(1))
+  doc.lineTo(sx(155.75), sy(1))
+  doc.lineTo(sx(216.833), sy(1))
+  doc.curveTo(sx(223.991), sy(1), sx(228.285), sy(8.95097), sx(224.359), sy(14.9362))
+  doc.lineTo(sx(177.535), sy(86.3238))
+  doc.curveTo(sx(174.393), sy(91.1143), sx(169.049), sy(94), sx(163.32), sy(94))
+  doc.lineTo(sx(133.417), sy(94))
+  doc.curveTo(sx(130.233), sy(94), sx(128.326), sy(90.4625), sx(130.074), sy(87.8027))
+  doc.lineTo(sx(157.47), sy(46.1296))
+  doc.curveTo(sx(159.21), sy(43.4836), sx(157.331), sy(39.9616), sx(154.165), sy(39.9324))
+  doc.lineTo(sx(60.3381), sy(39.0676))
+  doc.curveTo(sx(57.1712), sy(39.0384), sx(55.2926), sy(35.5152), sx(57.0333), sy(32.8693))
+  doc.close()
+  doc.fill()
+}
+
 // ─── Route Handler ────────────────────────────────────────────────────────────
 
 export async function GET(_request: NextRequest, props: RouteParams) {
@@ -83,7 +128,13 @@ export async function GET(_request: NextRequest, props: RouteParams) {
     .select(`
       id,
       issued_at,
-      courses(title, instructor_name),
+      issued_to_name,
+      courses(
+        title,
+        instructor:profiles!courses_instructor_id_fkey(
+          display_name
+        )
+      ),
       profiles(display_name)
     `)
     .eq("id", certificateId)
@@ -98,9 +149,9 @@ export async function GET(_request: NextRequest, props: RouteParams) {
   }
 
   const courseData     = certificate.courses as any
-  const recipientName  = certificate.profiles?.display_name ?? "Candidate"
+  const recipientName  = (certificate as any).issued_to_name ?? certificate.profiles?.display_name ?? "Candidate"
   const courseTitle    = courseData?.title ?? "Training Track"
-  const instructorName = courseData?.instructor_name ?? "Course Instructor"
+  const instructorName = courseData?.instructor?.display_name || "Course Instructor"
   const issueDateStr   = new Date(certificate.issued_at).toLocaleDateString("en-IN", {
     year: "numeric", month: "long", day: "numeric",
   })
@@ -114,7 +165,7 @@ export async function GET(_request: NextRequest, props: RouteParams) {
       margin: 1,
       width: 150,
       color: {
-        dark: "#1e1b4b",  // Navy color to match certificate theme
+        dark: "#0f172a",  // Slate-900 color matching our redesigned theme
         light: "#ffffff",
       }
     })
@@ -156,12 +207,21 @@ export async function GET(_request: NextRequest, props: RouteParams) {
     // Font family (uses EB Garamond, falls back to times if needed)
     const G = hasGaramond ? "EBGaramond" : "times"
 
+    // Helper to sanitize strings to pure ASCII to prevent jsPDF encryption metadata encoding bug
+    const toAscii = (str: string) => {
+      return str
+        .replace(/[\u2014\u2015]/g, "-") // em-dash and en-dash
+        .replace(/[\u2018\u2019]/g, "'") // curly single quotes
+        .replace(/[\u201c\u201d]/g, '"') // curly double quotes
+        .replace(/[^\x00-\x7f]/g, "?")   // fallback for any other non-ASCII chars
+    }
+
     doc.setProperties({
-      title:    `${courseTitle} — Certificate of Completion`,
-      subject:  "Course Completion Certificate",
-      author:   instructorName,
-      creator:  "System",
-      keywords: "certificate, completion, verification",
+      title:    toAscii(`${courseTitle} - Certificate of Completion`),
+      subject:  toAscii("Course Completion Certificate"),
+      author:   toAscii(instructorName),
+      creator:  toAscii("System"),
+      keywords: toAscii("certificate, completion, verification"),
     })
 
     // ── Dimensions ───────────────────────────────────────────────────────────
@@ -169,135 +229,186 @@ export async function GET(_request: NextRequest, props: RouteParams) {
     const W  = 841.89   // landscape A4 width  (pt)
     const H  = 595.28   // landscape A4 height (pt)
     const CX = W / 2    // horizontal center
+    const CY = H / 2    // vertical center
 
     // ── Background & Borders ─────────────────────────────────────────────────
 
-    // Dark outer frame
+    // Dark outer frame (slate-900)
     doc.setFillColor(15, 23, 42)
     doc.rect(0, 0, W, H, "F")
 
-    // White inner page
-    doc.setFillColor(255, 255, 255)
+    // Ivory/white inner page
+    doc.setFillColor(254, 254, 254) // Extremely clean, soft white
     doc.rect(20, 20, W - 40, H - 40, "F")
 
-    // Gold outer border
-    doc.setDrawColor(180, 83, 9)
-    doc.setLineWidth(2)
+    // ── Traditional Double Gold Borders & Ornate Corners ───────────────────────
+    doc.setDrawColor(197, 160, 89) // Champagne Gold
+    doc.setFillColor(197, 160, 89)
+    
+    // Outer gold border (slightly thicker)
+    doc.setLineWidth(1.2)
     doc.rect(30, 30, W - 60, H - 60, "S")
 
-    // Navy inner border
-    doc.setDrawColor(30, 27, 75)
-    doc.setLineWidth(1)
+    // Inner gold border
+    doc.setLineWidth(0.8)
     doc.rect(36, 36, W - 72, H - 72, "S")
 
-    // Gold corner ornaments
-    const corner = (x: number, y: number) => {
-      doc.setFillColor(180, 83, 9)
-      doc.rect(x, y, 7, 7, "F")
+    // Ornate L-bracket accents in corners
+    const drawCornerAccent = (cx: number, cy: number, dirX: number, dirY: number) => {
+      doc.setDrawColor(197, 160, 89)
+      doc.setLineWidth(0.8)
+      // Draw L-lines
+      doc.line(cx, cy, cx + dirX * 15, cy)
+      doc.line(cx, cy, cx, cy + dirY * 15)
+      
+      // Draw a small decorative filled diamond at the corner intersection
+      const size = 3
+      doc.triangle(cx, cy - size, cx - size, cy, cx + size, cy, "F")
+      doc.triangle(cx, cy + size, cx - size, cy, cx + size, cy, "F")
     }
-    corner(28, 28);  corner(W - 35, 28)
-    corner(28, H - 35); corner(W - 35, H - 35)
 
-    // ── Content Layout ───────────────────────────────────────────────────────
+    drawCornerAccent(42, 42, 1, 1)         // Top-Left
+    drawCornerAccent(W - 42, 42, -1, 1)     // Top-Right
+    drawCornerAccent(42, H - 42, 1, -1)     // Bottom-Left
+    drawCornerAccent(W - 42, H - 42, -1, -1) // Bottom-Right
 
-    // 1. Certificate title
+    // ── Concentric Security Watermark ─────────────────────────────────────────
+    // Centered in the middle of the certificate
+    const drawWatermark = (cx: number, cy: number, r1: number, r2: number, points: number) => {
+      doc.setDrawColor(254, 243, 199) // Very light amber-100/gold
+      doc.setLineWidth(0.3)
+      const firstX = cx + r1
+      const firstY = cy
+      doc.moveTo(firstX, firstY)
+      for (let i = 0; i <= points; i++) {
+        const angle = (i * 2 * Math.PI) / points
+        const r = i % 2 === 0 ? r1 : r2
+        doc.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle))
+      }
+      doc.stroke()
+    }
+    drawWatermark(CX, CY, 180, 195, 48)
+    drawWatermark(CX, CY, 140, 155, 36)
+    drawWatermark(CX, CY, 100, 115, 24)
+
+    // ── Centered Content Layout ───────────────────────────────────────────────
+
+    // 0. Top Branding (Logo + Text side-by-side)
+    const logoWidth = 24
+    const gap = 8
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(16)
+    const brandTextWidth = doc.getTextWidth("PlaceTrix")
+    const totalBrandingWidth = logoWidth + gap + brandTextWidth
+    const brandingStartX = CX - totalBrandingWidth / 2
+    const brandingY = 65
+
+    drawPlaceTrixLogo(doc, brandingStartX, brandingY, logoWidth)
+
+    doc.setTextColor(15, 23, 42) // Slate-900
+    doc.text("PlaceTrix", brandingStartX + logoWidth + gap, brandingY + 12.5)
+
+    // 1. Certificate title (Moved down from 138 to 170)
     doc.setFont(G, "bold")
-    doc.setFontSize(32)
-    doc.setTextColor(30, 27, 75)
-    doc.text("CERTIFICATE OF COMPLETION", CX, 115, { align: "center" })
+    doc.setFontSize(26)
+    doc.setTextColor(15, 23, 42) // Slate-900
+    doc.text("CERTIFICATE OF COMPLETION", CX, 170, { align: "center" })
 
-    // Decorative divider line under title
-    doc.setDrawColor(180, 83, 9)
-    doc.setLineWidth(0.75)
-    doc.line(CX - 120, 130, CX + 120, 130)
+    // Decorative divider line with center diamond under title (Moved down from 154 to 186)
+    doc.setDrawColor(197, 160, 89) // Champagne Gold
+    doc.setLineWidth(0.8)
+    doc.line(CX - 120, 186, CX + 120, 186)
 
-    // 2. Presentation label
+    // Center Diamond ornament
+    doc.setFillColor(197, 160, 89)
+    doc.triangle(CX, 183, CX - 4, 186, CX + 4, 186, "F")
+    doc.triangle(CX, 189, CX - 4, 186, CX + 4, 186, "F")
+
+    // 2. Presentation label (Moved down from 188 to 220)
     doc.setFont(G, hasGaramond ? "bolditalic" : "italic")
-    doc.setFontSize(12)
-    doc.setTextColor(113, 113, 122)
-    doc.text("This is proudly presented to", CX, 175, { align: "center" })
+    doc.setFontSize(11.5)
+    doc.setTextColor(71, 85, 105) // Slate-600
+    doc.text("This certificate is proudly presented to", CX, 220, { align: "center" })
 
-    // 3. Recipient name
-    doc.setFont(G, hasGaramond ? "bolditalic" : "bolditalic")
-    doc.setFontSize(34)
-    doc.setTextColor(180, 83, 9)
-    doc.text(recipientName, CX, 225, { align: "center" })
+    // 3. Recipient name (Moved down from 236 to 268)
+    doc.setFont(G, "normal")
+    doc.setFontSize(30)
+    doc.setTextColor(15, 23, 42) // Slate-900
+    doc.text(recipientName, CX, 268, { align: "center" })
 
-    // Gold line under name
+    // Gold line under name (Moved down from 248 to 280)
     const nameWidth = doc.getTextWidth(recipientName)
-    const underlineHalf = Math.min(nameWidth / 2 + 10, 150)
-    doc.setDrawColor(180, 83, 9)
-    doc.setLineWidth(1.2)
-    doc.line(CX - underlineHalf, 237, CX + underlineHalf, 237)
+    const underlineHalf = Math.min(nameWidth / 2 + 15, 160)
+    doc.setDrawColor(197, 160, 89) // Champagne Gold
+    doc.setLineWidth(1.0)
+    doc.line(CX - underlineHalf, 280, CX + underlineHalf, 280)
 
-    // 4. Completion description
+    // 4. Completion description (Moved down from 286 to 318)
     doc.setFont(G, hasGaramond ? "bolditalic" : "italic")
-    doc.setFontSize(12)
-    doc.setTextColor(63, 63, 70)
-    doc.text(
-      "for successfully fulfilling all curriculum requirements and completing the course",
-      CX,
-      275,
-      { align: "center" }
-    )
+    doc.setFontSize(11.5)
+    doc.setTextColor(71, 85, 105) // Slate-600
+    doc.text("for successfully completing the curriculum and requirements for", CX, 318, { align: "center" })
 
-    // 5. Course title (uses Garamond G family as requested)
-    doc.setFont(G, "bold")
-    doc.setFontSize(22)
-    doc.setTextColor(30, 27, 75)
-    const wrappedTitle = doc.splitTextToSize(courseTitle.toUpperCase(), W - 220)
-    doc.text(wrappedTitle, CX, 320, { align: "center" })
+    // 5. Course title (Moved down from 325 to 355)
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(18)
+    doc.setTextColor(15, 23, 42) // Slate-900
+    const wrappedTitle = doc.splitTextToSize(courseTitle, W - 220)
+    doc.text(wrappedTitle, CX, 355, { align: "center" })
 
-    const titleBlockBottom = 320 + (wrappedTitle.length - 1) * 26
+    const titleBlockBottom = 355 + (wrappedTitle.length - 1) * 22
 
     // 6. Issue date
-    doc.setFont(G, hasGaramond ? "bolditalic" : "italic")
-    doc.setFontSize(11)
-    doc.setTextColor(113, 113, 122)
-    doc.text(`Issued on ${issueDateStr}`, CX, Math.max(titleBlockBottom + 32, 380), {
-      align: "center",
-    })
+    doc.setFont(G, "normal")
+    doc.setFontSize(10)
+    doc.setTextColor(100, 116, 139) // Slate-500
+    doc.text(`Issued on ${issueDateStr}`, CX, titleBlockBottom + 35, { align: "center" })
 
-    // ── 7. Signatures & Verification Section ──────────────────────────────────
-    // Properly structured and positioned at the bottom of the card area
-    const sigY = 475
-    const leftX = 210
-    const rightX = W - 210
+    // ── 8. Symmetrical Footer Layout (Signatures & Verification) ──────────────
+    const sigY = 485
+    const leftX = 220
+    const rightX = W - 220
 
-    // Left: Instructor Signature
-    doc.setDrawColor(180, 83, 9)
-    doc.setLineWidth(1)
+    // Left Column: Handwritten Signature of Instructor
+    doc.setDrawColor(15, 23, 42) // Slate-900
+    doc.setLineWidth(1.0)
+    doc.moveTo(leftX - 50, sigY - 15)
+    doc.lineTo(leftX - 35, sigY - 20)
+    doc.curveTo(leftX - 25, sigY - 35, leftX - 15, sigY - 30, leftX - 10, sigY - 15)
+    doc.curveTo(leftX, sigY - 5, leftX + 5, sigY - 35, leftX + 15, sigY - 25)
+    doc.curveTo(leftX + 25, sigY - 15, leftX + 35, sigY - 30, leftX + 50, sigY - 15)
+    doc.lineTo(leftX + 70, sigY - 18)
+    doc.stroke()
+
+    // Signature line
+    doc.setDrawColor(203, 213, 225) // Slate-300
+    doc.setLineWidth(0.8)
     doc.line(leftX - 80, sigY, leftX + 80, sigY)
 
-    doc.setFont(G, "bold")
-    doc.setFontSize(10.5)
-    doc.setTextColor(63, 63, 70)
-    doc.text(instructorName.toUpperCase(), leftX, sigY + 14, { align: "center" })
+    // Instructor details
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(8.5)
+    doc.setTextColor(15, 23, 42) // Slate-900
+    doc.text(instructorName, leftX, sigY + 14, { align: "center" })
 
-    doc.setFont(G, hasGaramond ? "bolditalic" : "italic")
-    doc.setFontSize(9)
-    doc.setTextColor(130, 130, 140)
-    doc.text("Course Instructor", leftX, sigY + 26, { align: "center" })
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(7.5)
+    doc.setTextColor(100, 116, 139) // Slate-500
+    doc.text("Course Instructor", leftX, sigY + 24, { align: "center" })
 
-    // Right: QR Code for Verification
-    const qrSize = 65
+    // Right Column: QR Code & Verification (Centered symmetrically)
+    const qrSize = 45
     const qrX = rightX - qrSize / 2
-    const qrY = sigY - 45 // position qr code slightly above the alignment line
+    const qrY = sigY - qrSize - 5
 
     doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize)
 
-    doc.setFont(G, hasGaramond ? "bolditalic" : "italic")
-    doc.setFontSize(8)
-    doc.setTextColor(113, 113, 122)
-    doc.text("Scan to verify authenticity", rightX, sigY + 28, { align: "center" })
-
-    // ── 8. Footer metadata ────────────────────────────────────────────────────
-
-    doc.setFont(G, "normal")
+    doc.setFont("helvetica", "normal")
     doc.setFontSize(7.5)
-    doc.setTextColor(160, 160, 160)
-    doc.text(`Certificate ID: ${certificateId}`, 55, H - 50)
-    doc.text(`Verify at: ${verifyLink}`, W - 55, H - 50, { align: "right" })
+    doc.setTextColor(100, 116, 139) // Slate-500
+    
+    doc.text(`Verify at: ${verifyLink}`, rightX, sigY + 14, { align: "center" })
+    doc.text(`Certificate ID: ${certificateId}`, rightX, sigY + 24, { align: "center" })
 
     // ── Emit PDF ──────────────────────────────────────────────────────────────
 

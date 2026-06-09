@@ -395,18 +395,21 @@ export type Database = {
           course_id: string
           id: string
           issued_at: string
+          issued_to_name: string
           user_id: string
         }
         Insert: {
           course_id: string
           id?: string
           issued_at?: string
+          issued_to_name: string
           user_id: string
         }
         Update: {
           course_id?: string
           id?: string
           issued_at?: string
+          issued_to_name?: string
           user_id?: string
         }
         Relationships: [
@@ -559,7 +562,7 @@ export type Database = {
           description: string
           duration: string
           id: string
-          instructor_name: string
+          instructor_id: string | null
           is_published: boolean
           level: string
           title: string
@@ -574,7 +577,7 @@ export type Database = {
           description?: string
           duration?: string
           id?: string
-          instructor_name?: string
+          instructor_id?: string | null
           is_published?: boolean
           level?: string
           title: string
@@ -589,7 +592,7 @@ export type Database = {
           description?: string
           duration?: string
           id?: string
-          instructor_name?: string
+          instructor_id?: string | null
           is_published?: boolean
           level?: string
           title?: string
@@ -603,6 +606,12 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "courses_instructor_id_fkey"
+            columns: ["instructor_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
         ]
       }
       institute_profiles: {

@@ -20,9 +20,9 @@ export interface AdminCourseInput {
   level: string
   duration: string
   type: string
-  badge?: string
+  badge?: string | null
   cover_image_path?: string | null
-  instructor_name: string
+  instructor_id?: string | null
   is_published: boolean
 }
 
@@ -53,6 +53,7 @@ export async function createCourseAction(
     .insert({
       ...courseData,
       created_by: admin.id,
+      instructor_id: admin.id,
       updated_at: new Date().toISOString(),
     })
     .select("id")
@@ -256,57 +257,70 @@ export async function toggleModuleCompletionAction(
     throw new Error(upsertError.message || "Failed to save module progress.")
   }
 
-  // 3. Check for 100% course completion & issue certificate if appropriate
-  let certificateId: string | null = null
-
-  if (completed) {
-    // A. Count total modules
-    const { count: totalModules } = await (supabase as any)
-      .from("course_modules")
-      .select("id", { count: "exact", head: true })
-      .eq("course_id", courseId)
-
-    // B. Count completed modules
-    const { count: completedModules } = await (supabase as any)
-      .from("course_module_progress")
-      .select("id", { count: "exact", head: true })
-      .eq("course_id", courseId)
-      .eq("user_id", profile.id)
-      .eq("completed", true)
-
-    if (totalModules && completedModules && totalModules === completedModules) {
-      // C. Issue certificate if not already issued
-      const { data: existingCert } = await (supabase as any)
-        .from("course_certificates")
-        .select("id")
-        .eq("course_id", courseId)
-        .eq("user_id", profile.id)
-        .maybeSingle()
-
-      if (existingCert) {
-        certificateId = existingCert.id
-      } else {
-        const { data: newCert, error: certError } = await (supabase as any)
-          .from("course_certificates")
-          .insert({
-            course_id: courseId,
-            user_id: profile.id,
-            issued_at: new Date().toISOString(),
-          })
-          .select("id")
-          .single()
-
-        if (certError) {
-          console.error("Error generating completion certificate:", certError)
-        } else if (newCert) {
-          certificateId = newCert.id
-        }
-      }
-    }
-  }
-
   revalidatePath(`/~/courses/${courseId}`)
   revalidatePath(`/~/courses/${courseId}/module/${moduleId}`)
   revalidatePath("/~/courses")
-  return { success: true, certificateId }
+  return { success: true }
 }
+
+/**
+ * Manually generates a certificate for a candidate if they have completed 100% of the course modules.
+ */
+export async function generateCertificateAction(courseId: string) {
+  const profile = await getUserProfile()
+  if (!profile) throw new Error("Unauthorized: Please log in.")
+
+  const supabase = await createClient()
+
+  // 1. Verify 100% completion
+  // A. Count total modules
+  const { count: totalModules } = await (supabase as any)
+    .from("course_modules")
+    .select("id", { count: "exact", head: true })
+    .eq("course_id", courseId)
+
+  // B. Count completed modules
+  const { count: completedModules } = await (supabase as any)
+    .from("course_module_progress")
+    .select("id", { count: "exact", head: true })
+    .eq("course_id", courseId)
+    .eq("user_id", profile.id)
+    .eq("completed", true)
+
+  if (!totalModules || !completedModules || totalModules !== completedModules) {
+    throw new Error("You must complete all modules before generating a certificate.")
+  }
+
+  // 2. Issue certificate if not already issued
+  const { data: existingCert } = await (supabase as any)
+    .from("course_certificates")
+    .select("id")
+    .eq("course_id", courseId)
+    .eq("user_id", profile.id)
+    .maybeSingle()
+
+  if (existingCert) {
+    return { success: true, certificateId: existingCert.id }
+  }
+
+  const { data: newCert, error: certError } = await (supabase as any)
+    .from("course_certificates")
+    .insert({
+      course_id: courseId,
+      user_id: profile.id,
+      issued_to_name: profile.display_name || "Candidate",
+      issued_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single()
+
+  if (certError || !newCert) {
+    console.error("Error generating completion certificate:", certError)
+    throw new Error(certError?.message || "Failed to generate certificate.")
+  }
+
+  revalidatePath(`/~/courses/${courseId}`)
+  revalidatePath("/~/courses")
+  return { success: true, certificateId: newCert.id }
+}
+

@@ -5,17 +5,17 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   BookOpen, Plus, Search, X, PenLine, Trash2, Clock, Users, CheckCircle, AlertCircle,
-  ArrowUpDown, TrendingUp, Layers, BarChart2, ChevronsUpDown, Eye
+  ArrowUpDown, Layers, BarChart2, ChevronsUpDown, Eye
 } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { buildStorageUrl } from "@/lib/storage"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { deleteCourseAction } from "./actions"
+import { CourseCover } from "./components/CourseCover"
+import { buildStorageUrl } from "@/lib/storage"
 
 interface CourseListItem {
   id: string
@@ -26,7 +26,9 @@ interface CourseListItem {
   type: string
   badge?: string | null
   cover_image_path?: string | null
-  instructor_name: string
+  instructor_name?: string | null
+  instructor_avatar_path?: string | null
+  instructor_id?: string | null
   is_published: boolean
   created_at: string
   modules_count: number
@@ -45,101 +47,7 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "most-enrolled", label: "Most Enrolled" },
   { value: "most-modules", label: "Most Modules" },
   { value: "a-z", label: "A → Z" },
-]// ─── Course Cover (by ID / Level fallback) ─────────────────────────────────
-function CourseCover({ courseId }: { courseId: string }) {
-  switch (courseId) {
-    case "algo-ds-masterclass":
-    case "python-for-everybody":
-      return (
-        <svg className="w-full h-full object-cover" viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="100%" height="100%" fill="url(#adm-bg-cs)" />
-          <defs>
-            <linearGradient id="adm-bg-cs" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0b0f19" />
-              <stop offset="100%" stopColor="#1e1b4b" />
-            </linearGradient>
-          </defs>
-          <g opacity="0.1">
-            <path d="M0 20 H320 M0 60 H320 M0 100 H320 M0 140 H320 M40 0 V180 M120 0 V180 M200 0 V180 M280 0 V180" stroke="#818cf8" strokeWidth="0.5" />
-          </g>
-          <circle cx="160" cy="50" r="10" fill="#6366f1" opacity="0.8" />
-          <circle cx="100" cy="100" r="8" fill="#818cf8" opacity="0.8" />
-          <circle cx="220" cy="100" r="8" fill="#818cf8" opacity="0.8" />
-          <circle cx="60" cy="150" r="6" fill="#a5b4fc" opacity="0.8" />
-          <circle cx="260" cy="150" r="6" fill="#a5b4fc" opacity="0.8" />
-          <path d="M160 60 L100 92 M160 60 L220 92 M100 108 L60 144 M220 108 L260 144" stroke="#818cf8" strokeWidth="1.5" opacity="0.5" />
-          <text x="160" y="105" fill="#ffffff" opacity="0.08" fontSize="24" fontWeight="bold" textAnchor="middle" letterSpacing="2">CORE CS</text>
-        </svg>
-      )
-    case "nextjs-supabase-dev":
-    case "programming-for-everybody":
-      return (
-        <svg className="w-full h-full object-cover" viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="100%" height="100%" fill="url(#adm-bg-web)" />
-          <defs>
-            <linearGradient id="adm-bg-web" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0b0f19" />
-              <stop offset="100%" stopColor="#064e3b" />
-            </linearGradient>
-          </defs>
-          <g opacity="0.15">
-            <path d="M0 40 L320 140 M0 140 L320 40" stroke="#059669" strokeWidth="0.5" />
-          </g>
-          <circle cx="160" cy="90" r="25" stroke="#34d399" strokeWidth="1.8" fill="#047857" fillOpacity="0.2" />
-          <rect x="75" y="60" width="30" height="15" rx="2" fill="#047857" stroke="#10b981" strokeWidth="1" />
-          <rect x="215" y="60" width="30" height="15" rx="2" fill="#047857" stroke="#10b981" strokeWidth="1" />
-          <rect x="75" y="105" width="30" height="15" rx="2" fill="#047857" stroke="#10b981" strokeWidth="1" />
-          <rect x="215" y="105" width="30" height="15" rx="2" fill="#047857" stroke="#10b981" strokeWidth="1" />
-          <text x="160" y="95" fill="#ffffff" opacity="0.08" fontSize="22" fontWeight="bold" textAnchor="middle" letterSpacing="1">WEB DEV</text>
-        </svg>
-      )
-    case "behavioral-interviews-soft-skills":
-    case "foundations-data-everywhere":
-      return (
-        <svg className="w-full h-full object-cover" viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="100%" height="100%" fill="url(#adm-bg-int)" />
-          <defs>
-            <linearGradient id="adm-bg-int" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0b0f19" />
-              <stop offset="100%" stopColor="#7c2d12" />
-            </linearGradient>
-          </defs>
-          <g opacity="0.1">
-            <circle cx="160" cy="90" r="50" stroke="#d97706" strokeWidth="0.5" />
-            <circle cx="160" cy="90" r="70" stroke="#d97706" strokeWidth="0.5" />
-          </g>
-          <circle cx="120" cy="90" r="22" stroke="#d97706" strokeWidth="1.5" fill="#b45309" opacity="0.2" />
-          <circle cx="200" cy="90" r="26" stroke="#f59e0b" strokeWidth="1.5" fill="#d97706" opacity="0.2" />
-          <path d="M140 82 Q160 72 180 82" stroke="#f59e0b" strokeWidth="1.5" fill="none" />
-          <path d="M140 98 Q160 108 180 98" stroke="#f59e0b" strokeWidth="1.5" fill="none" />
-          <text x="160" y="95" fill="#ffffff" opacity="0.08" fontSize="20" fontWeight="bold" textAnchor="middle" letterSpacing="2">INTERVIEW</text>
-        </svg>
-      )
-    case "system-design-scale":
-    case "google-data-analytics":
-    default:
-      return (
-        <svg className="w-full h-full object-cover" viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="100%" height="100%" fill="url(#adm-bg-sys)" />
-          <defs>
-            <linearGradient id="adm-bg-sys" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0b0f19" />
-              <stop offset="100%" stopColor="#581c87" />
-            </linearGradient>
-          </defs>
-          <g opacity="0.15">
-            <path d="M0 0 L320 180 M0 180 L320 0" stroke="#a855f7" strokeWidth="0.5" />
-          </g>
-          <rect x="35" y="70" width="45" height="35" rx="3" fill="#6b21a8" stroke="#a855f7" strokeWidth="1" opacity="0.8" />
-          <rect x="135" y="40" width="45" height="35" rx="3" fill="#6b21a8" stroke="#a855f7" strokeWidth="1" opacity="0.8" />
-          <rect x="135" y="100" width="45" height="35" rx="3" fill="#6b21a8" stroke="#a855f7" strokeWidth="1" opacity="0.8" />
-          <rect x="240" y="70" width="45" height="35" rx="3" fill="#6b21a8" stroke="#a855f7" strokeWidth="1" opacity="0.8" />
-          <path d="M80 88 L135 58 M80 88 L135 118 M180 58 L240 88 M180 118 L240 88" stroke="#d8b4fe" strokeWidth="1.5" opacity="0.4" />
-          <text x="160" y="95" fill="#ffffff" opacity="0.08" fontSize="20" fontWeight="bold" textAnchor="middle" letterSpacing="1">SYSTEM DESIGN</text>
-        </svg>
-      )
-  }
-}
+]
 
 // ─── Admin Stats Bar ─────────────────────────────────────────────────────────
 function AdminStatsBar({ courses }: { courses: CourseListItem[] }) {
@@ -156,41 +64,41 @@ function AdminStatsBar({ courses }: { courses: CourseListItem[] }) {
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-in fade-in duration-300">
       {[
         {
-          icon: <Layers className="h-4 w-4 text-primary" />,
+          icon: <Layers className="h-3.5 w-3.5 text-primary" />,
           value: stats.total,
           label: "Total Courses",
-          accent: "bg-primary/8 border-primary/15",
+          accent: "border-primary/15",
         },
         {
-          icon: <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />,
+          icon: <CheckCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />,
           value: stats.published,
           label: "Published",
-          accent: "bg-emerald-500/8 border-emerald-500/15",
+          accent: "border-emerald-500/15",
         },
         {
-          icon: <Users className="h-4 w-4 text-indigo-500" />,
+          icon: <Users className="h-3.5 w-3.5 text-indigo-500" />,
           value: stats.totalEnrollments,
           label: "Total Enrollments",
-          accent: "bg-indigo-500/8 border-indigo-500/15",
+          accent: "border-indigo-500/15",
         },
         {
-          icon: <BarChart2 className="h-4 w-4 text-amber-500" />,
+          icon: <BarChart2 className="h-3.5 w-3.5 text-amber-500" />,
           value: stats.avgModules,
           label: "Avg Modules / Course",
-          accent: "bg-amber-500/8 border-amber-500/15",
+          accent: "border-amber-500/15",
         },
       ].map((stat, i) => (
         <div
           key={i}
           className={cn(
-            "flex items-center gap-3 p-4 rounded-xl border",
+            "flex items-center gap-3 px-4 py-3 rounded-xl border bg-card",
             stat.accent
           )}
         >
           <div className="shrink-0">{stat.icon}</div>
-          <div>
-            <p className="text-xl font-bold text-foreground tabular-nums">{stat.value}</p>
-            <p className="text-[10px] text-muted-foreground font-medium leading-tight">{stat.label}</p>
+          <div className="min-w-0">
+            <p className="text-xl font-bold text-foreground tabular-nums leading-none">{stat.value}</p>
+            <p className="text-[10px] text-muted-foreground font-medium leading-tight mt-0.5 truncate">{stat.label}</p>
           </div>
         </div>
       ))}
@@ -207,7 +115,7 @@ function SortDropdown({ value, onChange }: { value: SortOption; onChange: (v: So
     <div className="relative">
       <button
         onClick={() => setOpen(prev => !prev)}
-        className="inline-flex items-center gap-1.5 h-9 px-3 text-xs font-medium rounded-lg border border-border/70 bg-background hover:bg-muted transition-colors"
+        className="inline-flex items-center gap-1.5 h-9 px-3 text-xs font-medium rounded-lg border border-border/70 bg-background hover:bg-muted transition-colors whitespace-nowrap"
       >
         <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
         {current?.label}
@@ -289,7 +197,7 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
         const query = searchQuery.toLowerCase()
         const matchTitle = course.title.toLowerCase().includes(query)
         const matchDesc = course.description.toLowerCase().includes(query)
-        const matchInstructor = course.instructor_name.toLowerCase().includes(query)
+        const matchInstructor = (course.instructor_name ?? "").toLowerCase().includes(query)
         return matchTitle || matchDesc || matchInstructor
       }
 
@@ -329,18 +237,20 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
   }, [courses])
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-8 md:px-8 animate-in fade-in duration-300">
+    <div className="flex flex-col gap-6 px-4 py-6 md:px-8 md:py-8 animate-in fade-in duration-300">
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Course Catalog (Admin)</h1>
+        <div className="flex flex-col gap-1 min-w-0">
+          <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Course Catalog</h1>
           <p className="text-sm text-muted-foreground">
-            Manage your placement training courses, content modules, and enrollment counts.
+            Manage placement training courses, content modules, and enrollments.
           </p>
         </div>
         <Button size="sm" onClick={handleCreate} className="gap-1.5 shrink-0 rounded-full shadow-md shadow-primary/10">
           <Plus className="h-4 w-4" />
-          Create Course
+          <span className="hidden sm:inline">Create Course</span>
+          <span className="sm:hidden">Create</span>
         </Button>
       </div>
 
@@ -349,9 +259,10 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
 
       {/* Tabs and Search */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* Search Input */}
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+
+            {/* Left: Search */}
             <div className="relative w-full sm:max-w-xs">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -376,7 +287,7 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
               <SortDropdown value={sortBy} onChange={setSortBy} />
 
               {/* Tabs Trigger List */}
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto scrollbar-none">
                 <TabsList className="inline-flex h-9 gap-0.5 rounded-lg bg-muted p-1">
                   <TabsTrigger
                     value="all"
@@ -392,7 +303,7 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
                     className="gap-1.5 rounded-md px-3 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
                   >
                     Published
-                    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500/10 px-1 text-[9px] font-semibold text-emerald-600 dark:text-emerald-450">
+                    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500/10 px-1 text-[9px] font-semibold text-emerald-600 dark:text-emerald-400">
                       {counts.published}
                     </span>
                   </TabsTrigger>
@@ -401,7 +312,7 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
                     className="gap-1.5 rounded-md px-3 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
                   >
                     Drafts
-                    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500/10 px-1 text-[9px] font-semibold text-amber-600 dark:text-amber-450">
+                    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500/10 px-1 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
                       {counts.drafts}
                     </span>
                   </TabsTrigger>
@@ -429,25 +340,15 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in duration-300">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 animate-in fade-in duration-300">
               {filteredAndSortedCourses.map((course) => {
-                const coverUrl = course.cover_image_path ? buildStorageUrl("course-covers", course.cover_image_path) : null
-
                 return (
-                  <Card key={course.id} className="group flex flex-col justify-between overflow-hidden border border-border/50 dark:border-zinc-800/80 bg-card hover:border-border hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-full p-0 gap-0">
+                  <Card key={course.id} className="group flex flex-col justify-between overflow-hidden border border-border/50 dark:border-zinc-800/80 bg-card hover:border-primary/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-full p-0 gap-0">
                     <div className="flex flex-col h-full">
                       {/* Cover Image Area */}
-                      <div className="aspect-video w-full overflow-hidden bg-muted relative rounded-t-lg">
+                      <div className="aspect-video w-full overflow-hidden bg-muted relative rounded-t-xl">
                         <div className="w-full h-full transform group-hover:scale-105 transition-transform duration-500 ease-out">
-                          {coverUrl ? (
-                            <img
-                              src={coverUrl}
-                              alt={course.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <CourseCover courseId={course.id} />
-                          )}
+                          <CourseCover coverImagePath={course.cover_image_path} title={course.title} />
                         </div>
 
                         {/* Badge overlay */}
@@ -470,24 +371,32 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
 
                       {/* Info Area */}
                       <div className="flex flex-col flex-1">
-                        <CardHeader className="px-4 pt-4 pb-0 gap-2">
-                          {/* Instructor as "partner" row */}
-                          <div className="flex items-center gap-2">
-                            <div className="h-4 w-4 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-bold text-[9px] text-primary shrink-0 shadow-xs">
-                              {course.instructor_name?.charAt(0) ?? "I"}
-                            </div>
+                        <CardHeader className="px-4 pt-4 pb-0 gap-1.5">
+                          {/* Instructor details row */}
+                          <div className="flex items-center gap-1.5">
+                            {course.instructor_avatar_path ? (
+                              <img
+                                src={buildStorageUrl("avatars", course.instructor_avatar_path) || ""}
+                                alt=""
+                                className="h-4 w-4 rounded-full object-cover shrink-0 border border-primary/25"
+                              />
+                            ) : (
+                              <div className="h-4 w-4 rounded-full bg-primary/15 border border-primary/25 flex items-center justify-center font-bold text-[9px] text-primary shrink-0">
+                                {course.instructor_name?.charAt(0) ?? "I"}
+                              </div>
+                            )}
                             <span className="text-[11px] text-muted-foreground font-medium truncate">
-                              {course.instructor_name}
+                              {course.instructor_name || "Instructor"}
                             </span>
                           </div>
 
                           {/* Title */}
-                          <CardTitle className="font-semibold text-sm md:text-[14px] text-foreground leading-snug line-clamp-2 min-h-[40px] group-hover:text-primary transition-colors duration-200">
+                          <CardTitle className="font-semibold text-sm text-foreground leading-snug line-clamp-2 min-h-[40px] group-hover:text-primary transition-colors duration-200">
                             {course.title}
                           </CardTitle>
 
                           {/* Type · Level */}
-                          <CardDescription className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                          <CardDescription className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                             <span className="font-medium text-foreground/80">{course.type || "Course"}</span>
                             <span className="text-muted-foreground/30">•</span>
                             <span className="capitalize">{course.level}</span>
@@ -496,7 +405,19 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
 
                         {/* Bottom Stats + Actions */}
                         <CardContent className="mt-auto pt-4 pb-4 px-4">
-                          <div className="border-t border-border/40 pt-3.5 w-full">
+                          <div className="border-t border-border/40 pt-3.5 w-full space-y-3">
+
+                            {/* Quick stats row */}
+                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                              <span className="inline-flex items-center gap-1">
+                                <BookOpen className="h-3 w-3" />
+                                {course.modules_count} module{course.modules_count !== 1 ? "s" : ""}
+                              </span>
+                              <span className="inline-flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {course.enrollments_count} enrolled
+                              </span>
+                            </div>
 
                             {/* Action buttons */}
                             <div className="flex gap-2">
@@ -508,7 +429,18 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
                               >
                                 <Link href={`/~/courses/${course.id}`}>
                                   <Eye className="h-3.5 w-3.5 mr-1" />
-                                  View Course
+                                  View
+                                </Link>
+                              </Button>
+                              <Button
+                                asChild
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 text-xs rounded-full h-8"
+                              >
+                                <Link href={`/~/courses/${course.id}/edit`}>
+                                  <PenLine className="h-3.5 w-3.5 mr-1" />
+                                  Edit
                                 </Link>
                               </Button>
                               <Button
@@ -539,7 +471,7 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
           <Card className="max-w-md w-full border border-border shadow-lg">
             <CardHeader className="pb-3 border-b bg-muted/10">
               <CardTitle className="text-sm font-bold flex items-center gap-2 text-destructive">
-                <AlertCircle className="h-4.5 w-4.5" />
+                <AlertCircle className="h-4 w-4" />
                 Delete Course?
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
@@ -549,7 +481,7 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
             <CardContent className="pt-4 space-y-4">
               <p className="text-xs text-foreground/80 leading-relaxed">
                 Are you sure you want to delete <strong className="text-foreground">"{courseToDelete.title}"</strong>?
-                This will delete the course meta-data and all <strong className="text-foreground">{courseToDelete.modules_count}</strong> modules associated with it. Any active candidate progress or enrollments will also be removed.
+                This will remove the course metadata and all <strong className="text-foreground">{courseToDelete.modules_count}</strong> associated modules. Any active candidate progress or enrollments will also be removed.
               </p>
               <div className="flex justify-end gap-2 border-t pt-3 border-border/40">
                 <Button

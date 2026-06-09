@@ -12,7 +12,7 @@ export default async function AdminPage() {
   const profile = await getUserProfile()
   if (!profile) redirect("/auth/login")
 
-  const isAdmin = profile.account_type === "admin" || profile.account_type === "institute"
+  const isAdmin = profile.account_type === "admin"
   if (!isAdmin) redirect("/~/logiclab")
 
   const supabase = (await createClient()) as any
@@ -95,7 +95,7 @@ export default async function AdminPage() {
 
   // Seed ALL student profiles so students with 0 submissions still appear
   Object.entries(profileMap).forEach(([uid, prof]) => {
-    if (prof.account_type !== "admin" && prof.account_type !== "institute") {
+    if (prof.account_type !== "admin") {
       const email = prof.email || "student@placetrix.com"
       const name = prof.display_name || email.split("@")[0] || "Active Student"
       studentMap[uid] = {

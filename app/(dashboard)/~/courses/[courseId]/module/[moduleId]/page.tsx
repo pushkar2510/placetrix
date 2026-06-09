@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { CandidateModuleClient } from "./CandidateModuleClient"
+import { buildStorageUrl } from "@/lib/storage"
 
 interface PageProps {
   params: Promise<{
@@ -41,7 +42,13 @@ export default async function ModuleDetailPage({ params }: PageProps) {
   // 2. Fetch course metadata
   const { data: course, error: courseError } = await (supabase as any)
     .from("courses")
-    .select("*")
+    .select(`
+      *,
+      instructor:profiles!courses_instructor_id_fkey(
+        display_name,
+        avatar_path
+      )
+    `)
     .eq("id", courseId)
     .maybeSingle()
 
@@ -93,17 +100,13 @@ export default async function ModuleDetailPage({ params }: PageProps) {
     level: course.level as any,
     duration: course.duration,
     type: course.type as any,
-    badge: course.badge || undefined,
     cover_image_path: course.cover_image_path || undefined,
-    partner: {
-      name: "CS Foundation",
-      logo: "C",
-      logoBg: "bg-indigo-600",
-    },
     instructor: {
-      name: course.instructor_name,
+      name: course.instructor?.display_name || "Instructor",
       role: "Course Instructor",
-      avatar: course.instructor_name.slice(0, 2).toUpperCase(),
+      avatar: course.instructor?.avatar_path 
+        ? buildStorageUrl("avatars", course.instructor.avatar_path) 
+        : null,
     },
     modules: courseModules,
   }

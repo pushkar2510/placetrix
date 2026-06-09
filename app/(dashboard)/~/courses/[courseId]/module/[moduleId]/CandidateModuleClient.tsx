@@ -4,13 +4,13 @@ import * as React from "react"
 import { useState, useMemo, useTransition, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
-  BookOpen, ArrowLeft, Check, RotateCcw
+  BookOpen, ArrowLeft, Check, RotateCcw, Clock
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { cn } from "@/lib/utils"
+import { cn, formatDuration } from "@/lib/utils"
 import { toast } from "sonner"
 import { toggleModuleCompletionAction } from "../../../actions"
 import { LatexRenderer } from "@/components/ui/latex-renderer"
@@ -32,7 +32,6 @@ interface Course {
   level: string
   duration: string
   type: string
-  badge?: string
   cover_image_path?: string
   modules: Module[]
 }
@@ -41,8 +40,6 @@ interface Props {
   course: Course
   module: Module
 }
-
-// LaTeX Renderer used directly inside CandidateModuleClient
 
 export function CandidateModuleClient({ course, module }: Props) {
   const router = useRouter()
@@ -82,9 +79,11 @@ export function CandidateModuleClient({ course, module }: Props) {
           })
           setCurrentCourse({ ...currentCourse, modules: updatedModules })
 
-          if (result.certificateId) {
-            toast.success("Congratulations! You have completed the course and unlocked your certificate!", {
-              duration: 5000,
+          const isNowFinished = updatedModules.length > 0 && updatedModules.every(m => m.completed)
+
+          if (nextCompleted && isNowFinished) {
+            toast.success("Congratulations! You have completed all modules. Go to the course page to generate your certificate!", {
+              duration: 6000,
             })
           } else {
             toast.success(nextCompleted ? "Module marked as completed." : "Module marked as incomplete.")
@@ -99,32 +98,38 @@ export function CandidateModuleClient({ course, module }: Props) {
 
   const isCompleted = currentModule.completed
 
-  return (
-    <div className="flex flex-col gap-6 px-4 py-8 md:px-8 animate-in fade-in duration-300">
+  // Current module index for display
+  const currentIndex = currentCourse.modules.findIndex(m => m.id === currentModule.id)
 
-      {/* Navigation Breadcrumb / Back button */}
-      <div className="flex items-center justify-between">
+  return (
+    <div className="flex flex-col gap-6 px-4 py-6 md:px-8 md:py-8 animate-in fade-in duration-300">
+
+      {/* Navigation row */}
+      <div className="flex items-center justify-between gap-3">
         <Button
           variant="outline"
           size="sm"
           onClick={() => router.push(`/~/courses/${course.id}`)}
-          className="group rounded-full gap-2 border-border/80 text-muted-foreground hover:text-foreground transition-all duration-200"
+          className="group rounded-full gap-2 border-border/80 text-muted-foreground hover:text-foreground transition-all duration-200 shrink-0"
           disabled={isPending}
         >
           <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
           Back to Course
         </Button>
 
-        <span className="text-xs text-muted-foreground font-medium bg-muted/65 px-3 py-1 rounded-full border border-border/20 truncate max-w-[140px] xs:max-w-[180px] sm:max-w-[280px] md:max-w-[400px]" title={currentCourse.title}>
+        <span
+          className="text-xs text-muted-foreground font-medium bg-muted/65 px-3 py-1 rounded-full border border-border/20 truncate max-w-[140px] xs:max-w-[180px] sm:max-w-[280px] md:max-w-[400px]"
+          title={currentCourse.title}
+        >
           {currentCourse.title}
         </span>
       </div>
 
       {/* Module Title Section */}
-      <div className="flex flex-col gap-2 border-b pb-4 border-border/60">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 border-b pb-5 border-border/60">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="text-[10px] uppercase font-semibold text-muted-foreground">
-            Module
+            Module {currentIndex + 1} of {currentCourse.modules.length}
           </Badge>
           {isCompleted && (
             <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[9px] px-2 py-0.5 font-medium rounded-full">
@@ -140,12 +145,19 @@ export function CandidateModuleClient({ course, module }: Props) {
             {currentModule.description}
           </p>
         )}
+        {currentModule.duration && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock className="h-3.5 w-3.5" />
+            {formatDuration(currentModule.duration)}
+          </div>
+        )}
       </div>
 
+      {/* Content grid: reading panel + sidebar */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-        {/* Main Content Reading Panel (Left) */}
-        <div className="md:col-span-2 space-y-6">
+        {/* Main Content Reading Panel */}
+        <div className="md:col-span-2 space-y-5">
           <Card className="border border-border/50 bg-card rounded-xl overflow-hidden shadow-xs">
             <CardHeader className="border-b border-border/40 pb-4 bg-muted/10">
               <CardTitle className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
@@ -158,22 +170,22 @@ export function CandidateModuleClient({ course, module }: Props) {
             </CardContent>
           </Card>
 
-          {/* Single Action Completion Button */}
-          <div className="flex items-center pt-2">
+          {/* Completion Button */}
+          <div className="flex items-center">
             {isCompleted ? (
               <Button
                 onClick={() => toggleModuleCompletion(currentModule.id, false)}
                 variant="outline"
-                className="w-full md:w-auto border-rose-200 bg-rose-50/50 hover:bg-rose-100 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-350 gap-2 h-10 px-6 rounded-full font-semibold text-xs transition-all duration-200"
+                className="w-full md:w-auto border-rose-200 bg-rose-50/50 hover:bg-rose-100 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400 gap-2 h-10 px-6 rounded-full font-semibold text-xs transition-all duration-200"
                 disabled={isPending}
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                Completed - Mark as Incomplete
+                Completed — Mark as Incomplete
               </Button>
             ) : (
               <Button
                 onClick={() => toggleModuleCompletion(currentModule.id, true)}
-                className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground gap-2 h-10 px-6 rounded-full font-semibold text-xs shadow-md shadow-primary/15 hover:shadow-lg hover:shadow-primary/25 transition-all duration-200"
+                className="w-full md:w-auto gap-2 h-10 px-6 rounded-full font-semibold text-xs shadow-md shadow-primary/15 hover:shadow-lg hover:shadow-primary/25 transition-all duration-200"
                 disabled={isPending}
               >
                 {isPending ? (
@@ -187,18 +199,21 @@ export function CandidateModuleClient({ course, module }: Props) {
           </div>
         </div>
 
-        {/* Module Sidebar Info (Right) */}
-        <div className="space-y-6">
+        {/* Sidebar */}
+        <div className="space-y-4">
+
           {/* Progress Card */}
           <Card className="border border-border/50 bg-card rounded-xl shadow-xs">
             <CardHeader className="pb-3">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Course Progress</CardTitle>
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Course Progress
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-muted-foreground">Completed</span>
                 <span className={cn(
-                  "font-semibold",
+                  "font-semibold tabular-nums",
                   stats.percentage === 100 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
                 )}>{stats.percentage}%</span>
               </div>
@@ -209,19 +224,16 @@ export function CandidateModuleClient({ course, module }: Props) {
                   stats.percentage === 100 && "[&>[data-slot=progress-indicator]]:bg-emerald-500"
                 )}
               />
-
-              <div className="pt-3 border-t border-border/40 space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Modules Completed</span>
-                  <span className="font-semibold text-foreground">
-                    {stats.completed} / {stats.total}
-                  </span>
-                </div>
+              <div className="pt-3 border-t border-border/40 flex justify-between text-xs">
+                <span className="text-muted-foreground">Modules Completed</span>
+                <span className="font-semibold text-foreground tabular-nums">
+                  {stats.completed} / {stats.total}
+                </span>
               </div>
             </CardContent>
           </Card>
 
-          {/* Interactive Modules Checklist Card */}
+          {/* Module Checklist Card */}
           <Card className="border border-border/50 bg-card rounded-xl shadow-xs overflow-hidden">
             <CardHeader className="pb-3">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -234,13 +246,14 @@ export function CandidateModuleClient({ course, module }: Props) {
                   <div
                     key={otherMod.id}
                     className={cn(
-                      "flex items-center justify-between p-3.5 text-xs select-none transition-all duration-200 border-b border-border/30 last:border-b-0",
+                      "flex items-center justify-between px-3.5 py-3 text-xs select-none transition-all duration-200",
                       otherMod.id === currentModule.id
-                        ? "bg-muted/50 font-semibold border-l-2 border-l-primary pl-3"
-                        : "bg-card hover:bg-muted/20"
+                        ? "bg-primary/5 border-l-2 border-l-primary pl-3"
+                        : "bg-card hover:bg-muted/20 cursor-pointer"
                     )}
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      {/* Completion toggle */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -248,7 +261,7 @@ export function CandidateModuleClient({ course, module }: Props) {
                         }}
                         disabled={isPending}
                         className={cn(
-                          "h-4 w-4 rounded-full border flex items-center justify-center shrink-0 transition-all duration-200 cursor-pointer",
+                          "h-4 w-4 rounded-full border flex items-center justify-center shrink-0 transition-all duration-200",
                           otherMod.completed
                             ? "bg-emerald-500 border-emerald-500 text-white dark:bg-emerald-600 dark:border-emerald-600"
                             : "border-muted-foreground/35 bg-background text-transparent hover:border-primary"
@@ -257,18 +270,19 @@ export function CandidateModuleClient({ course, module }: Props) {
                         <Check className="h-2.5 w-2.5 stroke-[3.5]" />
                       </button>
 
+                      {/* Title + index */}
                       <div
                         onClick={() => {
                           if (otherMod.id !== currentModule.id) {
                             router.push(`/~/courses/${course.id}/module/${otherMod.id}`)
                           }
                         }}
-                        className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
+                        className="flex items-center gap-1.5 min-w-0 flex-1 cursor-pointer"
                       >
                         <span className="text-[10px] text-muted-foreground shrink-0">{idx + 1}.</span>
                         <span className={cn(
-                          "text-foreground truncate transition-all duration-200",
-                          otherMod.completed && "text-muted-foreground/70 line-through decoration-muted-foreground/40",
+                          "text-foreground truncate transition-all duration-200 text-[11px]",
+                          otherMod.completed && "text-muted-foreground/60 line-through decoration-muted-foreground/40",
                           otherMod.id === currentModule.id && "text-primary font-semibold"
                         )}>
                           {otherMod.title}
@@ -276,8 +290,8 @@ export function CandidateModuleClient({ course, module }: Props) {
                       </div>
                     </div>
 
-                    <span className="text-muted-foreground text-[9px] font-medium capitalize px-2 py-0.5 rounded-full border border-border/20 bg-muted/50 shrink-0">
-                      {otherMod.duration || "Text"}
+                    <span className="text-muted-foreground text-[9px] font-medium capitalize px-2 py-0.5 rounded-full border border-border/20 bg-muted/50 shrink-0 ml-1">
+                      {formatDuration(otherMod.duration) || otherMod.type || "Text"}
                     </span>
                   </div>
                 ))}
@@ -287,7 +301,6 @@ export function CandidateModuleClient({ course, module }: Props) {
         </div>
 
       </div>
-
     </div>
   )
 }

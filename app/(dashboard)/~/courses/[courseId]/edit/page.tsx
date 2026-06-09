@@ -30,7 +30,7 @@ export default async function EditCoursePage({ params }: PageProps) {
   const isNew = courseId === "new"
 
   if (isNew) {
-    return <CreateCourseClient />
+    return <CreateCourseClient adminProfile={profile} />
   }
 
   const supabase = await createClient()
@@ -71,6 +71,7 @@ export default async function EditCoursePage({ params }: PageProps) {
     <CreateCourseClient
       initialCourse={course}
       initialModules={formattedModules}
+      adminProfile={profile}
     />
   )
 }

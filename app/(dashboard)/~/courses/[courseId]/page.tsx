@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
+import { buildStorageUrl } from "@/lib/storage"
 import { CandidateCourseDetailClient } from "./CandidateCourseDetailClient"
 import { AdminCourseDetailClient } from "./AdminCourseDetailClient"
 
@@ -36,7 +37,13 @@ export default async function CourseDetailPage({ params }: PageProps) {
   // ─── Fetch core course ────────────────────────────────────────────────────────
   const { data: course, error: courseError } = await (supabase as any)
     .from("courses")
-    .select("*")
+    .select(`
+      *,
+      instructor:profiles!courses_instructor_id_fkey(
+        display_name,
+        avatar_path
+      )
+    `)
     .eq("id", courseId)
     .maybeSingle()
 
@@ -120,9 +127,8 @@ export default async function CourseDetailPage({ params }: PageProps) {
       level: course.level,
       duration: course.duration,
       type: course.type,
-      badge: course.badge || undefined,
       cover_image_path: course.cover_image_path || undefined,
-      instructor_name: course.instructor_name,
+      instructor_name: course.instructor?.display_name || "Instructor",
       is_published: course.is_published,
       created_at: course.created_at,
       modules: courseModules,
@@ -174,17 +180,13 @@ export default async function CourseDetailPage({ params }: PageProps) {
     level: course.level as any,
     duration: course.duration,
     type: course.type as any,
-    badge: course.badge || undefined,
     cover_image_path: course.cover_image_path || undefined,
-    partner: {
-      name: "CS Foundation",
-      logo: "C",
-      logoBg: "bg-indigo-600",
-    },
     instructor: {
-      name: course.instructor_name,
+      name: course.instructor?.display_name || "Instructor",
       role: "Course Instructor",
-      avatar: course.instructor_name.slice(0, 2).toUpperCase(),
+      avatar: course.instructor?.avatar_path 
+        ? buildStorageUrl("avatars", course.instructor.avatar_path) 
+        : null,
     },
     modules: modulesWithProgress,
   }

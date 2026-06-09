@@ -19,7 +19,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { cn } from "@/lib/utils"
+import { cn, parseDurationToMinutes } from "@/lib/utils"
 import { toast } from "sonner"
 import { createCourseAction, updateCourseAction, AdminCourseInput, AdminModuleInput } from "../../actions"
 import { LatexRenderer } from "@/components/ui/latex-renderer"
@@ -32,19 +32,23 @@ interface Props {
     level: string
     duration: string
     type: string
-    badge?: string | null
     cover_image_path?: string | null
-    instructor_name: string
+    instructor_id?: string | null
     is_published: boolean
   }
   initialModules?: AdminModuleInput[]
+  adminProfile?: {
+    id: string
+    display_name: string | null
+    avatar_path: string | null
+  } | null
 }
 
 // ── LaTeX Preview ──────────────────────────────────────────────────────────────
 
 // ── Main Component ──────────────────────────────────────────────────────────────
 
-export function CreateCourseClient({ initialCourse, initialModules = [] }: Props) {
+export function CreateCourseClient({ initialCourse, initialModules = [], adminProfile }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -54,10 +58,12 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
   const [title, setTitle] = useState(initialCourse?.title ?? "")
   const [description, setDescription] = useState(initialCourse?.description ?? "")
   const [level, setLevel] = useState(initialCourse?.level ?? "Beginner")
-  const [duration, setDuration] = useState(initialCourse?.duration ?? "")
+  const [duration, setDuration] = useState<string>(() => {
+    if (!initialCourse?.duration) return ""
+    const mins = parseDurationToMinutes(initialCourse.duration)
+    return mins > 0 ? String(mins) : ""
+  })
   const [courseType, setCourseType] = useState(initialCourse?.type ?? "Course")
-  const [badge, setBadge] = useState(initialCourse?.badge ?? "")
-  const [instructorName, setInstructorName] = useState(initialCourse?.instructor_name ?? "")
   const [coverImagePath, setCoverImagePath] = useState<string | null>(
     initialCourse?.cover_image_path ?? null
   )
@@ -75,8 +81,9 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
   const canSave =
     title.trim().length > 0 &&
     description.trim().length > 0 &&
-    instructorName.trim().length > 0 &&
-    duration.trim().length > 0
+    duration.trim().length > 0 &&
+    !isNaN(Number(duration)) &&
+    Number(duration) > 0
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -143,7 +150,7 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
   const addModule = () => {
     setModules([
       ...modules,
-      { id: `temp-${crypto.randomUUID()}`, title: "", description: "", duration: "30 min", type: "text", content: "" },
+      { id: `temp-${crypto.randomUUID()}`, title: "", description: "", duration: "30", type: "text", content: "" },
     ])
   }
 
@@ -189,9 +196,9 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
         level,
         duration,
         type: courseType,
-        badge: badge || undefined,
+        badge: null,
         cover_image_path: coverImagePath,
-        instructor_name: instructorName,
+        instructor_id: initialCourse?.instructor_id || adminProfile?.id || null,
         is_published: isPublished,
       }
       try {
@@ -220,12 +227,12 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
 
   return (
     <form onSubmit={handleSubmit} className="min-h-screen w-full">
-      <div className="mx-auto space-y-6 px-4 py-6 md:px-6 md:py-8">
+      <div className="mx-auto space-y-6 px-4 py-6 md:px-8 md:py-8">
 
         {/* ── Page Header ── */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-0.5">
-            <h1 className="text-xl font-semibold tracking-tight">
+            <h1 className="text-2xl font-bold font-cirka tracking-tight text-foreground">
               {isEditMode ? "Edit Course" : "Create Course"}
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -235,13 +242,14 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => router.push("/~/courses")}
               disabled={isPending}
+              className="rounded-full"
             >
               Cancel
             </Button>
@@ -249,11 +257,12 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
               type="submit"
               size="sm"
               disabled={isPending || !canSave}
+              className="rounded-full gap-1.5 shadow-md shadow-primary/10"
             >
               {isPending ? (
-                <Loader2 className="mr-2 size-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin" />
               ) : (
-                <Save className="mr-2 size-4" />
+                <Save className="size-4" />
               )}
               {isEditMode ? "Save Changes" : "Create Course"}
             </Button>
@@ -277,31 +286,17 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="course-title">
-                      Title <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="course-title"
-                      placeholder="e.g. Master React in 30 Days"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      maxLength={150}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="instructor-name">
-                      Instructor Name <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="instructor-name"
-                      placeholder="e.g. John Doe"
-                      value={instructorName}
-                      onChange={(e) => setInstructorName(e.target.value)}
-                    />
-                  </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="course-title">
+                    Title <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="course-title"
+                    placeholder="e.g. Master React in 30 Days"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    maxLength={150}
+                  />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
@@ -334,11 +329,13 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
 
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="course-duration">
-                      Duration <span className="text-destructive">*</span>
+                      Duration (in mins) <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="course-duration"
-                      placeholder="e.g. 14h 30m"
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 120"
                       value={duration}
                       onChange={(e) => setDuration(e.target.value)}
                     />
@@ -359,16 +356,7 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="course-badge">Promo Badge <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
-                  <Input
-                    id="course-badge"
-                    placeholder="e.g. Bestseller, New, Popular"
-                    value={badge}
-                    onChange={(e) => setBadge(e.target.value)}
-                    className="max-w-xs"
-                  />
-                </div>
+
 
               </CardContent>
             </Card>
@@ -508,11 +496,13 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
                                 />
                               </div>
                               <div className="flex flex-col gap-1.5">
-                                <Label htmlFor={`module-duration-${index}`}>Estimated Duration</Label>
+                                <Label htmlFor={`module-duration-${index}`}>Estimated Duration (in mins)</Label>
                                 <Input
                                   id={`module-duration-${index}`}
-                                  value={mod.duration ?? ""}
-                                  placeholder="e.g. 45 min"
+                                  type="number"
+                                  min="1"
+                                  placeholder="e.g. 45"
+                                  value={mod.duration ? String(parseDurationToMinutes(mod.duration)) : ""}
                                   onChange={(e) => updateModuleField(index, "duration", e.target.value)}
                                 />
                               </div>
@@ -634,7 +624,7 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
                     </div>
                   </div>
                 ) : (
-                  <div className="relative flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 p-4 text-center transition-colors hover:bg-muted/50">
+                  <div className="group relative flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-muted/20 p-4 text-center transition-all duration-200 hover:bg-muted/40 hover:border-primary/40">
                     <input
                       type="file"
                       accept="image/*"
@@ -643,18 +633,18 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
                       disabled={isUploading}
                     />
                     {isUploading ? (
-                      <div className="flex flex-col items-center gap-1">
+                      <div className="flex flex-col items-center gap-2">
                         <Loader2 className="size-6 animate-spin text-primary" />
                         <p className="text-[10px] font-semibold text-muted-foreground">Uploading…</p>
                       </div>
                     ) : (
                       <>
-                        <div className="flex size-8 items-center justify-center rounded-full border bg-muted text-muted-foreground">
+                        <div className="flex size-10 items-center justify-center rounded-full border border-border/60 bg-muted text-muted-foreground group-hover:border-primary/30 group-hover:bg-primary/5 group-hover:text-primary transition-colors duration-200">
                           <Upload className="size-4" />
                         </div>
                         <div>
                           <p className="text-xs font-semibold">Upload cover photo</p>
-                          <p className="text-[9px] text-muted-foreground">PNG, JPG up to 5 MB</p>
+                          <p className="text-[9px] text-muted-foreground mt-0.5">PNG, JPG · Landscape 16:9 · up to 5 MB</p>
                         </div>
                       </>
                     )}
@@ -670,15 +660,7 @@ export function CreateCourseClient({ initialCourse, initialModules = [] }: Props
               </CardHeader>
               <CardContent className="flex flex-col gap-3 text-xs leading-relaxed text-muted-foreground">
                 <Separator />
-                <div className="flex items-start gap-2 pt-1">
-                  <span className="mt-1.5 flex size-1.5 shrink-0 rounded-full bg-primary" />
-                  <p>
-                    Course badges support highlights like{" "}
-                    <Badge variant="secondary" className="px-1.5 py-0 text-[9px]">Bestseller</Badge>{" "}
-                    or{" "}
-                    <Badge variant="secondary" className="px-1.5 py-0 text-[9px]">Popular</Badge>.
-                  </p>
-                </div>
+
                 <div className="flex items-start gap-2">
                   <span className="mt-1.5 flex size-1.5 shrink-0 rounded-full bg-primary" />
                   <p>Ensure cover photos are landscape (16:9) for best display in candidate grids.</p>

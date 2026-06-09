@@ -31,7 +31,7 @@ export default async function LogicLabPage(props: {
   const profile = await getUserProfile()
   if (!profile) redirect("/auth/login")
 
-  const isAdmin = profile.account_type === "admin" || profile.account_type === "institute"
+  const isAdmin = profile.account_type === "admin"
   if (isAdmin) redirect("/~/logiclab/admin")
 
   const params = await props.searchParams

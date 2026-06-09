@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
+import { buildStorageUrl } from "@/lib/storage"
 import { CandidateCourseClient } from "./CandidateCourseClient"
 import { AdminCoursesListClient } from "./AdminCoursesListClient"
 
@@ -25,7 +26,11 @@ export default async function CoursesPage() {
       .select(`
         *,
         course_modules(count),
-        course_enrollments(count)
+        course_enrollments(count),
+        instructor:profiles!courses_instructor_id_fkey(
+          display_name,
+          avatar_path
+        )
       `)
       .order("created_at", { ascending: false })
 
@@ -40,9 +45,9 @@ export default async function CoursesPage() {
       level: course.level,
       duration: course.duration,
       type: course.type,
-      badge: course.badge,
       cover_image_path: course.cover_image_path,
-      instructor_name: course.instructor_name,
+      instructor_name: course.instructor?.display_name || "Instructor",
+      instructor_avatar_path: course.instructor?.avatar_path || null,
       is_published: course.is_published,
       created_at: course.created_at,
       modules_count: course.course_modules?.[0]?.count ?? 0,
@@ -56,7 +61,13 @@ export default async function CoursesPage() {
   // Fetch only published courses
   const { data: dbCourses } = await (supabase as any)
     .from("courses")
-    .select("*")
+    .select(`
+      *,
+      instructor:profiles!courses_instructor_id_fkey(
+        display_name,
+        avatar_path
+      )
+    `)
     .eq("is_published", true)
     .order("created_at", { ascending: false })
 
@@ -100,17 +111,13 @@ export default async function CoursesPage() {
       level: course.level as any,
       duration: course.duration,
       type: course.type as any,
-      badge: course.badge || undefined,
       cover_image_path: course.cover_image_path || undefined,
-      partner: {
-        name: "CS Foundation",
-        logo: "C",
-        logoBg: "bg-indigo-600",
-      },
       instructor: {
-        name: course.instructor_name,
+        name: course.instructor?.display_name || "Instructor",
         role: "Course Instructor",
-        avatar: course.instructor_name.slice(0, 2).toUpperCase(),
+        avatar: course.instructor?.avatar_path 
+          ? buildStorageUrl("avatars", course.instructor.avatar_path) 
+          : null,
       },
       modules: courseModules,
       isEnrolled,

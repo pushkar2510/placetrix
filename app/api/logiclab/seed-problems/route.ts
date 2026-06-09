@@ -4,7 +4,7 @@ import { getUserProfile } from "@/lib/supabase/profile"
 
 // POST /api/logiclab/seed-problems
 // Seeds the coding_problems table from a JSON array in the request body.
-// Requires admin/institute account. 
+// Requires admin account. 
 export async function POST(req: NextRequest) {
   try {
     const profile = await getUserProfile()
@@ -12,8 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const isAdmin =
-      profile.account_type === "admin" || profile.account_type === "institute"
+    const isAdmin = profile.account_type === "admin"
     if (!isAdmin) {
       return NextResponse.json({ error: "Forbidden: admin only" }, { status: 403 })
     }
