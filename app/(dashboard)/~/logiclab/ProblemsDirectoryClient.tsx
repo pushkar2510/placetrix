@@ -310,9 +310,12 @@ export function ProblemsDirectoryClient({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="gap-2 h-10 px-4 text-muted-foreground hover:text-foreground transition-colors" onClick={() => setShowMetrics(!showMetrics)}>
-            {showMetrics ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            {showMetrics ? "Hide Dashboard" : "Show Dashboard"}
+          <Button variant="outline" className="gap-3 h-10 w-[170px] px-4 text-muted-foreground hover:text-foreground transition-colors justify-start" onClick={() => setShowMetrics(!showMetrics)}>
+            {showMetrics ? <ChevronUp className="h-4 w-4 shrink-0" /> : <ChevronDown className="h-4 w-4 shrink-0" />}
+            <div className="flex text-left">
+              <span className="w-[40px]">{showMetrics ? "Hide" : "Show"}</span>
+              <span>Dashboard</span>
+            </div>
           </Button>
           <Button asChild variant="outline" className="gap-2 h-10 px-5">
             <Link href="/~/logiclab/playground">
