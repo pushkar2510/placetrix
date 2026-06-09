@@ -34,7 +34,12 @@ function getDeterministicMetrics(code: string, languageId: number | string) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { source_code, language_id, stdin, problem_id, mode, custom_cases } = body
+    let { source_code, language_id, stdin, problem_id, mode, custom_cases, custom_expected } = body
+
+    // Sanitize invisible characters from copy-pasting (like non-breaking spaces) that crash C++/Java compilers
+    if (source_code) {
+      source_code = source_code.replace(/[\u00A0\u200B]/g, ' ')
+    }
 
     // ── 1. SECURITY: Payload Size Check ──
     if (!source_code || source_code.length > 50000) {
@@ -99,6 +104,11 @@ export async function POST(req: NextRequest) {
           } else {
             finalSource = merged
           }
+        } else if (langKey === "54") { // C++
+          const lines = driverCode.split("\n")
+          const includes = lines.filter((line: string) => line.trim().startsWith("#include") || line.trim().startsWith("using "))
+          const nonIncludes = lines.filter((line: string) => !line.trim().startsWith("#include") && !line.trim().startsWith("using "))
+          finalSource = includes.join("\n") + "\n\n" + source_code + "\n\n" + nonIncludes.join("\n")
         } else {
           finalSource = source_code + "\n\n" + driverCode
         }
@@ -113,10 +123,16 @@ export async function POST(req: NextRequest) {
       if (sampleTestCases.length === 0 && testCases.length > 0) sampleTestCases = [testCases[0]]
 
       if (Array.isArray(custom_cases) && custom_cases.length > 0) {
-        sampleTestCases = sampleTestCases.map((tc, idx) => ({
-          ...tc,
-          input: custom_cases[idx] !== undefined ? custom_cases[idx] : tc.input
-        }))
+        sampleTestCases = custom_cases.map((customInput, idx) => {
+          const originalTc = sampleTestCases[idx] || {}
+          const expected = (Array.isArray(custom_expected) && idx < custom_expected.length) ? custom_expected[idx] : undefined
+          return {
+            ...originalTc,
+            input: customInput,
+            expected_output: (expected !== undefined && expected !== "") ? expected : originalTc.expected_output,
+            is_custom: idx >= sampleTestCases.length
+          }
+        })
       }
     }
 
@@ -197,7 +213,13 @@ export async function POST(req: NextRequest) {
         const expectedTrimmed = (tc.expected_output || "").trim()
         const statusId = data.status?.id || 0
 
-        let passed = (statusId === 3 && stdout === expectedTrimmed)
+        let passed = false
+        if (tc.is_custom && !expectedTrimmed) {
+          passed = (statusId === 3) // Pass if no runtime error and no expected output provided
+        } else {
+          passed = (statusId === 3 && stdout === expectedTrimmed)
+        }
+
         if (!passed) overallSuccess = false
         if (statusId !== 3 && overallStatus.id === 3) overallStatus = data.status
 

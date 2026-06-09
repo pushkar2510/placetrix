@@ -394,10 +394,14 @@ export function ProblemIDEClient({
   const [customInputs, setCustomInputs] = useState<string[]>(() =>
     sampleTestCases.map((tc) => tc.input)
   )
+  const [customExpectedOutputs, setCustomExpectedOutputs] = useState<string[]>(() =>
+    sampleTestCases.map((tc) => tc.expected_output || "")
+  )
   const [activeTestcaseIndex, setActiveTestcaseIndex] = useState(0)
 
   React.useEffect(() => {
     setCustomInputs(sampleTestCases.map((tc) => tc.input))
+    setCustomExpectedOutputs(sampleTestCases.map((tc) => tc.expected_output || ""))
     setActiveTestcaseIndex(0)
   }, [sampleTestCases])
 
@@ -482,22 +486,26 @@ export function ProblemIDEClient({
   }
 
   const renderLeetCodeInput = (inputStr: string, paramsList: string[], isEditable = false, onChange?: (idx: number, val: string) => void) => {
-    const lines = inputStr.split("\n").map(l => l.trim())
+    const rawLines = inputStr.split("\n").map(l => l.trim())
+    const iterator = paramsList.length > 0 ? paramsList : rawLines
+
     return (
       <div className="space-y-3 font-mono">
-        {lines.map((line, idx) => {
-          const paramName = paramsList[idx] || `param${idx + 1}`
+        {iterator.map((paramOrLine, idx) => {
+          const paramName = paramsList.length > 0 ? paramOrLine : `param${idx + 1}`
+          const line = rawLines[idx] || ""
+          
           return (
             <div key={idx} className="space-y-1.5 text-xs">
               <span className="text-xs text-muted-foreground/80 font-bold block select-none">
                 {paramName} =
               </span>
               {isEditable ? (
-                <textarea
+                <input
+                  type="text"
                   value={line}
                   onChange={(e) => onChange?.(idx, e.target.value)}
-                  rows={Math.max(1, Math.min(6, line.split("\n").length))}
-                  className="w-full p-2.5 bg-muted/40 hover:bg-muted/65 focus:bg-muted/80 border border-zinc-200 dark:border-border/60 rounded-xl text-foreground text-sm font-mono whitespace-pre-wrap outline-none resize-y transition-colors leading-relaxed shadow-sm"
+                  className="w-full p-2.5 bg-muted/40 hover:bg-muted/65 focus:bg-muted/80 border border-zinc-200 dark:border-border/60 rounded-xl text-foreground text-sm font-mono outline-none transition-colors shadow-sm"
                 />
               ) : (
                 <pre className="p-2.5 bg-muted/40 dark:bg-black/40 border border-zinc-200 dark:border-border/50 rounded-xl text-foreground/90 text-sm font-medium whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
@@ -567,6 +575,7 @@ export function ProblemIDEClient({
           problem_id: problem.id,
           mode: "problem",
           custom_cases: customInputs, // Pass custom edited inputs!
+          custom_expected: customExpectedOutputs,
         }),
       })
       const textResponse = await res.text()
@@ -665,6 +674,25 @@ export function ProblemIDEClient({
     }
   }
 
+  // Global Hotkeys
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + Enter -> Submit
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault()
+        if (!running && !submitting) handleSubmitCode()
+      }
+      // Cmd/Ctrl + ' -> Run
+      if ((e.metaKey || e.ctrlKey) && e.key === "'") {
+        e.preventDefault()
+        if (!running && !submitting) handleRunCode()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  })
+
+
   const handleCopyOutput = () => {
     const text = runResult?.stdout || submitResult?.error || ""
     if (text) {
@@ -723,6 +751,7 @@ export function ProblemIDEClient({
           variant="secondary"
           onClick={handleRunCode}
           disabled={running || submitting}
+          title="Run Code (Ctrl + ')"
           className="h-8 px-4 text-xs font-semibold bg-muted/50 hover:bg-muted"
         >
           {running ? (
@@ -735,6 +764,7 @@ export function ProblemIDEClient({
           variant="ghost"
           onClick={handleSubmitCode}
           disabled={running || submitting}
+          title="Submit Code (Ctrl + Enter)"
           className="h-8 px-4 text-xs font-bold text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 group"
         >
           {submitting ? (
@@ -1428,6 +1458,7 @@ export function ProblemIDEClient({
                             const params = getParamNames()
                             const emptyInput = params.map(() => "").join("\n")
                             setCustomInputs([...customInputs, emptyInput])
+                            setCustomExpectedOutputs([...customExpectedOutputs, ""])
                             setActiveTestcaseIndex(customInputs.length)
                           }}
                           title="Add new testcase"
@@ -1447,7 +1478,9 @@ export function ProblemIDEClient({
                              size="icon"
                              onClick={() => {
                                const newInputs = customInputs.filter((_, idx) => idx !== activeTestcaseIndex)
+                               const newExpected = customExpectedOutputs.filter((_, idx) => idx !== activeTestcaseIndex)
                                setCustomInputs(newInputs)
+                               setCustomExpectedOutputs(newExpected)
                                setActiveTestcaseIndex(Math.max(0, activeTestcaseIndex - 1))
                              }}
                              className="h-6 w-6 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
@@ -1470,6 +1503,27 @@ export function ProblemIDEClient({
                             return next
                           })
                         }
+                      )}
+                      
+                      {activeTestcaseIndex >= sampleTestCases.length && (
+                        <div className="mt-4 pt-4 border-t border-border/10 space-y-1.5 text-xs font-mono">
+                          <span className="text-[10px] text-muted-foreground/80 uppercase tracking-widest font-bold block select-none">
+                            Expected Output (Optional) =
+                          </span>
+                          <input
+                            type="text"
+                            value={customExpectedOutputs[activeTestcaseIndex] || ""}
+                            onChange={(e) => {
+                              setCustomExpectedOutputs((prev) => {
+                                const next = [...prev]
+                                next[activeTestcaseIndex] = e.target.value
+                                return next
+                              })
+                            }}
+                            placeholder="Expected Output (e.g. 2)"
+                            className="w-full p-2.5 bg-muted/40 hover:bg-muted/65 focus:bg-muted/80 border border-zinc-200 dark:border-border/60 rounded-xl text-foreground text-sm font-mono outline-none transition-colors shadow-sm"
+                          />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1502,8 +1556,10 @@ export function ProblemIDEClient({
                     const isSubmit = false;
 
                     // If it's a Compile Error
-                    if (result.status === "Compile Error" || result.compile_output) {
-                      const compileErrText = result.failed_test_case_info?.actual || result.compile_output;
+                    const isCompileError = result.status?.description === "Compilation Error" || result.status?.id === 6 || result.compile_output || (result.cases && result.cases[0]?.compile_output);
+                    
+                    if (isCompileError) {
+                      const compileErrText = result.compile_output || (result.cases && result.cases[0]?.compile_output) || result.failed_test_case_info?.actual || "Compilation failed.";
                       return (
                         <div className="space-y-2 select-text select-none">
                           <p className="text-[9px] text-rose-600 dark:text-rose-400 uppercase tracking-widest font-bold flex items-center gap-1">

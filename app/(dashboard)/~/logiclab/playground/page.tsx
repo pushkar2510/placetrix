@@ -164,6 +164,19 @@ export default function PlaygroundPage() {
     }
   }
 
+  // Global Hotkeys
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + ' -> Run
+      if ((e.metaKey || e.ctrlKey) && e.key === "'") {
+        e.preventDefault()
+        if (!running) handleRunCode()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  })
+
   const isAccepted = results?.status?.id === 3
 
   return (
