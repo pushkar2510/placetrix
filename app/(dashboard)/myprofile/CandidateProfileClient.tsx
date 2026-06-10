@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useCallback, useRef } from "react";
+import { useState, useEffect, useTransition, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { UserProfile } from "@/lib/supabase/profile";
@@ -25,6 +25,7 @@ import {
   ComboboxList, ComboboxValue, useComboboxAnchor,
 } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
+import { ImageCropperModal } from "@/components/ImageCropperModal";
 import {
   Upload, Plus, Minus, Copy, CalendarIcon, Loader2, Camera,
   CheckCircle2, XCircle, AtSign, ShieldAlert, HelpCircle,
@@ -207,6 +208,7 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
   );
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
 
   // Personal
   const [firstName, setFirstName] = useState(capitalizeFirstLetterOnly(initialData?.first_name ?? ""));
@@ -226,6 +228,17 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
 
   // Education
   const [instituteId, setInstituteId] = useState<string>(initialData?.institute_id ?? "");
+  const [tempImageSrc, setTempImageSrc] = useState<string | null>(null);
+  const [tempFileName, setTempFileName] = useState("");
+
+  useEffect(() => {
+    return () => {
+      if (tempImageSrc) {
+        URL.revokeObjectURL(tempImageSrc);
+      }
+    };
+  }, [tempImageSrc]);
+
   const [instituteName, setInstituteName] = useState("");
   const [courseName, setCourseName] = useState(initialData?.course_name ?? "");
   const [passoutYear, setPassoutYear] = useState(
@@ -348,6 +361,8 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
 
   function openSection(section: SectionId) {
     if (editingSection && editingSection !== section) {
+      const confirmDiscard = window.confirm("You are currently editing another section. Unsaved changes will be discarded. Do you want to proceed?");
+      if (!confirmDiscard) return;
       cancelSection(editingSection);
     }
     setErrors({});
@@ -396,33 +411,47 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
 
   // ─── Avatar upload ───────────────────────────────────────────────────────────
 
-  async function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
       toast.error("Please upload a JPEG, PNG, or WEBP image.");
       return;
     }
-    if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      toast.error("Image must be smaller than 2 MB.");
-      return;
-    }
     const blobUrl = URL.createObjectURL(file);
-    setAvatarSrc(blobUrl);
+    setTempImageSrc(blobUrl);
+    setTempFileName(file.name);
+    setCropModalOpen(true);
+  }
+
+  const handleCropModalClose = () => {
+    setCropModalOpen(false);
+    if (tempImageSrc) {
+      URL.revokeObjectURL(tempImageSrc);
+      setTempImageSrc(null);
+    }
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
+  };
+
+  async function handleCroppedAvatarUpload(croppedFile: File) {
     setIsUploadingAvatar(true);
+    const localPreviewUrl = URL.createObjectURL(croppedFile);
+    setAvatarSrc(localPreviewUrl);
     try {
       const oldPath = storedImagePath.current;
       if (oldPath) {
         const { error: deleteError } = await supabase.storage.from("avatars").remove([oldPath]);
         if (deleteError) console.warn("Could not delete old avatar:", deleteError.message);
       }
-      const ext = file.name.split(".").pop() ?? "jpg";
       const timestamp = Date.now();
-      const newPath = `candidates/${userProfile.id}/profile/${timestamp}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(newPath, file, { upsert: false, contentType: file.type });
+      const newPath = `candidates/${userProfile.id}/profile/${timestamp}.jpg`;
+
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(newPath, croppedFile, {
+        upsert: false,
+        contentType: croppedFile.type,
+      });
       if (uploadError) throw uploadError;
+
       const { error: dbError } = await (supabase as any)
         .from("candidate_profiles")
         .upsert({ profile_id: userProfile.id, profile_image_path: newPath }, { onConflict: "profile_id" });
@@ -434,16 +463,19 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
       storedImagePath.current = newPath;
       const newPublicUrl = getStorageUrl(supabase, "avatars", newPath);
       setAvatarSrc(`${newPublicUrl}?v=${timestamp}`);
-      URL.revokeObjectURL(blobUrl);
       toast.success("Profile picture updated!");
       router.refresh();
     } catch (err) {
       console.error(err);
       toast.error("Failed to upload profile picture. Please try again.");
       setAvatarSrc(getStorageUrl(supabase, "avatars", storedImagePath.current));
-      URL.revokeObjectURL(blobUrl);
     } finally {
       setIsUploadingAvatar(false);
+      URL.revokeObjectURL(localPreviewUrl);
+      if (tempImageSrc) {
+        URL.revokeObjectURL(tempImageSrc);
+        setTempImageSrc(null);
+      }
       if (avatarInputRef.current) avatarInputRef.current.value = "";
     }
   }
@@ -473,7 +505,11 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
 
   function addPortfolioLink() { setPortfolioLinks((prev) => [...prev, ""]); }
   function handlePortfolioLinkChange(index: number, value: string) {
-    setPortfolioLinks((prev) => { const u = [...prev]; u[index] = value; return u; });
+    setPortfolioLinks((prev) => {
+      const u = [...prev];
+      u[index] = value.replace(/[<>]/g, '').slice(0, 200);
+      return u;
+    });
   }
   function removePortfolioLink(index: number) {
     setPortfolioLinks((prev) => prev.filter((_, i) => i !== index));
@@ -493,12 +529,34 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
   function validatePersonal(): Record<string, string> {
     const e: Record<string, string> = {};
     if (!firstName.trim()) e.firstName = "First name is required";
+    else if (firstName.trim().length < 2) e.firstName = "First name must be at least 2 characters";
+    else if (firstName.trim().length > 50) e.firstName = "First name cannot exceed 50 characters";
+
     if (!middleName.trim()) e.middleName = "Middle name is required";
+    else if (middleName.trim().length > 50) e.middleName = "Middle name cannot exceed 50 characters";
+
     if (!lastName.trim()) e.lastName = "Last name is required";
+    else if (lastName.trim().length < 2) e.lastName = "Last name must be at least 2 characters";
+    else if (lastName.trim().length > 50) e.lastName = "Last name cannot exceed 50 characters";
+
     if (!gender) e.gender = "Gender is required";
     if (!phoneNumber.trim()) e.phoneNumber = "Contact number is required";
     else if (!/^[0-9]{10}$/.test(phoneNumber)) e.phoneNumber = "Must be exactly 10 digits";
-    if (!dateOfBirth) e.dateOfBirth = "Date of birth is required";
+    if (!dateOfBirth) {
+      e.dateOfBirth = "Date of birth is required";
+    } else {
+      const dobDate = new Date(dateOfBirth);
+      const today = new Date();
+      if (dobDate > today) {
+        e.dateOfBirth = "Date of birth cannot be in the future.";
+      } else {
+        const minAgeDate = new Date();
+        minAgeDate.setFullYear(today.getFullYear() - 15);
+        if (dobDate > minAgeDate) {
+          e.dateOfBirth = "Candidate must be at least 15 years old.";
+        }
+      }
+    }
     if (aadhaarNumber && !aadhaarNumber.includes("*") && !/^[0-9]{12}$/.test(aadhaarNumber))
       e.aadhaarNumber = "Aadhaar must be exactly 12 digits";
     return e;
@@ -509,19 +567,118 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
     if (!instituteId) e.institute = "Institution is required";
     if (!courseName) e.courseName = "Branch/Course is required";
     if (!passoutYear) e.passoutYear = "Expected graduation year is required";
-    if (!sscPercentage) e.sscPercentage = "SSC percentage is required";
+    
+    if (!sscPercentage) {
+      e.sscPercentage = "SSC percentage is required";
+    } else {
+      const sscPct = parseFloat(sscPercentage);
+      if (isNaN(sscPct) || sscPct < 0 || sscPct > 100) {
+        e.sscPercentage = "SSC percentage must be between 0 and 100.";
+      }
+    }
+
     if (!sscPassYear) e.sscPassYear = "SSC passing year is required";
+    
     if (!isHsc && !isDiploma) e.educationAfterSsc = "Select at least one option (HSC or Diploma)";
-    if (isHsc && !hscPercentage) e.hscPercentage = "HSC percentage is required";
-    if (isHsc && !hscPassYear) e.hscPassYear = "HSC passing year is required";
-    if (isDiploma && !diplomaPercentage) e.diplomaPercentage = "Diploma percentage is required";
-    if (isDiploma && !diplomaPassYear) e.diplomaPassYear = "Diploma passing year is required";
+    
+    if (isHsc) {
+      if (!hscPercentage) {
+        e.hscPercentage = "HSC percentage is required";
+      } else {
+        const hscPct = parseFloat(hscPercentage);
+        if (isNaN(hscPct) || hscPct < 0 || hscPct > 100) {
+          e.hscPercentage = "HSC percentage must be between 0 and 100.";
+        }
+      }
+      if (!hscPassYear) e.hscPassYear = "HSC passing year is required";
+    }
+
+    if (isDiploma) {
+      if (!diplomaPercentage) {
+        e.diplomaPercentage = "Diploma percentage is required";
+      } else {
+        const dipPct = parseFloat(diplomaPercentage);
+        if (isNaN(dipPct) || dipPct < 0 || dipPct > 100) {
+          e.diplomaPercentage = "Diploma percentage must be between 0 and 100.";
+        }
+      }
+      if (!diplomaPassYear) e.diplomaPassYear = "Diploma passing year is required";
+    }
+
+    const currentYear = new Date().getFullYear();
+    const sscYear = Number(sscPassYear);
+    const gradYear = Number(passoutYear);
+
+    if (sscYear > currentYear) {
+      e.sscPassYear = "SSC passing year cannot be in the future.";
+    }
+
+    if (sscYear && gradYear && gradYear <= sscYear) {
+      e.passoutYear = "Graduation year must be after SSC passing year.";
+    }
+
+    if (isHsc && hscPassYear) {
+      const hscYear = Number(hscPassYear);
+      if (hscYear > currentYear) {
+        e.hscPassYear = "HSC passing year cannot be in the future.";
+      }
+      if (sscYear && hscYear <= sscYear) {
+        e.hscPassYear = "HSC passing year must be after SSC passing year.";
+      }
+      if (gradYear && gradYear <= hscYear) {
+        e.passoutYear = "Graduation year must be after HSC passing year.";
+      }
+    }
+
+    if (isDiploma && diplomaPassYear) {
+      const dipYear = Number(diplomaPassYear);
+      if (dipYear > currentYear) {
+        e.diplomaPassYear = "Diploma passing year cannot be in the future.";
+      }
+      if (sscYear && dipYear <= sscYear) {
+        e.diplomaPassYear = "Diploma passing year must be after SSC passing year.";
+      }
+      if (gradYear && gradYear <= dipYear) {
+        e.passoutYear = "Graduation year must be after Diploma passing year.";
+      }
+    }
+
+    if (universityPrn.trim()) {
+      if (universityPrn.trim().length > 50) {
+        e.universityPrn = "University PRN cannot exceed 50 characters.";
+      } else if (!/^[a-zA-Z0-9\s\-/]+$/.test(universityPrn.trim())) {
+        e.universityPrn = "University PRN can only contain letters, numbers, spaces, hyphens, and slashes.";
+      }
+    }
+
+    // Validate SGPAs
+    sgpaValues.forEach((val, i) => {
+      if (val) {
+        const num = parseFloat(val);
+        if (isNaN(num) || num < 0 || num > 10) {
+          e.sgpa = `SGPA for Sem ${i + 1} must be a valid number between 0.00 and 10.00.`;
+        }
+      }
+    });
+
     return e;
   }
 
   function validateProfessional(): Record<string, string> {
     const e: Record<string, string> = {};
     if (selectedSkills.length === 0) e.skills = "Select at least one skill";
+    
+    if (linkedinUrl.trim() && !/^(https?:\/\/)?(www\.)?linkedin\.com\/.*$/i.test(linkedinUrl)) {
+      e.linkedinUrl = "Please enter a valid LinkedIn URL.";
+    }
+    if (githubUrl.trim() && !/^(https?:\/\/)?(www\.)?github\.com\/.*$/i.test(githubUrl)) {
+      e.githubUrl = "Please enter a valid GitHub URL.";
+    }
+    
+    const invalidLinks = portfolioLinks.filter(l => l.trim() && !/^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}.*$/i.test(l));
+    if (invalidLinks.length > 0) {
+      e.portfolioLinks = "One or more portfolio links are invalid URLs.";
+    }
     return e;
   }
 
@@ -660,7 +817,7 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
-  const instituteNames = institutes.map((i) => i.institute_name);
+  const instituteNames = useMemo(() => institutes.map((i) => i.institute_name), [institutes]);
   const usernameMsg = usernameStatusMessage(usernameStatus);
   const editing = (s: SectionId) => editingSection === s;
 
@@ -699,8 +856,8 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
 
         {/* Account Settings — only shown if username not set */}
         {!initialUsername.current ? (
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <Card className={cn("transition-all duration-200", editing("account") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
               <div>
                 <CardTitle>Account Settings</CardTitle>
                 <CardDescription>Your unique username is used to identify you on the platform</CardDescription>
@@ -770,30 +927,31 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
         <Card>
           <CardHeader>
             <CardTitle>Profile Photo</CardTitle>
-            <CardDescription>JPEG, PNG or WEBP · max 2 MB · square recommended</CardDescription>
+            <CardDescription>JPEG, PNG or WEBP</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="relative shrink-0">
-                <Avatar className="h-20 w-20">
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div 
+                className="relative group cursor-pointer shrink-0"
+                onClick={() => !isUploadingAvatar && avatarInputRef.current?.click()}
+              >
+                <Avatar className="h-24 w-24 border-2 border-muted transition-transform duration-200 group-hover:scale-105">
                   <AvatarImage src={avatarSrc ?? undefined} alt="Profile picture" className="object-cover" />
-                  <AvatarFallback className="text-xl font-semibold">
+                  <AvatarFallback className="text-2xl font-semibold">
                     {getInitials(firstName, lastName, userProfile.email)}
                   </AvatarFallback>
                 </Avatar>
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={isUploadingAvatar}
-                  aria-label="Change profile picture"
-                  className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                >
+                <div className="absolute inset-0 rounded-full bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <Camera className="h-5 w-5 mb-1" />
+                  <span className="text-[10px] font-medium">Change</span>
+                </div>
+                <div className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md border-2 border-background">
                   {isUploadingAvatar
                     ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     : <Camera className="h-3.5 w-3.5" />}
-                </button>
+                </div>
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col items-center sm:items-start gap-2.5">
                 <input
                   ref={avatarInputRef}
                   type="file"
@@ -801,20 +959,30 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
                   className="hidden"
                   onChange={handleAvatarFileChange}
                 />
-                <Button variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()} disabled={isUploadingAvatar}>
-                  {isUploadingAvatar
-                    ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading…</>
-                    : <><Upload className="h-4 w-4 mr-2" />Upload Photo</>}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => avatarInputRef.current?.click()} 
+                  disabled={isUploadingAvatar}
+                  className="shadow-sm"
+                >
+                  {isUploadingAvatar ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading…</>
+                  ) : (
+                    <><Upload className="h-4 w-4 mr-2" />Upload Photo</>
+                  )}
                 </Button>
-                <p className="text-xs text-muted-foreground">Square image recommended · max 2 MB</p>
+                <p className="text-xs text-muted-foreground text-center sm:text-left">
+                  Supports JPEG, PNG or WEBP. Max size 2MB.
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Personal Details */}
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+        <Card className={cn("transition-all duration-200", editing("personal") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
             <div>
               <CardTitle>Personal Details</CardTitle>
               <CardDescription>Your basic personal information</CardDescription>
@@ -836,17 +1004,17 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>First Name<RequiredMark /></Label>
-                    <Input placeholder="First name" value={firstName} onChange={(e) => setFirstName(capitalizeFirstLetterOnly(e.target.value))} />
+                    <Input placeholder="First name" maxLength={50} value={firstName} onChange={(e) => setFirstName(capitalizeFirstLetterOnly(e.target.value))} />
                     <FieldError message={errors.firstName} />
                   </div>
                   <div className="space-y-2">
                     <Label>Middle Name<RequiredMark /></Label>
-                    <Input placeholder="Middle name" value={middleName} onChange={(e) => setMiddleName(capitalizeFirstLetterOnly(e.target.value))} />
+                    <Input placeholder="Middle name" maxLength={50} value={middleName} onChange={(e) => setMiddleName(capitalizeFirstLetterOnly(e.target.value))} />
                     <FieldError message={errors.middleName} />
                   </div>
                   <div className="space-y-2">
                     <Label>Last Name<RequiredMark /></Label>
-                    <Input placeholder="Last name" value={lastName} onChange={(e) => setLastName(capitalizeFirstLetterOnly(e.target.value))} />
+                    <Input placeholder="Last name" maxLength={50} value={lastName} onChange={(e) => setLastName(capitalizeFirstLetterOnly(e.target.value))} />
                     <FieldError message={errors.lastName} />
                   </div>
                 </div>
@@ -972,8 +1140,8 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
         </Card>
 
         {/* Education Details */}
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+        <Card className={cn("transition-all duration-200", editing("education") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
             <div>
               <CardTitle>Education Details</CardTitle>
               <CardDescription>Your academic background and qualifications</CardDescription>
@@ -1152,11 +1320,26 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
                   )}
                 </div>
 
-                <Separator />
-
-                <div className="space-y-2">
-                  <Label>University PRN</Label>
-                  <Input placeholder="University PRN / Enrollment number" value={universityPrn} onChange={(e) => setUniversityPrn(e.target.value)} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>University PRN</Label>
+                    <Input
+                      placeholder="University PRN / Enrollment number"
+                      maxLength={50}
+                      value={universityPrn}
+                      onChange={(e) => setUniversityPrn(e.target.value.replace(/[<>]/g, ''))}
+                    />
+                    <FieldError message={errors.universityPrn} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>CGPA</Label>
+                    <Input
+                      value={initialData?.cgpa != null ? initialData.cgpa.toFixed(2) : "—"}
+                      disabled
+                      className="bg-zinc-50 dark:bg-zinc-900/50 text-muted-foreground border-muted cursor-not-allowed"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Calculated and managed directly by the system.</p>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -1177,6 +1360,7 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
                       </div>
                     ))}
                   </div>
+                  <FieldError message={errors.sgpa} />
                 </div>
               </div>
             ) : (
@@ -1205,6 +1389,7 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
                 <Separator />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                   <ReadonlyField label="University PRN" value={universityPrn} />
+                  <ReadonlyField label="CGPA" value={initialData?.cgpa != null ? initialData.cgpa.toFixed(2) : "—"} />
                 </div>
 
                 <div>
@@ -1236,8 +1421,8 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
         </Card>
 
         {/* Professional Details */}
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+        <Card className={cn("transition-all duration-200", editing("professional") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
             <div>
               <CardTitle>Professional Details</CardTitle>
               <CardDescription>Skills and online profiles</CardDescription>
@@ -1287,11 +1472,13 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>LinkedIn URL</Label>
-                    <Input placeholder="https://linkedin.com/in/yourprofile" type="url" value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} />
+                    <Input placeholder="https://linkedin.com/in/yourprofile" type="url" maxLength={200} value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value.replace(/[<>]/g, ''))} />
+                    <FieldError message={errors.linkedinUrl} />
                   </div>
                   <div className="space-y-2">
                     <Label>GitHub URL</Label>
-                    <Input placeholder="https://github.com/yourusername" type="url" value={githubUrl} onChange={(e) => setGithubUrl(e.target.value)} />
+                    <Input placeholder="https://github.com/yourusername" type="url" maxLength={200} value={githubUrl} onChange={(e) => setGithubUrl(e.target.value.replace(/[<>]/g, ''))} />
+                    <FieldError message={errors.githubUrl} />
                   </div>
                 </div>
 
@@ -1304,6 +1491,7 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
                         onChange={(e) => handlePortfolioLinkChange(index, e.target.value)}
                         placeholder="https://yourproject.com"
                         type="url"
+                        maxLength={200}
                       />
                       {portfolioLinks.length > 1 && (
                         <Button variant="ghost" size="icon" type="button" onClick={() => removePortfolioLink(index)}>
@@ -1315,6 +1503,7 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
                   <Button variant="outline" size="sm" onClick={addPortfolioLink} type="button">
                     <Plus className="h-4 w-4 mr-2" />Add link
                   </Button>
+                  <FieldError message={errors.portfolioLinks} />
                 </div>
               </div>
             ) : (
@@ -1374,6 +1563,14 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
         </Card>
 
       </div>
+      <ImageCropperModal
+        isOpen={cropModalOpen}
+        onClose={handleCropModalClose}
+        imageSrc={tempImageSrc}
+        fileName={tempFileName}
+        shape="circle"
+        onCropComplete={handleCroppedAvatarUpload}
+      />
     </div>
   );
 }

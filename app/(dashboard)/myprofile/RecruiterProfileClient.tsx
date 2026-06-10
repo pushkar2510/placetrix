@@ -24,6 +24,7 @@ import {
   Pencil, X, CheckCircle, Info, Building2, MapPin, User,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ImageCropperModal } from "@/components/ImageCropperModal"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -145,6 +146,17 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
   )
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
+  const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [tempImageSrc, setTempImageSrc] = useState<string | null>(null)
+  const [tempFileName, setTempFileName] = useState("")
+
+  useEffect(() => {
+    return () => {
+      if (tempImageSrc) {
+        URL.revokeObjectURL(tempImageSrc)
+      }
+    }
+  }, [tempImageSrc])
 
   // ── Company fields ────────────────────────────────────────────────────────
   const [companyName, setCompanyName] = useState(initialData?.company_name ?? "")
@@ -202,6 +214,8 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
   function openSection(section: SectionId) {
     // Cancel any active section first (discard unsaved changes)
     if (editingSection && editingSection !== section) {
+      const confirmDiscard = window.confirm("You are currently editing another section. Unsaved changes will be discarded. Do you want to proceed?")
+      if (!confirmDiscard) return
       cancelSection(editingSection)
     }
     setErrors({})
@@ -247,13 +261,24 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
     if (!companyName.trim()) e.companyName = "Company name is required."
     if (!industry) e.industry = "Industry is required."
     if (!companySize) e.companySize = "Company size is required."
+    
+    if (companyWebsite.trim() && !/^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}.*$/i.test(companyWebsite)) {
+      e.companyWebsite = "Please enter a valid website URL."
+    }
     return e
   }
 
   function validateRecruiter() {
     const e: Record<string, string> = {}
     if (!designation.trim()) e.designation = "Your designation is required."
-    if (!phoneNumber.trim()) e.phoneNumber = "Contact number is required."
+    
+    const phone = phoneNumber.trim()
+    if (!phone) e.phoneNumber = "Contact number is required."
+    else if (!/^[0-9]{10}$/.test(phone)) e.phoneNumber = "Contact number must be exactly 10 digits."
+
+    if (linkedinUrl.trim() && !/^(https?:\/\/)?(www\.)?linkedin\.com\/.*$/i.test(linkedinUrl)) {
+      e.linkedinUrl = "Please enter a valid LinkedIn URL."
+    }
     return e
   }
 
@@ -371,21 +396,35 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
 
   // ── Logo upload ───────────────────────────────────────────────────────────
 
-  async function handleLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) { toast.error("Please upload a JPEG, PNG, or WEBP image."); return }
-    if (file.size > MAX_IMAGE_SIZE_BYTES) { toast.error("Image must be smaller than 2 MB."); return }
     const blobUrl = URL.createObjectURL(file)
-    setLogoSrc(blobUrl)
+    setTempImageSrc(blobUrl)
+    setTempFileName(file.name)
+    setCropModalOpen(true)
+  }
+
+  const handleCropModalClose = () => {
+    setCropModalOpen(false)
+    if (tempImageSrc) {
+      URL.revokeObjectURL(tempImageSrc)
+      setTempImageSrc(null)
+    }
+    if (logoInputRef.current) logoInputRef.current.value = ""
+  }
+
+  async function handleCroppedLogoUpload(croppedFile: File) {
     setIsUploadingLogo(true)
+    const localPreviewUrl = URL.createObjectURL(croppedFile)
+    setLogoSrc(localPreviewUrl)
     try {
       const oldPath = storedLogoPath.current
       if (oldPath) await supabase.storage.from("avatars").remove([oldPath])
-      const ext = file.name.split(".").pop() ?? "jpg"
       const timestamp = Date.now()
-      const newPath = `recruiters/${userProfile.id}/logo/${timestamp}.${ext}`
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(newPath, file, { upsert: false, contentType: file.type })
+      const newPath = `recruiters/${userProfile.id}/logo/${timestamp}.jpg`
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(newPath, croppedFile, { upsert: false, contentType: croppedFile.type })
       if (uploadError) throw uploadError
       const { error: dbError } = await (supabase as any).from("recruiter_profiles").update({ company_logo_path: newPath }).eq("profile_id", userProfile.id)
       if (dbError) throw dbError
@@ -394,16 +433,19 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
       storedLogoPath.current = newPath
       const newPublicUrl = getStorageUrl(supabase, "avatars", newPath)
       setLogoSrc(`${newPublicUrl}?v=${timestamp}`)
-      URL.revokeObjectURL(blobUrl)
       toast.success("Logo updated!")
       refresh()
     } catch (err) {
       console.error(err)
       toast.error("Failed to upload logo. Please try again.")
       setLogoSrc(getStorageUrl(supabase, "avatars", storedLogoPath.current))
-      URL.revokeObjectURL(blobUrl)
     } finally {
       setIsUploadingLogo(false)
+      URL.revokeObjectURL(localPreviewUrl)
+      if (tempImageSrc) {
+        URL.revokeObjectURL(tempImageSrc)
+        setTempImageSrc(null)
+      }
       if (logoInputRef.current) logoInputRef.current.value = ""
     }
   }
@@ -448,8 +490,8 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
 
         {/* Account Settings */}
         {!initialUsername.current ? (
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
+          <Card className={cn("transition-all duration-200", editing("account") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
               <div>
                 <CardTitle>Account Settings</CardTitle>
                 <CardDescription>Your unique username identifies you on the platform</CardDescription>
@@ -515,39 +557,61 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
         <Card>
           <CardHeader>
             <CardTitle>Company Logo</CardTitle>
-            <CardDescription>JPEG, PNG, or WEBP (max 2 MB)</CardDescription>
+            <CardDescription>JPEG, PNG, or WEBP</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="relative group">
-                <Avatar className="size-20 rounded-xl border">
-                  <AvatarImage src={logoSrc ?? undefined} alt={companyName || "Logo"} className="object-cover" />
-                  <AvatarFallback className="rounded-xl text-lg">{initials}</AvatarFallback>
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div 
+                className="relative group cursor-pointer shrink-0"
+                onClick={() => !isUploadingLogo && logoInputRef.current?.click()}
+              >
+                <Avatar className="h-24 w-24 !rounded-xl border-2 border-muted transition-transform duration-200 group-hover:scale-105">
+                  <AvatarImage src={logoSrc ?? undefined} alt={companyName || "Logo"} className="object-cover !rounded-xl" />
+                  <AvatarFallback className="!rounded-xl text-2xl font-semibold">{initials}</AvatarFallback>
                 </Avatar>
-                <button
-                  type="button"
-                  onClick={() => logoInputRef.current?.click()}
-                  disabled={isUploadingLogo}
-                  aria-label="Change company logo"
-                  className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  {isUploadingLogo ? <Loader2 className="size-5 animate-spin text-white" /> : <Camera className="size-5 text-white" />}
-                </button>
-                <input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleLogoFileChange} aria-label="Upload company logo" />
+                <div className="absolute inset-0 !rounded-xl bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <Camera className="h-5 w-5 mb-1" />
+                  <span className="text-[10px] font-medium">Change</span>
+                </div>
+                <div className="absolute bottom-0 right-0 h-7 w-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-md border-2 border-background translate-x-1 translate-y-1">
+                  {isUploadingLogo
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Camera className="h-3.5 w-3.5" />}
+                </div>
               </div>
-              <div className="space-y-1">
-                <Button variant="outline" size="sm" onClick={() => logoInputRef.current?.click()} disabled={isUploadingLogo}>
-                  <Upload className="mr-2 size-4" />{isUploadingLogo ? "Uploading…" : "Upload Logo"}
+              <div className="flex flex-col items-center sm:items-start gap-2.5">
+                <input 
+                  ref={logoInputRef} 
+                  type="file" 
+                  accept="image/jpeg,image/png,image/webp" 
+                  className="hidden" 
+                  onChange={handleLogoFileChange} 
+                  aria-label="Upload company logo" 
+                />
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => logoInputRef.current?.click()} 
+                  disabled={isUploadingLogo}
+                  className="shadow-sm"
+                >
+                  {isUploadingLogo ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading…</>
+                  ) : (
+                    <><Upload className="h-4 w-4 mr-2" />Upload Logo</>
+                  )}
                 </Button>
-                <p className="text-xs text-muted-foreground">Square image recommended · max 2 MB</p>
+                <p className="text-xs text-muted-foreground text-center sm:text-left">
+                  Supports JPEG, PNG or WEBP. Max size 2MB.
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Company Information */}
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
+        <Card className={cn("transition-all duration-200", editing("company") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
             <div>
               <CardTitle>Company Information</CardTitle>
               <CardDescription>Details about your organization</CardDescription>
@@ -572,6 +636,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
                     <Input
                       id="companyName"
                       placeholder="e.g. Acme Corp"
+                      maxLength={100}
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value.replace(/[<>]/g, ''))}
                       className={errors.companyName ? "border-destructive" : ""}
@@ -608,12 +673,13 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="companyWebsite">Company Website</Label>
-                    <Input id="companyWebsite" placeholder="https://example.com" value={companyWebsite} onChange={(e) => setCompanyWebsite(e.target.value)} />
+                    <Input id="companyWebsite" placeholder="https://example.com" maxLength={200} value={companyWebsite} onChange={(e) => setCompanyWebsite(e.target.value.replace(/[<>]/g, ''))} />
+                    <FieldError message={errors.companyWebsite} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="companyDescription">Company Description</Label>
-                  <Textarea id="companyDescription" rows={3} placeholder="Brief description of your company" value={companyDescription} onChange={(e) => setCompanyDescription(e.target.value)} />
+                  <Textarea id="companyDescription" rows={3} maxLength={500} placeholder="Brief description of your company" value={companyDescription} onChange={(e) => setCompanyDescription(e.target.value.replace(/[<>]/g, ''))} />
                 </div>
               </div>
             ) : (
@@ -643,8 +709,8 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
         </Card>
 
         {/* Headquarters */}
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
+        <Card className={cn("transition-all duration-200", editing("headquarters") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
             <div>
               <CardTitle>Headquarters</CardTitle>
               <CardDescription>Company location details</CardDescription>
@@ -665,7 +731,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="hqCity">City</Label>
-                  <Input id="hqCity" placeholder="e.g. Mumbai" value={hqCity} onChange={(e) => setHqCity(e.target.value)} />
+                  <Input id="hqCity" placeholder="e.g. Mumbai" maxLength={50} value={hqCity} onChange={(e) => setHqCity(e.target.value.replace(/[<>]/g, ''))} />
                 </div>
                 <div className="space-y-2">
                   <Label>State</Label>
@@ -715,8 +781,8 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
         </Card>
 
         {/* Recruiter Details */}
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
+        <Card className={cn("transition-all duration-200", editing("recruiter") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
             <div>
               <CardTitle>Recruiter Details</CardTitle>
               <CardDescription>Your personal details as a recruiter</CardDescription>
@@ -741,6 +807,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
                     <Input
                       id="designation"
                       placeholder="e.g. HR Manager"
+                      maxLength={100}
                       value={designation}
                       onChange={(e) => setDesignation(e.target.value.replace(/[<>]/g, ''))}
                       className={errors.designation ? "border-destructive" : ""}
@@ -749,7 +816,7 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="department">Department</Label>
-                    <Input id="department" placeholder="e.g. Human Resources" value={department} onChange={(e) => setDepartment(e.target.value.replace(/[<>]/g, ''))} />
+                    <Input id="department" placeholder="e.g. Human Resources" maxLength={100} value={department} onChange={(e) => setDepartment(e.target.value.replace(/[<>]/g, ''))} />
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -758,15 +825,17 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
                     <Input
                       id="phoneNumber"
                       placeholder="10-digit number"
+                      maxLength={10}
                       value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
                       className={errors.phoneNumber ? "border-destructive" : ""}
                     />
                     <FieldError message={errors.phoneNumber} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="linkedinUrl">LinkedIn Profile</Label>
-                    <Input id="linkedinUrl" placeholder="https://linkedin.com/in/..." value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} />
+                    <Input id="linkedinUrl" placeholder="https://linkedin.com/in/..." maxLength={200} value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value.replace(/[<>]/g, ''))} />
+                    <FieldError message={errors.linkedinUrl} />
                   </div>
                 </div>
               </div>
@@ -794,6 +863,14 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
         </Card>
 
       </div>
+      <ImageCropperModal
+        isOpen={cropModalOpen}
+        onClose={handleCropModalClose}
+        imageSrc={tempImageSrc}
+        fileName={tempFileName}
+        shape="square"
+        onCropComplete={handleCroppedLogoUpload}
+      />
     </div>
   )
 }

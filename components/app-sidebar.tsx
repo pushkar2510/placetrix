@@ -4,15 +4,40 @@ import PlaceTrixLogo from "@/assets/placetrix.svg";
 import * as React from "react"
 import { usePathname } from "next/navigation"
 import {
-  Icon, IconBell, IconBriefcase, IconBuildingSkyscraper, IconChartBar,
-  IconClipboardList, IconDashboard, IconDotsVertical, IconFileDescription,
-  IconFolder, IconHelp, IconHome, IconLogout, IconNotification,
-  IconSearch, IconSettings, IconShieldCheck, IconUser, IconUserCircle,
-  IconUsers, IconUsersGroup, IconCreditCard, IconCalendarEvent, IconSchool,
-  IconBriefcase2, IconFileAnalytics, IconTargetArrow,
-  IconSun, IconMoon, IconDeviceLaptop, IconCheck, IconChevronRight, IconTools,
-  IconCode, IconBook, IconTrophy,
-} from "@tabler/icons-react"
+  type LucideIcon,
+  Bell,
+  Briefcase,
+  Building2,
+  BarChart3,
+  ClipboardList,
+  LayoutDashboard,
+  MoreVertical,
+  FileText,
+  Folder,
+  CircleHelp,
+  Home,
+  LogOut,
+  Search,
+  Settings,
+  ShieldCheck,
+  User,
+  CircleUser,
+  Users,
+  CreditCard,
+  Calendar,
+  GraduationCap,
+  FileBarChart,
+  Target,
+  Sun,
+  Moon,
+  Laptop,
+  Check,
+  ChevronRight,
+  Wrench,
+  Code,
+  BookOpen,
+  Trophy,
+} from "lucide-react"
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton,
@@ -45,7 +70,7 @@ import { version } from "@/package.json"
 type NavItem = {
   title: string
   url: string
-  icon: Icon
+  icon: LucideIcon
   items?: {
     title: string
     url: string
@@ -58,17 +83,17 @@ const VALID_ACCOUNT_TYPES: AccountType[] = ["candidate", "institute", "admin", "
 
 const NAV_MAIN: Record<AccountType, NavItem[]> = {
   candidate: [
-    { title: "Home", url: "/home", icon: IconHome },
-    { title: "Job Search", url: "/jobs", icon: IconSearch },
-    { title: "My Applications", url: "/applications", icon: IconClipboardList },
-    { title: "Tests", url: "/tests", icon: IconChartBar },
-    { title: "Events", url: "/events", icon: IconCalendarEvent },
-    { title: "Courses", url: "/courses", icon: IconBook },
-    { title: "Logic Lab", url: "/logiclab", icon: IconCode },
+    { title: "Home", url: "/home", icon: Home },
+    { title: "Job Search", url: "/jobs", icon: Search },
+    { title: "My Applications", url: "/applications", icon: ClipboardList },
+    { title: "Tests", url: "/tests", icon: BarChart3 },
+    { title: "Events", url: "/events", icon: Calendar },
+    { title: "Courses", url: "/courses", icon: BookOpen },
+    { title: "Logic Lab", url: "/logiclab", icon: Code },
     {
       title: "Tools",
       url: "#",
-      icon: IconTools,
+      icon: Wrench,
       items: [
         { title: "Resume Generator", url: "/resume" },
         { title: "Resume Analyzer", url: "/resume-analyzer" },
@@ -76,37 +101,37 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     },
   ],
   institute: [
-    { title: "Home", url: "/home", icon: IconHome },
-    { title: "Students", url: "/students", icon: IconSchool },
-    { title: "Placement", url: "/placement-management", icon: IconTrophy },
-    { title: "Drives", url: "/drives", icon: IconFolder },
-    { title: "Tests", url: "/tests", icon: IconChartBar },
-    { title: "Events", url: "/events", icon: IconCalendarEvent },
-    { title: "Recruiters", url: "/recruiters", icon: IconBriefcase },
+    { title: "Home", url: "/home", icon: Home },
+    { title: "Students", url: "/students", icon: GraduationCap },
+    { title: "Placement", url: "/placement-management", icon: Trophy },
+    { title: "Drives", url: "/drives", icon: Folder },
+    { title: "Tests", url: "/tests", icon: BarChart3 },
+    { title: "Events", url: "/events", icon: Calendar },
+    { title: "Recruiters", url: "/recruiters", icon: Briefcase },
   ],
   admin: [
-    { title: "Home", url: "/home", icon: IconHome },
-    { title: "Users", url: "/users", icon: IconUsers },
-    { title: "Courses", url: "/courses", icon: IconBook },
-    { title: "LogicLab", url: "/logiclab/admin", icon: IconCode },
-    { title: "Analytics", url: "/analytics", icon: IconFileAnalytics },
-    { title: "Support Queue", url: "/support", icon: IconHelp },
+    { title: "Home", url: "/home", icon: Home },
+    { title: "Users", url: "/users", icon: Users },
+    { title: "Courses", url: "/courses", icon: BookOpen },
+    { title: "LogicLab", url: "/logiclab/admin", icon: Code },
+    { title: "Analytics", url: "/analytics", icon: FileBarChart },
+    { title: "Support Queue", url: "/support", icon: CircleHelp },
   ],
   recruiter: [
-    { title: "Home", url: "/home", icon: IconHome },
-    { title: "Job Postings", url: "/postings", icon: IconBriefcase2 },
-    { title: "Candidates", url: "/candidates", icon: IconTargetArrow },
-    { title: "Drives", url: "/drives", icon: IconFolder },
-    { title: "Tests", url: "/tests", icon: IconChartBar },
-    { title: "LogicLab", url: "/logiclab", icon: IconCode },
+    { title: "Home", url: "/home", icon: Home },
+    { title: "Job Postings", url: "/postings", icon: Briefcase },
+    { title: "Candidates", url: "/candidates", icon: Target },
+    { title: "Drives", url: "/drives", icon: Folder },
+    { title: "Tests", url: "/tests", icon: BarChart3 },
+    { title: "LogicLab", url: "/logiclab", icon: Code },
   ],
 }
 
 
 const NAV_SECONDARY: NavItem[] = [
-  { title: "Notifications", url: "/notifications", icon: IconBell },
-  { title: "Settings", url: "/settings", icon: IconSettings },
-  { title: "Get Help", url: "/gethelp", icon: IconHelp },
+  { title: "Notifications", url: "/notifications", icon: Bell },
+  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Get Help", url: "/gethelp", icon: CircleHelp },
 ]
 
 
@@ -129,13 +154,13 @@ const ROLE_COLORS: Record<AccountType, string> = {
 // ─── Theme options ────────────────────────────────────────────────────────────
 
 
-type ThemeOption = { value: string; label: string; icon: Icon }
+type ThemeOption = { value: string; label: string; icon: LucideIcon }
 
 
 const THEME_OPTIONS: ThemeOption[] = [
-  { value: "light", label: "Light", icon: IconSun },
-  { value: "dark", label: "Dark", icon: IconMoon },
-  { value: "system", label: "System", icon: IconDeviceLaptop },
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Laptop },
 ]
 
 
@@ -197,7 +222,7 @@ export function NavUser({ user }: { user: UserProfile | null }) {
           <DropdownMenuTrigger asChild disabled={!user}>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group/user"
               asChild
             >
               <div className="flex items-center gap-2 w-full" suppressHydrationWarning>
@@ -209,9 +234,9 @@ export function NavUser({ user }: { user: UserProfile | null }) {
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
                       <span className="truncate font-medium">{displayName}</span>
-                      <span className="truncate text-xs text-muted-foreground">{sidebarSubtitle}</span>
+                      <span className="truncate text-[13px] text-muted-foreground group-hover/user:text-sidebar-accent-foreground group-data-[state=open]/user:text-sidebar-accent-foreground">{sidebarSubtitle}</span>
                     </div>
-                    <IconDotsVertical className="ml-auto shrink-0 size-4" />
+                    <MoreVertical className="ml-auto shrink-0 size-4" />
                   </>
                 ) : (
                   <>
@@ -229,7 +254,7 @@ export function NavUser({ user }: { user: UserProfile | null }) {
 
           {user && (
             <DropdownMenuContent
-              className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+              className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg [&_svg]:stroke-[2.5]"
               side={isMobile ? "bottom" : "right"}
               align="end"
               sideOffset={4}
@@ -256,7 +281,7 @@ export function NavUser({ user }: { user: UserProfile | null }) {
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild className="cursor-pointer">
                   <Link href="/myprofile">
-                    <IconUserCircle className="size-4 shrink-0" />
+                    <CircleUser className="size-4 shrink-0" />
                     <span>My Profile</span>
                   </Link>
                 </DropdownMenuItem>
@@ -280,7 +305,7 @@ export function NavUser({ user }: { user: UserProfile | null }) {
                       <ThemeIcon className="size-4 shrink-0" />
                       <span className="flex-1">{label}</span>
                       {isActive && (
-                        <IconCheck className="ml-auto size-3.5 text-primary" />
+                        <Check className="ml-auto size-3.5 text-primary" />
                       )}
                     </DropdownMenuItem>
                   )
@@ -295,7 +320,7 @@ export function NavUser({ user }: { user: UserProfile | null }) {
                 onClick={handleLogout}
                 className="cursor-pointer"
               >
-                <IconLogout />
+                <LogOut />
                 Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -337,7 +362,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                       <SidebarMenuButton tooltip={item.title}>
                         <item.icon className="transition-transform duration-200" />
                         <span>{item.title}</span>
-                        <IconChevronRight className="ml-auto transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] group-data-[state=open]/collapsible:rotate-90 size-4 shrink-0" />
+                        <ChevronRight className="ml-auto transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] group-data-[state=open]/collapsible:rotate-90 size-4 shrink-0" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="collapsible-content">

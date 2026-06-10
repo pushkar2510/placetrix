@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { UserProfile } from "@/lib/supabase/profile"
 import { toast } from "sonner"
+import { ImageCropperModal } from "@/components/ImageCropperModal"
 import {
   Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
 } from "@/components/ui/card"
@@ -323,6 +324,17 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
   const initialUsername = useRef(userProfile.username ?? "")
   const storedLogoPath = useRef<string | null>(initialData?.logo_path ?? null)
   const logoInputRef = useRef<HTMLInputElement>(null)
+  const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [tempImageSrc, setTempImageSrc] = useState<string | null>(null)
+  const [tempFileName, setTempFileName] = useState("")
+
+  useEffect(() => {
+    return () => {
+      if (tempImageSrc) {
+        URL.revokeObjectURL(tempImageSrc)
+      }
+    }
+  }, [tempImageSrc])
 
   // ── Section completeness (from server data) ───────────────────────────────
   const basicComplete = !!(initialData?.institute_name && initialData?.affiliation && initialData?.city)
@@ -378,6 +390,8 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
 
   function openSection(section: SectionId) {
     if (editingSection && editingSection !== section) {
+      const confirmDiscard = window.confirm("You are currently editing another section. Unsaved changes will be discarded. Do you want to proceed?")
+      if (!confirmDiscard) return
       dispatch({ type: "RESET_SECTION", section: editingSection, initialData, userProfile })
     }
     dispatch({ type: "SET_FIELDS", fields: { errors: {}, editingSection: section } })
@@ -405,7 +419,8 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
     dispatch({ type: "ADD_SOCIAL_LINK" })
   }
   function handleSocialLinkChange(index: number, value: string) {
-    dispatch({ type: "SET_SOCIAL_LINK", index, value })
+    const cleanValue = value.replace(/[<>]/g, '').slice(0, 200)
+    dispatch({ type: "SET_SOCIAL_LINK", index, value: cleanValue })
   }
   function removeSocialLink(index: number) {
     dispatch({ type: "REMOVE_SOCIAL_LINK", index })
@@ -431,14 +446,29 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
     if (!pincode.trim()) e.pincode = "Pincode is required."
     else if (!/^[0-9]{6}$/.test(pincode)) e.pincode = "Must be exactly 6 digits."
     if (!country) e.country = "Country is required."
+
+    if (establishedYear) {
+      const year = Number(establishedYear)
+      const currentYear = new Date().getFullYear()
+      if (isNaN(year) || year < 1800 || year > currentYear) {
+        e.establishedYear = `Enter a valid established year (1800 - ${currentYear}).`
+      }
+    }
     return e
   }
 
   function validateContact() {
     const e: Record<string, string> = {}
-    if (!instPhone.trim()) e.instPhone = "Contact number is required."
+    const phone = instPhone.trim()
+    if (!phone) e.instPhone = "Contact number is required."
+    else if (!/^[0-9]{10}$/.test(phone)) e.instPhone = "Contact number must be exactly 10 digits."
+
     if (!instEmail.trim()) e.instEmail = "Email address is required."
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(instEmail)) e.instEmail = "Enter a valid email address."
+
+    if (websiteUrl.trim() && !/^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}.*$/i.test(websiteUrl)) {
+      e.websiteUrl = "Please enter a valid website URL."
+    }
     return e
   }
 
@@ -447,7 +477,19 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
     if (!principalName.trim()) e.principalName = "Principal name is required."
     if (!principalEmail.trim()) e.principalEmail = "Principal email is required."
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(principalEmail)) e.principalEmail = "Enter a valid email address."
-    if (!principalPhone.trim()) e.principalPhone = "Principal phone is required."
+
+    const phone = principalPhone.trim()
+    if (!phone) e.principalPhone = "Principal phone is required."
+    else if (!/^[0-9]{10}$/.test(phone)) e.principalPhone = "Contact number must be exactly 10 digits."
+    return e
+  }
+
+  function validateSocial() {
+    const e: Record<string, string> = {}
+    const invalidLinks = socialLinks.filter(l => l.value.trim() && !/^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}.*$/i.test(l.value))
+    if (invalidLinks.length > 0) {
+      e.socialLinks = "One or more social links are invalid URLs."
+    }
     return e
   }
 
@@ -459,6 +501,7 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
     else if (section === "basic") newErrors = validateBasic()
     else if (section === "contact") newErrors = validateContact()
     else if (section === "admin") newErrors = validateAdmin()
+    else if (section === "social") newErrors = validateSocial()
 
     if (Object.keys(newErrors).length > 0) {
       dispatch({ type: "SET_ERRORS", errors: newErrors })
@@ -598,29 +641,40 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
 
   // ── Logo upload ───────────────────────────────────────────────────────────
 
-  async function handleLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
       toast.error("Please upload a JPEG, PNG, or WEBP image.")
       return
     }
-    if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      toast.error("Image must be smaller than 2 MB.")
-      return
-    }
     const blobUrl = URL.createObjectURL(file)
-    dispatch({ type: "SET_FIELD", field: "logoSrc", value: blobUrl })
+    setTempImageSrc(blobUrl)
+    setTempFileName(file.name)
+    setCropModalOpen(true)
+  }
+
+  const handleCropModalClose = () => {
+    setCropModalOpen(false)
+    if (tempImageSrc) {
+      URL.revokeObjectURL(tempImageSrc)
+      setTempImageSrc(null)
+    }
+    if (logoInputRef.current) logoInputRef.current.value = ""
+  }
+
+  async function handleCroppedLogoUpload(croppedFile: File) {
+    const localPreviewUrl = URL.createObjectURL(croppedFile)
+    dispatch({ type: "SET_FIELD", field: "logoSrc", value: localPreviewUrl })
     dispatch({ type: "SET_FIELD", field: "isUploadingLogo", value: true })
     try {
       const oldPath = storedLogoPath.current
       if (oldPath) await supabase.storage.from("avatars").remove([oldPath])
-      const ext = file.name.split(".").pop() ?? "jpg"
       const timestamp = Date.now()
-      const newPath = `institutes/${userProfile.id}/logo/${timestamp}.${ext}`
+      const newPath = `institutes/${userProfile.id}/logo/${timestamp}.jpg`
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(newPath, file, { upsert: false, contentType: file.type })
+        .upload(newPath, croppedFile, { upsert: false, contentType: croppedFile.type })
       if (uploadError) throw uploadError
       const { error: dbError } = await (supabase as any)
         .from("institute_profiles")
@@ -632,7 +686,6 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
       storedLogoPath.current = newPath
       const newPublicUrl = getStorageUrl(supabase, "avatars", newPath)
       dispatch({ type: "SET_FIELD", field: "logoSrc", value: `${newPublicUrl}?v=${timestamp}` })
-      URL.revokeObjectURL(blobUrl)
       toast.success("Logo updated!")
       refresh()
     } catch (err) {
@@ -643,9 +696,13 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
         field: "logoSrc",
         value: getStorageUrl(supabase, "avatars", storedLogoPath.current),
       })
-      URL.revokeObjectURL(blobUrl)
     } finally {
       dispatch({ type: "SET_FIELD", field: "isUploadingLogo", value: false })
+      URL.revokeObjectURL(localPreviewUrl)
+      if (tempImageSrc) {
+        URL.revokeObjectURL(tempImageSrc)
+        setTempImageSrc(null)
+      }
       if (logoInputRef.current) logoInputRef.current.value = ""
     }
   }
@@ -690,8 +747,8 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
 
         {/* Account Settings — only shown if username not yet set */}
         {!initialUsername.current ? (
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
+          <Card className={cn("transition-all duration-200", editing("account") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
               <div>
                 <CardTitle>Account Settings</CardTitle>
                 <CardDescription>Your unique username identifies your institution on the platform</CardDescription>
@@ -761,30 +818,31 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
         <Card>
           <CardHeader>
             <CardTitle>College Logo</CardTitle>
-            <CardDescription>JPEG, PNG or WEBP · max 2 MB · square recommended</CardDescription>
+            <CardDescription>JPEG, PNG or WEBP</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="relative shrink-0">
-                <Avatar className="size-20">
-                  <AvatarImage src={logoSrc ?? undefined} alt="Institution logo" className="object-cover" />
-                  <AvatarFallback className="text-xl font-semibold">
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div 
+                className="relative group cursor-pointer shrink-0"
+                onClick={() => !isUploadingLogo && logoInputRef.current?.click()}
+              >
+                <Avatar className="h-24 w-24 !rounded-xl border-2 border-muted transition-transform duration-200 group-hover:scale-105">
+                  <AvatarImage src={logoSrc ?? undefined} alt="Institution logo" className="object-cover !rounded-xl" />
+                  <AvatarFallback className="!rounded-xl text-2xl font-semibold">
                     {instituteName ? instituteName[0].toUpperCase() : "?"}
                   </AvatarFallback>
                 </Avatar>
-                <button
-                  type="button"
-                  onClick={() => logoInputRef.current?.click()}
-                  disabled={isUploadingLogo}
-                  aria-label="Change institution logo"
-                  className="absolute -bottom-1 -right-1 size-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                >
+                <div className="absolute inset-0 !rounded-xl bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <Camera className="h-5 w-5 mb-1" />
+                  <span className="text-[10px] font-medium">Change</span>
+                </div>
+                <div className="absolute bottom-0 right-0 h-7 w-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-md border-2 border-background translate-x-1 translate-y-1">
                   {isUploadingLogo
-                    ? <Loader2 className="size-3.5 animate-spin" />
-                    : <Camera className="size-3.5" />}
-                </button>
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Camera className="h-3.5 w-3.5" />}
+                </div>
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col items-center sm:items-start gap-2.5">
                 <input
                   ref={logoInputRef}
                   type="file"
@@ -793,14 +851,24 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
                   onChange={handleLogoFileChange}
                   aria-label="Upload logo"
                 />
-                <Button variant="outline" size="sm" onClick={() => logoInputRef.current?.click()} disabled={isUploadingLogo}>
-                  {isUploadingLogo
-                    ? <><Loader2 className="size-4 mr-2 animate-spin" />Uploading…</>
-                    : <><Upload className="size-4 mr-2" />Upload Logo</>}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => logoInputRef.current?.click()} 
+                  disabled={isUploadingLogo}
+                  className="shadow-sm"
+                >
+                  {isUploadingLogo ? (
+                    <><Loader2 className="size-4 mr-2 animate-spin" />Uploading…</>
+                  ) : (
+                    <><Upload className="size-4 mr-2" />Upload Logo</>
+                  )}
                 </Button>
-                <p className="text-xs text-muted-foreground">Square image recommended · max 2 MB</p>
+                <p className="text-xs text-muted-foreground text-center sm:text-left">
+                  Supports JPEG, PNG or WEBP. Max size 2MB.
+                </p>
                 {!initialData?.institute_name && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                  <p className="text-xs text-amber-600 dark:text-amber-400 text-center sm:text-left">
                     Save institution details first, then upload the logo.
                   </p>
                 )}
@@ -810,8 +878,8 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
         </Card>
 
         {/* Basic Information */}
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
+        <Card className={cn("transition-all duration-200", editing("basic") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
             <div>
               <CardTitle>Basic Information</CardTitle>
               <CardDescription>Essential details about your institution</CardDescription>
@@ -844,8 +912,9 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
                     <Label>College Code</Label>
                     <Input
                       placeholder="College code (optional)"
+                      maxLength={20}
                       value={instituteCode}
-                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "instituteCode", value: e.target.value })}
+                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "instituteCode", value: e.target.value.replace(/[<>]/g, '') })}
                     />
                   </div>
                 </div>
@@ -859,8 +928,9 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
                       min={1800}
                       max={2026}
                       value={establishedYear}
-                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "establishedYear", value: e.target.value })}
+                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "establishedYear", value: e.target.value.replace(/\D/g, "").slice(0, 4) })}
                     />
+                    <FieldError message={errors.establishedYear} />
                   </div>
                   <div className="space-y-2">
                     <Label>Affiliation<RequiredMark /></Label>
@@ -981,8 +1051,8 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
         </Card>
 
         {/* Contact Information */}
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
+        <Card className={cn("transition-all duration-200", editing("contact") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
             <div>
               <CardTitle>Contact Information</CardTitle>
               <CardDescription>Primary contact details for the institution</CardDescription>
@@ -1010,8 +1080,9 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
                     <Input
                       placeholder="Institution contact number"
                       type="tel"
+                      maxLength={10}
                       value={instPhone}
-                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "instPhone", value: e.target.value })}
+                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "instPhone", value: e.target.value.replace(/\D/g, "") })}
                     />
                     <FieldError message={errors.instPhone} />
                   </div>
@@ -1023,8 +1094,9 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
                     <Input
                       placeholder="college@example.com"
                       type="email"
+                      maxLength={100}
                       value={instEmail}
-                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "instEmail", value: e.target.value })}
+                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "instEmail", value: e.target.value.replace(/[<>]/g, '') })}
                     />
                     <FieldError message={errors.instEmail} />
                   </div>
@@ -1037,9 +1109,11 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
                   <Input
                     placeholder="https://www.yourcollege.edu"
                     type="url"
+                    maxLength={200}
                     value={websiteUrl}
-                    onChange={(e) => dispatch({ type: "SET_FIELD", field: "websiteUrl", value: e.target.value })}
+                    onChange={(e) => dispatch({ type: "SET_FIELD", field: "websiteUrl", value: e.target.value.replace(/[<>]/g, '') })}
                   />
+                  <FieldError message={errors.websiteUrl} />
                 </div>
               </div>
             ) : (
@@ -1065,8 +1139,8 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
         </Card>
 
         {/* Administrative Contacts */}
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
+        <Card className={cn("transition-all duration-200", editing("admin") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
             <div>
               <CardTitle>Administrative Contacts</CardTitle>
               <CardDescription>Key personnel contact information</CardDescription>
@@ -1111,8 +1185,9 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
                     <Input
                       placeholder="Contact number"
                       type="tel"
+                      maxLength={10}
                       value={principalPhone}
-                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "principalPhone", value: e.target.value })}
+                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "principalPhone", value: e.target.value.replace(/\D/g, "") })}
                     />
                     <FieldError message={errors.principalPhone} />
                   </div>
@@ -1144,8 +1219,8 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
         </Card>
 
         {/* Courses Offered */}
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
+        <Card className={cn("transition-all duration-200", editing("courses") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
             <div>
               <CardTitle>Courses Offered</CardTitle>
               <CardDescription>Departments / courses available at your institution</CardDescription>
@@ -1222,8 +1297,8 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
         </Card>
 
         {/* Social Media & Links */}
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 gap-y-0">
+        <Card className={cn("transition-all duration-200", editing("social") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
             <div>
               <CardTitle>Social Media &amp; Links</CardTitle>
               <CardDescription>Connect your institution's social presence</CardDescription>
@@ -1249,6 +1324,7 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
                       onChange={(e) => handleSocialLinkChange(index, e.target.value)}
                       placeholder="https://facebook.com/yourcollegepage"
                       type="url"
+                      maxLength={200}
                     />
                     <Button variant="ghost" size="icon" type="button" onClick={() => removeSocialLink(index)}>
                       <Minus className="size-4" />
@@ -1258,6 +1334,7 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
                 <Button variant="outline" size="sm" onClick={addSocialLink} type="button">
                   <Plus className="size-4 mr-2" />Add link
                 </Button>
+                <FieldError message={errors.socialLinks} />
               </div>
             ) : (
               <div>
@@ -1303,6 +1380,14 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
         </Card>
 
       </div>
+      <ImageCropperModal
+        isOpen={cropModalOpen}
+        onClose={handleCropModalClose}
+        imageSrc={tempImageSrc}
+        fileName={tempFileName}
+        shape="square"
+        onCropComplete={handleCroppedLogoUpload}
+      />
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { UserProfile } from "@/lib/supabase/profile"
 import { toast } from "sonner"
+import { ImageCropperModal } from "@/components/ImageCropperModal"
 import {
   Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
 } from "@/components/ui/card"
@@ -128,6 +129,17 @@ export function AdminProfileClient({ userProfile }: Props) {
   )
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [tempImageSrc, setTempImageSrc] = useState<string | null>(null)
+  const [tempFileName, setTempFileName] = useState("")
+
+  useEffect(() => {
+    return () => {
+      if (tempImageSrc) {
+        URL.revokeObjectURL(tempImageSrc)
+      }
+    }
+  }, [tempImageSrc])
 
   const [displayName, setDisplayName] = useState(userProfile.display_name ?? "")
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -158,6 +170,8 @@ export function AdminProfileClient({ userProfile }: Props) {
 
   function openSection(section: SectionId) {
     if (editingSection && editingSection !== section) {
+      const confirmDiscard = window.confirm("You are currently editing another section. Unsaved changes will be discarded. Do you want to proceed?")
+      if (!confirmDiscard) return
       cancelSection(editingSection)
     }
     setErrors({})
@@ -185,7 +199,10 @@ export function AdminProfileClient({ userProfile }: Props) {
 
   function validateProfile() {
     const e: Record<string, string> = {}
-    if (!displayName.trim()) e.displayName = "Display name is required."
+    const trimmed = displayName.trim()
+    if (!trimmed) e.displayName = "Display name is required."
+    else if (trimmed.length < 3) e.displayName = "Display name must be at least 3 characters."
+    else if (trimmed.length > 50) e.displayName = "Display name cannot exceed 50 characters."
     return e
   }
 
@@ -264,25 +281,39 @@ export function AdminProfileClient({ userProfile }: Props) {
     })
   }
 
-  async function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) { toast.error("Please upload a JPEG, PNG, or WEBP image."); return }
-    if (file.size > MAX_IMAGE_SIZE_BYTES) { toast.error("Image must be smaller than 2 MB."); return }
     const blobUrl = URL.createObjectURL(file)
-    setAvatarSrc(blobUrl)
+    setTempImageSrc(blobUrl)
+    setTempFileName(file.name)
+    setCropModalOpen(true)
+  }
+
+  const handleCropModalClose = () => {
+    setCropModalOpen(false)
+    if (tempImageSrc) {
+      URL.revokeObjectURL(tempImageSrc)
+      setTempImageSrc(null)
+    }
+    if (avatarInputRef.current) avatarInputRef.current.value = ""
+  }
+
+  async function handleCroppedAvatarUpload(croppedFile: File) {
     setIsUploadingAvatar(true)
+    const localPreviewUrl = URL.createObjectURL(croppedFile)
+    setAvatarSrc(localPreviewUrl)
     try {
       const oldPath = storedAvatarPath.current
       if (oldPath) {
         const { error: deleteError } = await supabase.storage.from("avatars").remove([oldPath])
         if (deleteError) console.warn("Could not delete old avatar:", deleteError.message)
       }
-      const ext = file.name.split(".").pop() ?? "jpg"
       const timestamp = Date.now()
-      const newPath = `admins/${userProfile.id}/avatar/${timestamp}.${ext}`
+      const newPath = `admins/${userProfile.id}/avatar/${timestamp}.jpg`
 
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(newPath, file, { upsert: false, contentType: file.type })
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(newPath, croppedFile, { upsert: false, contentType: croppedFile.type })
       if (uploadError) throw uploadError
 
       const { error: dbError } = await supabase.from("profiles").update({ avatar_path: newPath }).eq("id", userProfile.id)
@@ -297,16 +328,19 @@ export function AdminProfileClient({ userProfile }: Props) {
       storedAvatarPath.current = newPath
       const newPublicUrl = getStorageUrl(supabase, "avatars", newPath)
       setAvatarSrc(`${newPublicUrl}?v=${timestamp}`)
-      URL.revokeObjectURL(blobUrl)
       toast.success("Avatar updated!")
       refresh()
     } catch (err) {
       console.error(err)
       toast.error("Failed to upload avatar. Please try again.")
       setAvatarSrc(getStorageUrl(supabase, "avatars", storedAvatarPath.current))
-      URL.revokeObjectURL(blobUrl)
     } finally {
       setIsUploadingAvatar(false)
+      URL.revokeObjectURL(localPreviewUrl)
+      if (tempImageSrc) {
+        URL.revokeObjectURL(tempImageSrc)
+        setTempImageSrc(null)
+      }
       if (avatarInputRef.current) avatarInputRef.current.value = ""
     }
   }
@@ -348,8 +382,8 @@ export function AdminProfileClient({ userProfile }: Props) {
 
         {/* Account Settings — only shown if username not set */}
         {!initialUsername.current ? (
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <Card className={cn("transition-all duration-200", editing("account") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
               <div>
                 <CardTitle>Account Settings</CardTitle>
                 <CardDescription>Your unique username is used to identify you on the platform</CardDescription>
@@ -419,30 +453,31 @@ export function AdminProfileClient({ userProfile }: Props) {
         <Card>
           <CardHeader>
             <CardTitle>Profile Photo</CardTitle>
-            <CardDescription>JPEG, PNG or WEBP · max 2 MB · square recommended</CardDescription>
+            <CardDescription>JPEG, PNG or WEBP</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="relative shrink-0">
-                <Avatar className="h-20 w-20">
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div 
+                className="relative group cursor-pointer shrink-0"
+                onClick={() => !isUploadingAvatar && avatarInputRef.current?.click()}
+              >
+                <Avatar className="h-24 w-24 border-2 border-muted transition-transform duration-200 group-hover:scale-105">
                   <AvatarImage src={avatarSrc ?? undefined} alt="Profile picture" className="object-cover" />
-                  <AvatarFallback className="text-xl font-semibold bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400">
+                  <AvatarFallback className="text-2xl font-semibold bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={isUploadingAvatar}
-                  aria-label="Change profile picture"
-                  className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                >
+                <div className="absolute inset-0 rounded-full bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <Camera className="h-5 w-5 mb-1" />
+                  <span className="text-[10px] font-medium">Change</span>
+                </div>
+                <div className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md border-2 border-background">
                   {isUploadingAvatar
                     ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     : <Camera className="h-3.5 w-3.5" />}
-                </button>
+                </div>
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col items-center sm:items-start gap-2.5">
                 <input
                   ref={avatarInputRef}
                   type="file"
@@ -451,20 +486,30 @@ export function AdminProfileClient({ userProfile }: Props) {
                   onChange={handleAvatarFileChange}
                   aria-label="Upload avatar picture"
                 />
-                <Button variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()} disabled={isUploadingAvatar}>
-                  {isUploadingAvatar
-                    ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading…</>
-                    : <><Upload className="h-4 w-4 mr-2" />Upload Photo</>}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => avatarInputRef.current?.click()} 
+                  disabled={isUploadingAvatar}
+                  className="shadow-sm"
+                >
+                  {isUploadingAvatar ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading…</>
+                  ) : (
+                    <><Upload className="h-4 w-4 mr-2" />Upload Photo</>
+                  )}
                 </Button>
-                <p className="text-xs text-muted-foreground">Square image recommended · max 2 MB</p>
+                <p className="text-xs text-muted-foreground text-center sm:text-left">
+                  Supports JPEG, PNG or WEBP. Max size 2MB.
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Profile Details */}
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+        <Card className={cn("transition-all duration-200", editing("profile") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
             <div>
               <CardTitle>Profile Information</CardTitle>
               <CardDescription>Your public and system identification details</CardDescription>
@@ -533,6 +578,14 @@ export function AdminProfileClient({ userProfile }: Props) {
           )}
         </Card>
       </div>
+      <ImageCropperModal
+        isOpen={cropModalOpen}
+        onClose={handleCropModalClose}
+        imageSrc={tempImageSrc}
+        fileName={tempFileName}
+        shape="circle"
+        onCropComplete={handleCroppedAvatarUpload}
+      />
     </div>
   )
 }
