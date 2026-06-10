@@ -165,7 +165,7 @@ export default function VerifyCertificateClient({
 
                 <div>
                   <Button asChild className="w-full rounded-full font-semibold transition-all hover:scale-[1.01] active:scale-[0.99] shadow-md">
-                    <a href={`/api/courses/certificate/${certificate.id}`} target="_blank" rel="noopener noreferrer">
+                    <a href={`/api/courses/certificate/${certificate.id}`}>
                       <Download className="h-4 w-4 mr-2" />
                       Download PDF Certificate
                     </a>

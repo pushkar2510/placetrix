@@ -418,7 +418,7 @@ export async function GET(_request: NextRequest, props: RouteParams) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="certificate_${certificateId.slice(0, 8)}.pdf"`,
+        "Content-Disposition": `attachment; filename="certificate_${certificateId.slice(0, 8)}.pdf"`,
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     })
