@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { revalidatePath } from "next/cache"
 
 interface TestCaseResult {
   index: number
@@ -385,6 +386,12 @@ export async function POST(req: NextRequest) {
     }
 
     const sampleCases = results.filter((r, idx) => testCases[idx]?.is_sample || testCases[idx]?.isSample)
+
+    // Revalidate paths to update the streak and completion status instantly
+    if (overallStatus === "Accepted") {
+      revalidatePath("/logiclab")
+      revalidatePath(`/logiclab/problems/${problem_id}`)
+    }
 
     return NextResponse.json({
       success: overallStatus === "Accepted",

@@ -1559,7 +1559,7 @@ export function ProblemIDEClient({
                     const isCompileError = result.status?.description === "Compilation Error" || result.status?.id === 6 || result.compile_output || (result.cases && result.cases[0]?.compile_output);
                     
                     if (isCompileError) {
-                      const compileErrText = result.compile_output || (result.cases && result.cases[0]?.compile_output) || result.failed_test_case_info?.actual || "Compilation failed.";
+                      const compileErrText = result.compile_output || (result.cases && result.cases[0]?.compile_output) || result.stderr || (result.cases && result.cases[0]?.stderr) || result.failed_test_case_info?.actual || "Compilation failed.";
                       return (
                         <div className="space-y-2 select-text select-none">
                           <p className="text-[9px] text-rose-600 dark:text-rose-400 uppercase tracking-widest font-bold flex items-center gap-1">

@@ -695,7 +695,7 @@ export function ProblemsDirectoryClient({
                         
                         let streakMessage = "";
                         if (isPotdSolved) {
-                          streakMessage = "Streak Saved";
+                          streakMessage = "Solved - Streak Kept";
                         } else if (streakStats.currentStreak > 0) {
                           streakMessage = "Save Your Streak";
                         } else if (streakStats.maxStreak > 0) {
