@@ -126,18 +126,18 @@ export async function POST(req: NextRequest) {
     let finalSource = code
     if (driverCode) {
       if (langKey === "62") { // Java
-        // Hoist imports to the very top, before the Solution class
         const lines = driverCode.split("\n")
         const imports = lines.filter((line: string) => line.trim().startsWith("import "))
         const nonImports = lines.filter((line: string) => !line.trim().startsWith("import "))
-        finalSource = imports.join("\n") + "\n\n" + code + "\n\n" + nonImports.join("\n")
+        finalSource = "import java.util.*;\nimport java.io.*;\n" + imports.join("\n") + "\n\n" + code + "\n\n" + nonImports.join("\n")
       } else if (langKey === "71") { // Python
         const merged = code + "\n\n" + driverCode
-        if (merged.includes("json.") && !merged.includes("import json")) {
-          finalSource = "import json\n" + merged
-        } else {
-          finalSource = merged
-        }
+        finalSource = "import sys\nimport json\nimport math\nimport collections\nfrom typing import *\n" + merged
+      } else if (langKey === "54") { // C++
+        const lines = driverCode.split("\n")
+        const includes = lines.filter((line: string) => line.trim().startsWith("#include") || line.trim().startsWith("using "))
+        const nonIncludes = lines.filter((line: string) => !line.trim().startsWith("#include") && !line.trim().startsWith("using "))
+        finalSource = "#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\n#include <map>\n#include <set>\n#include <unordered_map>\n#include <unordered_set>\n#include <queue>\n#include <stack>\n#include <cmath>\nusing namespace std;\n" + includes.join("\n") + "\n\n" + code + "\n\n" + nonIncludes.join("\n")
       } else {
         finalSource = code + "\n\n" + driverCode
       }
@@ -295,7 +295,8 @@ export async function POST(req: NextRequest) {
         const todayUtc = new Date().toISOString().split("T")[0];
         
         // Use service role to bypass RLS for streaks
-        const adminSupabase = createClient(
+        const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
+        const adminSupabase = createSupabaseClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.SUPABASE_SERVICE_ROLE_KEY!
         );

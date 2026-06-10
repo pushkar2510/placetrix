@@ -96,19 +96,15 @@ export async function POST(req: NextRequest) {
           const lines = driverCode.split("\n")
           const imports = lines.filter((line: string) => line.trim().startsWith("import "))
           const nonImports = lines.filter((line: string) => !line.trim().startsWith("import "))
-          finalSource = imports.join("\n") + "\n\n" + source_code + "\n\n" + nonImports.join("\n")
+          finalSource = "import java.util.*;\nimport java.io.*;\n" + imports.join("\n") + "\n\n" + source_code + "\n\n" + nonImports.join("\n")
         } else if (langKey === "71") { // Python
           const merged = source_code + "\n\n" + driverCode
-          if (merged.includes("json.") && !merged.includes("import json")) {
-            finalSource = "import json\n" + merged
-          } else {
-            finalSource = merged
-          }
+          finalSource = "import sys\nimport json\nimport math\nimport collections\nfrom typing import *\n" + merged
         } else if (langKey === "54") { // C++
           const lines = driverCode.split("\n")
           const includes = lines.filter((line: string) => line.trim().startsWith("#include") || line.trim().startsWith("using "))
           const nonIncludes = lines.filter((line: string) => !line.trim().startsWith("#include") && !line.trim().startsWith("using "))
-          finalSource = includes.join("\n") + "\n\n" + source_code + "\n\n" + nonIncludes.join("\n")
+          finalSource = "#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\n#include <map>\n#include <set>\n#include <unordered_map>\n#include <unordered_set>\n#include <queue>\n#include <stack>\n#include <cmath>\nusing namespace std;\n" + includes.join("\n") + "\n\n" + source_code + "\n\n" + nonIncludes.join("\n")
         } else {
           finalSource = source_code + "\n\n" + driverCode
         }
