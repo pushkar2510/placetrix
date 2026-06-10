@@ -46,7 +46,6 @@ type NavItem = {
   title: string
   url: string
   icon: Icon
-  badge?: string
   items?: {
     title: string
     url: string
@@ -64,8 +63,8 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "My Applications", url: "/applications", icon: IconClipboardList },
     { title: "Tests", url: "/tests", icon: IconChartBar },
     { title: "Events", url: "/events", icon: IconCalendarEvent },
-    { title: "Courses", url: "/courses", icon: IconBook, badge: "Upcoming" },
-    { title: "Logic Lab", url: "/logiclab", icon: IconCode, badge: "Beta" },
+    { title: "Courses", url: "/courses", icon: IconBook },
+    { title: "Logic Lab", url: "/logiclab", icon: IconCode },
     {
       title: "Tools",
       url: "#",
@@ -89,7 +88,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "Home", url: "/home", icon: IconHome },
     { title: "Users", url: "/users", icon: IconUsers },
     { title: "Courses", url: "/courses", icon: IconBook },
-    { title: "LogicLab", url: "/logiclab/admin", icon: IconCode, badge: "Beta" },
+    { title: "LogicLab", url: "/logiclab/admin", icon: IconCode },
     { title: "Analytics", url: "/analytics", icon: IconFileAnalytics },
     { title: "Support Queue", url: "/support", icon: IconHelp },
   ],
@@ -99,7 +98,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "Candidates", url: "/candidates", icon: IconTargetArrow },
     { title: "Drives", url: "/drives", icon: IconFolder },
     { title: "Tests", url: "/tests", icon: IconChartBar },
-    { title: "LogicLab", url: "/logiclab", icon: IconCode, badge: "Beta" },
+    { title: "LogicLab", url: "/logiclab", icon: IconCode },
   ],
 }
 
@@ -308,17 +307,6 @@ export function NavUser({ user }: { user: UserProfile | null }) {
 }
 
 
-function getBadgeStyles(badge: string) {
-  const normalized = badge.toLowerCase().trim()
-  if (normalized === "upcoming") {
-    return "bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400 border border-amber-500/10 dark:border-amber-500/20"
-  }
-  if (normalized === "beta") {
-    return "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400 border border-indigo-500/10 dark:border-indigo-500/20"
-  }
-  return "bg-muted text-muted-foreground border border-border"
-}
-
 export function NavMain({ items }: { items: NavItem[] }) {
   const pathname = usePathname()
   const { setOpenMobile } = useSidebar()
@@ -390,11 +378,6 @@ export function NavMain({ items }: { items: NavItem[] }) {
                   <Link href={item.url} onClick={() => setOpenMobile(false)}>
                     <item.icon className="transition-transform duration-200" />
                     <span className="truncate">{item.title}</span>
-                    {item.badge && (
-                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-semibold leading-none tracking-wide ml-auto ${getBadgeStyles(item.badge)}`}>
-                        {item.badge}
-                      </span>
-                    )}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
