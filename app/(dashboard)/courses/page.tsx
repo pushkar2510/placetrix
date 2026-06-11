@@ -44,7 +44,6 @@ export default async function CoursesPage() {
       description: course.description,
       level: course.level,
       duration: course.duration,
-      type: course.type,
       cover_image_path: course.cover_image_path,
       instructor_name: course.instructor?.display_name || "Instructor",
       instructor_avatar_path: course.instructor?.avatar_path || null,
@@ -121,8 +120,6 @@ export default async function CoursesPage() {
       description: course.description,
       level: course.level as any,
       duration: course.duration,
-      type: course.type as any,
-      badge: course.badge || null,
       cover_image_path: course.cover_image_path || undefined,
       instructor: {
         name: course.instructor?.display_name || "Instructor",

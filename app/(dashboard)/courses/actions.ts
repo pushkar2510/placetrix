@@ -20,8 +20,6 @@ export interface AdminCourseInput {
   description: string
   level: string
   duration: string
-  type: string
-  badge?: string | null
   cover_image_path?: string | null
   instructor_id?: string | null
   is_published: boolean
@@ -250,7 +248,6 @@ export async function enrollInCourseAction(courseId: string) {
 
 /**
  * Toggles a candidate's module completion status.
- * If 100% modules are completed, automatically issues a certificate.
  */
 export async function toggleModuleCompletionAction(
   courseId: string,
@@ -294,48 +291,6 @@ export async function toggleModuleCompletionAction(
   if (upsertError) {
     console.error("Error updating module completion progress:", upsertError)
     throw new Error(upsertError.message || "Failed to save module progress.")
-  }
-
-  // 3. Auto-issue certificate if user completed all modules
-  if (completed) {
-    try {
-      // A. Count total modules
-      const { count: totalModules } = await (supabase as any)
-        .from("course_modules")
-        .select("id", { count: "exact", head: true })
-        .eq("course_id", courseId)
-
-      // B. Count completed modules
-      const { count: completedModules } = await (supabase as any)
-        .from("course_module_progress")
-        .select("id", { count: "exact", head: true })
-        .eq("course_id", courseId)
-        .eq("user_id", profile.id)
-        .eq("completed", true)
-
-      if (totalModules && completedModules && totalModules === completedModules) {
-        // Issue certificate if not already issued
-        const { data: existingCert } = await (supabase as any)
-          .from("course_certificates")
-          .select("id")
-          .eq("course_id", courseId)
-          .eq("user_id", profile.id)
-          .maybeSingle()
-
-        if (!existingCert) {
-          await (supabase as any)
-            .from("course_certificates")
-            .insert({
-              course_id: courseId,
-              user_id: profile.id,
-              issued_to_name: profile.display_name || "Candidate",
-              issued_at: new Date().toISOString(),
-            })
-        }
-      }
-    } catch (certErr) {
-      console.error("Failed to auto-issue certificate:", certErr)
-    }
   }
 
   revalidatePath(`/courses/${courseId}`)

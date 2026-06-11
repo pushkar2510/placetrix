@@ -49,7 +49,6 @@ interface AdminCourseDetail {
   description: string
   level: string
   duration: string
-  type: string
   cover_image_path?: string
   instructor_name: string
   is_published: boolean
@@ -524,7 +523,6 @@ export function AdminCourseDetailClient({ course, students }: Props) {
             <CardContent className="p-0">
               <div className="divide-y divide-border/40 text-xs px-4">
                 {[
-                  { label: "Type", value: course.type },
                   { label: "Level", value: course.level },
                   { label: "Duration", value: formatDuration(course.duration) },
                   { label: "Instructor", value: course.instructor_name },

@@ -7,7 +7,7 @@ import {
   BookOpen, Clock, Search, X, ChevronRight, CheckCircle2,
   LayoutGrid, LayoutList, TrendingUp, Award, Layers, SlidersHorizontal
 } from "lucide-react"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
@@ -19,49 +19,7 @@ import { cn, formatDuration } from "@/lib/utils"
 import { Course } from "./types"
 import { CourseCover } from "./components/CourseCover"
 
-// ─── Overall Progress Stats Banner ──────────────────────────────────────────
-interface StatsBannerProps {
-  courses: Course[]
-  courseStats: Record<string, { total: number; completed: number; percentage: number }>
-}
 
-function OverallStatsBanner({ courses, courseStats }: StatsBannerProps) {
-  const overall = useMemo(() => {
-    let enrolledCount = 0
-    let completedCourses = 0
-
-    courses.forEach(course => {
-      const isEnrolled = course.isEnrolled
-      if (isEnrolled) {
-        enrolledCount++
-        const stats = courseStats[course.id]
-        if (stats?.percentage === 100) completedCourses++
-      }
-    })
-
-    return { enrolledCount, completedCourses }
-  }, [courses, courseStats])
-
-  const statItems = [
-    { icon: <Layers className="h-3.5 w-3.5 text-primary" />, value: courses.length, label: "Total Courses" },
-    { icon: <TrendingUp className="h-3.5 w-3.5 text-indigo-500" />, value: overall.enrolledCount, label: "Enrolled" },
-    { icon: <Award className="h-3.5 w-3.5 text-amber-500" />, value: overall.completedCourses, label: "Completed" },
-  ]
-
-  return (
-    <div className="grid grid-cols-3 gap-3">
-      {statItems.map((item, i) => (
-        <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border/50 bg-card">
-          <div className="shrink-0">{item.icon}</div>
-          <div className="min-w-0">
-            <p className="text-lg font-bold text-foreground tabular-nums leading-none">{item.value}</p>
-            <p className="text-[10px] text-muted-foreground font-medium leading-tight mt-0.5 truncate">{item.label}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
 
 // ─── CourseCard Component (Grid) ────────────────────────────────────────────
 interface CourseCardProps {
@@ -74,135 +32,132 @@ function CourseCard({ course, stats, onSelect }: CourseCardProps) {
   const isCompleted = stats.percentage === 100
 
   // Difficulty color dot and text matching the LEVEL_OPTIONS
-  const levelColor = course.level === "Beginner" 
-    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
-    : course.level === "Intermediate" 
-      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" 
+  const levelColor = course.level === "Beginner"
+    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+    : course.level === "Intermediate"
+      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
       : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
 
-  const dotColor = course.level === "Beginner" 
-    ? "bg-emerald-500" 
-    : course.level === "Intermediate" 
-      ? "bg-amber-500" 
+  const dotColor = course.level === "Beginner"
+    ? "bg-emerald-500"
+    : course.level === "Intermediate"
+      ? "bg-amber-500"
       : "bg-rose-500"
 
   return (
     <Card
       onClick={onSelect}
       className={cn(
-        "group flex flex-col justify-between overflow-hidden border border-border/50 dark:border-zinc-800/80 bg-card",
+        "group flex flex-col justify-between overflow-hidden border border-border/50 dark:border-zinc-800/80 bg-card p-0 gap-0",
         "hover:border-primary/40 hover:shadow-[0_8px_30px_rgb(99,102,241,0.08)] hover:-translate-y-1.5",
-        "transition-all duration-300 cursor-pointer h-full select-none p-0 gap-0"
+        "transition-all duration-300 cursor-pointer h-full select-none"
       )}
     >
-      <div className="flex flex-col h-full">
-        {/* Cover */}
-        <div className="aspect-video w-full overflow-hidden bg-muted relative rounded-t-xl">
-          <div className="w-full h-full transform group-hover:scale-105 transition-transform duration-500 ease-out">
-            <CourseCover coverImagePath={course.cover_image_path} title={course.title} />
-          </div>
-
-          {/* Category Badge overlay (top-left) */}
-          {course.badge && (
-            <span className="absolute top-2.5 left-2.5 backdrop-blur-md bg-black/60 text-white border border-white/10 text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider">
-              {course.badge}
-            </span>
-          )}
-
-          {/* Status pill (top-right) if enrolled */}
-          {course.isEnrolled && (
-            <span className={cn(
-              "absolute top-2.5 right-2.5 border text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider bg-black/65 backdrop-blur-xs",
-              isCompleted
-                ? "text-emerald-400 border-emerald-500/25"
-                : "text-primary border-primary/25"
-            )}>
-              {isCompleted ? "Completed" : "Enrolled"}
-            </span>
-          )}
+      {/* Cover */}
+      <div className="aspect-video w-full overflow-hidden bg-muted relative rounded-t-xl">
+        <div className="w-full h-full transform group-hover:scale-105 transition-transform duration-500 ease-out">
+          <CourseCover coverImagePath={course.cover_image_path} title={course.title} />
         </div>
 
-        {/* Info */}
-        <div className="flex flex-col flex-1">
-          <CardHeader className="px-4 pt-4 pb-0 gap-2">
-            {/* Instructor & Type row */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                {course.instructor.avatar ? (
-                  <img
-                    src={course.instructor.avatar}
-                    alt=""
-                    className="h-4.5 w-4.5 rounded-full object-cover shrink-0 border border-primary/20"
-                  />
-                ) : (
-                  <div className="h-4.5 w-4.5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-[9px] text-primary shrink-0">
-                    {course.instructor.name.charAt(0)}
-                  </div>
-                )}
-                <span className="text-[10px] text-muted-foreground font-medium truncate">
-                  {course.instructor.name}
-                </span>
-              </div>
+        {/* Status pill (top-right) if enrolled */}
+        {course.isEnrolled && (
+          <span className={cn(
+            "absolute top-2.5 right-2.5 border text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider bg-black/65 backdrop-blur-xs",
+            isCompleted
+              ? "text-emerald-400 border-emerald-500/25"
+              : "text-primary border-primary/25"
+          )}>
+            {isCompleted ? "Completed" : "Enrolled"}
+          </span>
+        )}
 
-              {/* Course type badge */}
-              <span className="text-[9px] font-semibold text-muted-foreground/85 uppercase tracking-wider bg-muted px-2 py-0.5 rounded-md border border-border/40 whitespace-nowrap">
-                {course.type || "Course"}
-              </span>
-            </div>
-
-            {/* Title */}
-            <CardTitle className="font-semibold text-[13px] text-foreground leading-snug line-clamp-2 min-h-[40px] group-hover:text-primary transition-colors duration-200">
-              {course.title}
-            </CardTitle>
-
-            {/* Description */}
-            <p className="text-[11px] text-muted-foreground/80 line-clamp-2 leading-relaxed min-h-[32px]">
-              {course.description}
-            </p>
-
-            {/* Level badge */}
-            <div className="flex items-center pt-0.5">
-              <Badge variant="outline" className={cn("text-[9px] font-semibold flex items-center gap-1 px-2 py-0 h-5 rounded-full uppercase tracking-wider", levelColor)}>
-                <span className={cn("h-1.5 w-1.5 rounded-full", dotColor)} />
-                {course.level}
-              </Badge>
-            </div>
-          </CardHeader>
-
-          {/* Progress / Action */}
-          <CardContent className="mt-auto pt-4 pb-4 px-4">
-            <div className="border-t border-border/40 pt-3.5 w-full">
-              {stats.percentage > 0 ? (
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-[10px] font-medium">
-                    <span className={cn(
-                      "flex items-center gap-1",
-                      isCompleted ? "text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground"
-                    )}>
-                      {isCompleted ? <><CheckCircle2 className="h-3 w-3 shrink-0" /> Completed</> : "In Progress"}
-                    </span>
-                    <span className={cn(
-                      "font-semibold tabular-nums",
-                      isCompleted ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
-                    )}>{stats.percentage}%</span>
-                  </div>
-                  <Progress
-                    value={stats.percentage}
-                    className={cn("h-1.5 bg-muted [&>[data-slot=progress-indicator]]:bg-gradient-to-r [&>[data-slot=progress-indicator]]:from-primary [&>[data-slot=progress-indicator]]:to-indigo-500", isCompleted && "[&>[data-slot=progress-indicator]]:from-emerald-500 [&>[data-slot=progress-indicator]]:to-emerald-500")}
-                  />
-                </div>
-              ) : (
-                <div className="flex items-center justify-between text-[11px] h-[26px]">
-                  <span className="text-muted-foreground/75 italic">Not started</span>
-                  <span className="text-primary font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-0.5 text-xs">
-                    Start Learning <ChevronRight className="h-3.5 w-3.5 transform group-hover:translate-x-0.5 transition-transform" />
-                  </span>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </div>
+        {/* Level Badge overlay (top-left) */}
+        <span className="absolute top-2.5 left-2.5 backdrop-blur-md bg-black/60 text-white border border-white/10 text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider flex items-center gap-1.5 shadow-md">
+          <span className={cn("size-1.5 rounded-full", dotColor)} />
+          {course.level}
+        </span>
       </div>
+
+      {/* Info Header */}
+      <CardHeader className="px-4 pt-4 pb-2 gap-1.5 flex flex-col">
+        {/* Instructor row */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          {course.instructor.avatar ? (
+            <img
+              src={course.instructor.avatar}
+              alt=""
+              className="h-4.5 w-4.5 rounded-full object-cover shrink-0 border border-primary/20"
+            />
+          ) : (
+            <div className="h-4.5 w-4.5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-[9px] text-primary shrink-0">
+              {course.instructor.name.charAt(0)}
+            </div>
+          )}
+          <span className="text-[10px] text-muted-foreground font-medium truncate">
+            {course.instructor.name}
+          </span>
+        </div>
+
+        {/* Title */}
+        <CardTitle className="font-semibold text-[13px] text-foreground leading-snug line-clamp-2 min-h-[40px] group-hover:text-primary transition-colors duration-200">
+          {course.title}
+        </CardTitle>
+      </CardHeader>
+
+      {/* Description & Metadata Content */}
+      <CardContent className="px-4 py-0 flex-1 flex flex-col justify-between gap-3">
+        <p className="text-[11px] text-muted-foreground/80 line-clamp-2 leading-relaxed min-h-[32px]">
+          {course.description}
+        </p>
+
+        {/* Dynamic course info (Duration & Modules count) */}
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-1.5">
+          <span className="inline-flex items-center gap-1">
+            <Clock className="h-3.5 w-3.5 text-muted-foreground/60" /> {formatDuration(course.duration)}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <BookOpen className="h-3.5 w-3.5 text-muted-foreground/60" /> {course.modules.length} {course.modules.length === 1 ? "module" : "modules"}
+          </span>
+        </div>
+      </CardContent>
+
+      {/* Action Footer */}
+      <CardFooter className="px-4 pt-2 pb-4 flex items-center justify-start">
+        {course.isEnrolled ? (
+          isCompleted ? (
+            <Badge
+              variant="secondary"
+              className="text-[9px] font-semibold px-2.5 py-0.5 h-6 rounded-full uppercase tracking-wider border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+            >
+              Completed
+            </Badge>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs font-medium rounded-lg border-primary/20 text-primary hover:bg-primary/5 hover:text-primary transition-all duration-200"
+              onClick={(e) => {
+                e.stopPropagation()
+                onSelect()
+              }}
+            >
+              Continue ({stats.percentage}%)
+            </Button>
+          )
+        ) : (
+          <Button
+            variant="default"
+            size="sm"
+            className="h-8 text-xs font-medium rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all duration-200"
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelect()
+            }}
+          >
+            Enroll Now
+          </Button>
+        )}
+      </CardFooter>
     </Card>
   )
 }
@@ -212,16 +167,16 @@ function CourseRow({ course, stats, onSelect }: CourseCardProps) {
   const isCompleted = stats.percentage === 100
 
   // Difficulty color dot and text matching the LEVEL_OPTIONS
-  const levelColor = course.level === "Beginner" 
-    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
-    : course.level === "Intermediate" 
-      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" 
+  const levelColor = course.level === "Beginner"
+    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+    : course.level === "Intermediate"
+      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
       : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
 
-  const dotColor = course.level === "Beginner" 
-    ? "bg-emerald-500" 
-    : course.level === "Intermediate" 
-      ? "bg-amber-500" 
+  const dotColor = course.level === "Beginner"
+    ? "bg-emerald-500"
+    : course.level === "Intermediate"
+      ? "bg-amber-500"
       : "bg-rose-500"
 
   return (
@@ -235,11 +190,6 @@ function CourseRow({ course, stats, onSelect }: CourseCardProps) {
     >
       <div className="h-16 w-24 shrink-0 rounded-lg overflow-hidden bg-muted relative">
         <CourseCover coverImagePath={course.cover_image_path} title={course.title} />
-        {course.badge && (
-          <span className="absolute top-1 left-1 backdrop-blur-xs bg-black/60 text-white text-[8px] px-1.5 py-0.5 rounded-sm font-medium uppercase tracking-wider">
-            {course.badge}
-          </span>
-        )}
       </div>
 
       <div className="flex-1 min-w-0 space-y-1">
@@ -248,9 +198,6 @@ function CourseRow({ course, stats, onSelect }: CourseCardProps) {
             <span className={cn("h-1 w-1 rounded-full", dotColor)} />
             {course.level}
           </Badge>
-          <span className="text-[9px] font-semibold text-muted-foreground/80 uppercase tracking-wider bg-muted/70 px-1.5 py-0.5 rounded border border-border/30">
-            {course.type || "Course"}
-          </span>
         </div>
         <p className="font-semibold text-sm text-foreground line-clamp-1 group-hover:text-primary transition-colors">
           {course.title}
@@ -340,13 +287,6 @@ const LEVEL_OPTIONS: { value: LevelFilter; label: string; hex: string }[] = [
   { value: "Advanced", label: "Advanced", hex: "#e11d48" },
 ]
 
-const TYPE_OPTIONS = [
-  { value: "all", label: "All Types" },
-  { value: "Course", label: "Course" },
-  { value: "Specialization", label: "Specialization" },
-  { value: "Professional Certificate", label: "Professional Certificate" },
-]
-
 // ─── Main Component ──────────────────────────────────────────────────────────
 export function CandidateCourseClient({ initialCourses }: { initialCourses: Course[] }) {
   const router = useRouter()
@@ -354,8 +294,6 @@ export function CandidateCourseClient({ initialCourses }: { initialCourses: Cour
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all")
-  const [typeFilter, setTypeFilter] = useState<string>("all")
-  const [badgeFilter, setBadgeFilter] = useState<string>("all")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
 
@@ -386,24 +324,13 @@ export function CandidateCourseClient({ initialCourses }: { initialCourses: Cour
     return map
   }, [courses])
 
-  // Get dynamic categories list from courses
-  const availableBadges = useMemo(() => {
-    const badges = new Set<string>()
-    courses.forEach(c => {
-      if (c.badge) badges.add(c.badge)
-    })
-    return Array.from(badges).sort()
-  }, [courses])
-
   // Active filter count (for badge on filter button)
   const activeFilterCount = useMemo(() => {
     let count = 0
     if (statusFilter !== "all") count++
     if (levelFilter !== "all") count++
-    if (typeFilter !== "all") count++
-    if (badgeFilter !== "all") count++
     return count
-  }, [statusFilter, levelFilter, typeFilter, badgeFilter])
+  }, [statusFilter, levelFilter])
 
   // Filtered courses
   const filteredCourses = useMemo(() => {
@@ -414,21 +341,17 @@ export function CandidateCourseClient({ initialCourses }: { initialCourses: Cour
         if (statusFilter === "completed" && !(stats && stats.percentage === 100)) return false
       }
       if (levelFilter !== "all" && course.level !== levelFilter) return false
-      if (typeFilter !== "all" && course.type !== typeFilter) return false
-      if (badgeFilter !== "all" && course.badge !== badgeFilter) return false
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
         return course.title.toLowerCase().includes(q) || course.description.toLowerCase().includes(q)
       }
       return true
     })
-  }, [courses, statusFilter, levelFilter, typeFilter, badgeFilter, searchQuery, courseStats])
+  }, [courses, statusFilter, levelFilter, searchQuery, courseStats])
 
   const clearAllFilters = () => {
     setStatusFilter("all")
     setLevelFilter("all")
-    setTypeFilter("all")
-    setBadgeFilter("all")
     setSearchQuery("")
   }
 
@@ -444,9 +367,6 @@ export function CandidateCourseClient({ initialCourses }: { initialCourses: Cour
           {courses.length} course{courses.length !== 1 ? "s" : ""} curated for your placement journey
         </p>
       </div>
-
-      {/* Stats Banner */}
-      <OverallStatsBanner courses={courses} courseStats={courseStats} />
 
       {/* Toolbar: Search + Filter + View Toggle */}
       <div className="flex items-center gap-2">
@@ -577,11 +497,11 @@ export function CandidateCourseClient({ initialCourses }: { initialCourses: Cour
           <SheetHeader className="px-6 pt-5 pb-4 pr-10 border-b border-border/50">
             <SheetTitle className="text-base font-semibold">Filters</SheetTitle>
             <SheetDescription className="text-xs text-muted-foreground">
-              Narrow down by status, level, type and category.
+              Narrow down by status and level.
             </SheetDescription>
             {activeFilterCount > 0 && (
               <button
-                onClick={() => { setStatusFilter("all"); setLevelFilter("all"); setTypeFilter("all"); setBadgeFilter("all") }}
+                onClick={() => { setStatusFilter("all"); setLevelFilter("all") }}
                 className="text-xs text-primary hover:underline font-medium text-left"
               >
                 Clear all
@@ -636,43 +556,6 @@ export function CandidateCourseClient({ initialCourses }: { initialCourses: Cour
                 })}
               </div>
             </div>
-
-            {/* Course Type */}
-            <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Course Type</p>
-              <div className="flex flex-col gap-2">
-                {TYPE_OPTIONS.map(opt => (
-                  <FilterChip
-                    key={opt.value}
-                    label={opt.label}
-                    active={typeFilter === opt.value}
-                    onClick={() => setTypeFilter(opt.value)}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Category / Badge */}
-            {availableBadges.length > 0 && (
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Category</p>
-                <div className="flex flex-col gap-2">
-                  <FilterChip
-                    label="All Categories"
-                    active={badgeFilter === "all"}
-                    onClick={() => setBadgeFilter("all")}
-                  />
-                  {availableBadges.map(badge => (
-                    <FilterChip
-                      key={badge}
-                      label={badge}
-                      active={badgeFilter === badge}
-                      onClick={() => setBadgeFilter(badge)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
 
           </div>
 

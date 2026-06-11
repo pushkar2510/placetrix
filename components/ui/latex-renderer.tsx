@@ -3,7 +3,8 @@
 import * as React from "react"
 import { useMemo, useState } from "react"
 import { MathText } from "./math-text"
-import { Copy, Check, Code } from "lucide-react"
+import { Copy, Check, Code, Terminal, Quote, BookOpen, Lightbulb, AlertTriangle, Info } from "lucide-react"
+import { cn } from "@/lib/utils"
 import Prism from "prismjs"
 import "prismjs/components/prism-javascript"
 import "prismjs/components/prism-typescript"
@@ -13,574 +14,797 @@ import "prismjs/components/prism-c"
 import "prismjs/components/prism-cpp"
 import "prismjs/components/prism-csharp"
 import "prismjs/components/prism-java"
+import "prismjs/components/prism-bash"
+import "./prism-adaptive.css"
+
+// ─── Inline Parser ────────────────────────────────────────────────────────────
 
 /**
  * Stack-based balanced brace parser for LaTeX inline formatting.
- * Recursively parses formatting tags (textbf, textit, texttt, textsf, underline, href, url)
- * and Katex inline/block math delimiters ($ and $$, \( and \[, \) and \]).
+ * Supports: textbf, textit, texttt, textsf, emph, underline, sout, textcolor,
+ *           href, url, footnote, inline math ($, $$, \(, \[), and backtick code spans.
  */
 export function parseLatexInline(text: string): React.ReactNode[] {
   if (!text) return []
   const elements: React.ReactNode[] = []
   let i = 0
 
+  const pushKey = (el: React.ReactNode) => {
+    elements.push(el)
+  }
+
   while (i < text.length) {
-    // 0. Handle escaped characters
-    const escapes = [
-      { prefix: "\\$", char: "$" },
-      { prefix: "\\%", char: "%" },
-      { prefix: "\\&", char: "&" },
-      { prefix: "\\_", char: "_" },
-      { prefix: "\\{", char: "{" },
-      { prefix: "\\}", char: "}" },
-      { prefix: "\\\\", char: "\\" },
+    // 0a. Forced line break (\\)
+    if (text.startsWith("\\\\", i)) {
+      pushKey(<br key={`br-${i}`} />)
+      i += 2
+      continue
+    }
+
+    // 0b. Escaped characters
+    const ESCAPES: [string, string][] = [
+      ["\\$", "$"], ["\\%", "%"], ["\\&", "&"],
+      ["\\_", "_"], ["\\{", "{"], ["\\}", "}"],
+      ["\\~", "~"], ["\\^", "^"], ["\\#", "#"],
     ]
-    let matchedEscape = false
-    for (const esc of escapes) {
-      if (text.startsWith(esc.prefix, i)) {
-        elements.push(<span key={`esc-${i}`}>{esc.char}</span>)
-        i += esc.prefix.length
-        matchedEscape = true
+    let didEscape = false
+    for (const [pfx, char] of ESCAPES) {
+      if (text.startsWith(pfx, i)) {
+        pushKey(<span key={`esc-${i}`}>{char}</span>)
+        i += pfx.length
+        didEscape = true
         break
       }
     }
-    if (matchedEscape) continue
+    if (didEscape) continue
 
-    // 1. Check for display math $$
+    // 0c. Backtick inline code span
+    if (text[i] === "`") {
+      let tickCount = 0
+      let j = i
+      while (j < text.length && text[j] === "`") { tickCount++; j++ }
+      const closing = "`".repeat(tickCount)
+      const end = text.indexOf(closing, j)
+      if (end !== -1) {
+        const codeText = text.slice(j, end)
+        pushKey(
+          <code key={`btick-${i}`} className="bg-muted/70 border border-border/40 px-1.5 py-0.5 rounded-md text-[12.5px] font-mono text-foreground/95 font-medium">
+            {codeText}
+          </code>
+        )
+        i = end + tickCount
+        continue
+      }
+    }
+
+    // 1. Display math $$
     if (text.startsWith("$$", i)) {
       const j = text.indexOf("$$", i + 2)
       if (j !== -1) {
-        const mathContent = text.slice(i, j + 2)
-        elements.push(<MathText key={i}>{mathContent}</MathText>)
+        pushKey(<MathText key={`dm-${i}`}>{text.slice(i, j + 2)}</MathText>)
         i = j + 2
         continue
       }
     }
 
-    // 2. Check for display math \[
+    // 2. Display math \[
     if (text.startsWith("\\[", i)) {
       const j = text.indexOf("\\]", i + 2)
       if (j !== -1) {
-        const mathContent = text.slice(i, j + 2)
-        elements.push(<MathText key={i}>{mathContent}</MathText>)
+        pushKey(<MathText key={`dl-${i}`}>{text.slice(i, j + 2)}</MathText>)
         i = j + 2
         continue
       }
     }
 
-    // 3. Check for inline math $
-    if (text.startsWith("$", i)) {
+    // 3. Inline math $
+    if (text[i] === "$" && !text.startsWith("$$", i)) {
       const j = text.indexOf("$", i + 1)
       if (j !== -1) {
-        const mathContent = text.slice(i, j + 1)
-        elements.push(<MathText key={i}>{mathContent}</MathText>)
+        pushKey(<MathText key={`im-${i}`}>{text.slice(i, j + 1)}</MathText>)
         i = j + 1
         continue
       }
     }
 
-    // 4. Check for inline math \(
+    // 4. Inline math \(
     if (text.startsWith("\\(", i)) {
       const j = text.indexOf("\\)", i + 2)
       if (j !== -1) {
-        const mathContent = text.slice(i, j + 2)
-        elements.push(<MathText key={i}>{mathContent}</MathText>)
+        pushKey(<MathText key={`ip-${i}`}>{text.slice(i, j + 2)}</MathText>)
         i = j + 2
         continue
       }
     }
 
-    // Check for LaTeX macros
-    let matchedMacro = false
-    const macros = [
-      { prefix: "\\textbf{", name: "textbf" },
-      { prefix: "\\textit{", name: "textit" },
-      { prefix: "\\texttt{", name: "texttt" },
-      { prefix: "\\textsf{", name: "textsf" },
+    // 5. LaTeX macros
+    type MacroName = "textbf" | "textit" | "texttt" | "textsf" | "emph" | "underline" | "sout" | "textcolor" | "url" | "href" | "footnote" | "cite" | "label" | "ref"
+    const MACROS: { prefix: string; name: MacroName }[] = [
+      { prefix: "\\textbf{",    name: "textbf"    },
+      { prefix: "\\textit{",    name: "textit"    },
+      { prefix: "\\texttt{",    name: "texttt"    },
+      { prefix: "\\textsf{",    name: "textsf"    },
+      { prefix: "\\emph{",      name: "emph"      },
       { prefix: "\\underline{", name: "underline" },
-      { prefix: "\\url{", name: "url" },
-      { prefix: "\\href{", name: "href" },
+      { prefix: "\\sout{",      name: "sout"      },
+      { prefix: "\\textcolor{", name: "textcolor" },
+      { prefix: "\\url{",       name: "url"       },
+      { prefix: "\\href{",      name: "href"      },
+      { prefix: "\\footnote{",  name: "footnote"  },
+      { prefix: "\\cite{",      name: "cite"      },
+      { prefix: "\\label{",     name: "label"     },
+      { prefix: "\\ref{",       name: "ref"       },
     ]
 
-    for (const macro of macros) {
-      if (text.startsWith(macro.prefix, i)) {
-        // Find matching closing brace
-        let braceCount = 1
-        let j = i + macro.prefix.length
-        while (j < text.length && braceCount > 0) {
-          if (text[j] === "{") braceCount++
-          else if (text[j] === "}") braceCount--
-          j++
-        }
+    let matchedMacro = false
+    for (const macro of MACROS) {
+      if (!text.startsWith(macro.prefix, i)) continue
 
-        if (braceCount === 0) {
-          matchedMacro = true
-          const contentWithBrace = text.slice(i + macro.prefix.length, j - 1)
+      // Find matching closing brace
+      let braceCount = 1
+      let j = i + macro.prefix.length
+      while (j < text.length && braceCount > 0) {
+        if (text[j] === "{") braceCount++
+        else if (text[j] === "}") braceCount--
+        j++
+      }
+      if (braceCount !== 0) continue
 
-          if (macro.name === "textbf") {
-            elements.push(
-              <strong key={i} className="font-bold text-foreground">
-                {parseLatexInline(contentWithBrace)}
-              </strong>
-            )
-          } else if (macro.name === "textit") {
-            elements.push(
-              <em key={i} className="italic text-foreground/95">
-                {parseLatexInline(contentWithBrace)}
-              </em>
-            )
-          } else if (macro.name === "texttt") {
-            elements.push(
-              <code key={i} className="bg-muted border px-1.5 py-0.5 rounded text-[12px] font-mono text-emerald-600 dark:text-emerald-400">
-                {contentWithBrace}
-              </code>
-            )
-          } else if (macro.name === "textsf") {
-            elements.push(
-              <span key={i} className="font-sans text-foreground">
-                {parseLatexInline(contentWithBrace)}
-              </span>
-            )
-          } else if (macro.name === "underline") {
-            elements.push(
-              <u key={i} className="underline text-foreground">
-                {parseLatexInline(contentWithBrace)}
-              </u>
-            )
-          } else if (macro.name === "url") {
-            elements.push(
-              <a key={i} href={contentWithBrace} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">
-                {contentWithBrace}
-              </a>
-            )
-          } else if (macro.name === "href") {
-            // Check if followed by the label block {label}
-            if (j < text.length && text[j] === "{") {
-              let nextBraceCount = 1
-              let k = j + 1
-              while (k < text.length && nextBraceCount > 0) {
-                if (text[k] === "{") nextBraceCount++
-                else if (text[k] === "}") nextBraceCount--
-                k++
-              }
-              if (nextBraceCount === 0) {
-                const label = text.slice(j + 1, k - 1)
-                elements.push(
-                  <a key={i} href={contentWithBrace} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">
-                    {parseLatexInline(label)}
-                  </a>
-                )
-                j = k
-              } else {
-                elements.push(
-                  <a key={i} href={contentWithBrace} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">
-                    {contentWithBrace}
-                  </a>
-                )
-              }
-            } else {
-              elements.push(
-                <a key={i} href={contentWithBrace} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">
-                  {contentWithBrace}
-                </a>
-              )
+      matchedMacro = true
+      const inner = text.slice(i + macro.prefix.length, j - 1)
+
+      switch (macro.name) {
+        case "textbf":
+          pushKey(<strong key={`bf-${i}`} className="font-semibold text-foreground">{parseLatexInline(inner)}</strong>)
+          break
+        case "textit":
+        case "emph":
+          pushKey(<em key={`it-${i}`} className="italic text-foreground/90">{parseLatexInline(inner)}</em>)
+          break
+        case "texttt":
+          pushKey(
+            <code key={`tt-${i}`} className="bg-muted/70 border border-border/40 px-1.5 py-0.5 rounded-md text-[12.5px] font-mono text-foreground/95 font-medium">
+              {inner}
+            </code>
+          )
+          break
+        case "textsf":
+          pushKey(<span key={`sf-${i}`} className="font-sans text-foreground">{parseLatexInline(inner)}</span>)
+          break
+        case "underline":
+          pushKey(<u key={`ul-${i}`} className="underline decoration-foreground/30 underline-offset-2">{parseLatexInline(inner)}</u>)
+          break
+        case "sout":
+          pushKey(<s key={`so-${i}`} className="line-through text-foreground/60">{parseLatexInline(inner)}</s>)
+          break
+        case "textcolor": {
+          // \textcolor{color}{text} — inner is 'color', next brace is text
+          const color = inner
+          if (j < text.length && text[j] === "{") {
+            let nc = 1; let k = j + 1
+            while (k < text.length && nc > 0) {
+              if (text[k] === "{") nc++
+              else if (text[k] === "}") nc--
+              k++
             }
+            const colorText = text.slice(j + 1, k - 1)
+            pushKey(<span key={`tc-${i}`} style={{ color }}>{parseLatexInline(colorText)}</span>)
+            j = k
+          } else {
+            pushKey(<span key={`tc-${i}`} style={{ color }}>{color}</span>)
           }
-          i = j
           break
         }
+        case "url":
+          pushKey(
+            <a key={`url-${i}`} href={inner} target="_blank" rel="noopener noreferrer"
+               className="text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary hover:text-primary/85 transition-all duration-200 font-medium text-[13px]">
+              {inner}
+            </a>
+          )
+          break
+        case "href": {
+          // \href{url}{label}
+          let url = inner; let label: React.ReactNode = inner
+          if (j < text.length && text[j] === "{") {
+            let nc = 1; let k = j + 1
+            while (k < text.length && nc > 0) {
+              if (text[k] === "{") nc++
+              else if (text[k] === "}") nc--
+              k++
+            }
+            label = parseLatexInline(text.slice(j + 1, k - 1))
+            j = k
+          }
+          pushKey(
+            <a key={`href-${i}`} href={url} target="_blank" rel="noopener noreferrer"
+               className="text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary hover:text-primary/85 transition-all duration-200 font-medium">
+              {label}
+            </a>
+          )
+          break
+        }
+        case "footnote":
+          pushKey(
+            <span key={`fn-${i}`} className="relative group/fn cursor-help">
+              <sup className="text-primary text-[10px] font-semibold ml-0.5 select-none group-hover/fn:text-primary/70 transition-colors">[*]</sup>
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 hidden group-hover/fn:block w-max max-w-[260px] bg-popover border border-border shadow-lg rounded-lg px-3 py-2 text-[12px] text-popover-foreground leading-relaxed pointer-events-none whitespace-normal">
+                {parseLatexInline(inner)}
+              </span>
+            </span>
+          )
+          break
+        case "cite":
+          pushKey(
+            <cite key={`cite-${i}`} className="not-italic font-semibold text-primary/80 text-[13px]">
+              [{inner}]
+            </cite>
+          )
+          break
+        case "label":
+        case "ref":
+          // Silent for label; show ref as a superscript chip
+          if (macro.name === "ref") {
+            pushKey(
+              <span key={`ref-${i}`} className="inline-flex items-center text-[11px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20 mx-0.5">
+                §{inner}
+              </span>
+            )
+          }
+          break
       }
+      i = j
+      break
     }
-
     if (matchedMacro) continue
 
-    // Read plain text until next display math, inline math, macro, or escape sequence
+    // 6. Plain text chunk
     let nextSpecial = i + 1
     while (nextSpecial < text.length) {
-      const char = text[nextSpecial]
-      if (char === "$" || char === "\\" || text.startsWith("$$", nextSpecial)) {
-        break
-      }
+      const ch = text[nextSpecial]
+      if (ch === "$" || ch === "\\" || ch === "`") break
       nextSpecial++
     }
-
-    let plainText = text.slice(i, nextSpecial)
-    elements.push(<span key={i}>{plainText}</span>)
+    pushKey(<span key={`t-${i}`}>{text.slice(i, nextSpecial)}</span>)
     i = nextSpecial
   }
 
   return elements
 }
 
+// Language → display label + accent colour (matches Atom One palette)
+const LANG_META: Record<string, { label: string; accent: string }> = {
+  javascript:  { label: "JavaScript",  accent: "#d19a66" },  /* Atom orange */
+  typescript:  { label: "TypeScript",  accent: "#61afef" },  /* Atom blue */
+  python:      { label: "Python",      accent: "#c678dd" },  /* Atom purple */
+  sql:         { label: "SQL",         accent: "#56b6c2" },  /* Atom cyan */
+  bash:        { label: "Bash",        accent: "#98c379" },  /* Atom green */
+  c:           { label: "C",           accent: "#61afef" },  /* Atom blue */
+  cpp:         { label: "C++",         accent: "#61afef" },  /* Atom blue */
+  csharp:      { label: "C#",          accent: "#c678dd" },  /* Atom purple */
+  java:        { label: "Java",        accent: "#e06c75" },  /* Atom red */
+}
+
+// ─── Code Block ───────────────────────────────────────────────────────────────
+
 interface CodeBlockProps {
   code: string
   language?: string
   caption?: string
+  showLineNumbers?: boolean
 }
 
-function CodeBlock({ code, language, caption }: CodeBlockProps) {
+function CodeBlock({ code, language, caption, showLineNumbers = true }: CodeBlockProps) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault(); e.stopPropagation()
     try {
       await navigator.clipboard.writeText(code)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => setCopied(false), 2500)
     } catch (err) {
-      console.error("Failed to copy code: ", err)
+      console.error("Failed to copy:", err)
     }
   }
 
-  const html = useMemo(() => {
-    let langName = language ? language.toLowerCase() : "clike"
-    if (langName === "js") langName = "javascript"
-    if (langName === "ts") langName = "typescript"
-    if (langName === "py") langName = "python"
-    if (langName === "cs") langName = "csharp"
+  const normalizedLang = useMemo(() => {
+    if (!language) return "clike"
+    const aliasMap: Record<string, string> = {
+      js: "javascript", ts: "typescript", py: "python",
+      cs: "csharp", sh: "bash", shell: "bash",
+    }
+    return aliasMap[language.toLowerCase()] ?? language.toLowerCase()
+  }, [language])
 
-    const grammar = Prism.languages[langName] || Prism.languages.clike
-    return Prism.highlight(code, grammar, langName)
-  }, [code, language])
+  const html = useMemo(() => {
+    const grammar = Prism.languages[normalizedLang] || Prism.languages.clike
+    return Prism.highlight(code, grammar, normalizedLang)
+  }, [code, normalizedLang])
+
+  const lines = code.split("\n")
+  const lineCount = lines.length
+  const lineNumberWidth = String(lineCount).length
+  const meta = LANG_META[normalizedLang]
+  const accent = meta?.accent ?? "var(--prism-gutter-fg)"
+  const langLabel = meta?.label ?? language?.toUpperCase() ?? ""
 
   return (
-    <div className="bg-muted/40 border border-border/50 rounded-xl shadow-xs overflow-hidden my-5 font-mono text-xs relative group/code">
-      <div className="flex items-center justify-between border-b border-border/40 bg-muted/50 px-3.5 py-2 text-[11px] text-muted-foreground font-sans select-none">
-        <div className="flex items-center gap-1.5 font-medium text-foreground/75">
-          <Code className="size-3.5 text-muted-foreground/60" />
-          <span>{caption || "Code Listing"}</span>
-        </div>
+    <div
+      className="rounded-xl border border-border/50 overflow-hidden my-6 font-mono text-[13px] transition-all duration-200 shadow-sm hover:shadow-md hover:border-border/70"
+      style={{ background: "var(--prism-bg)" }}
+    >
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between border-b border-border/40 bg-muted/50 dark:bg-muted/30 px-4 py-2.5 font-sans select-none">
+        {/* Left: dots + label */}
         <div className="flex items-center gap-3">
-          {language && (
-            <span className="bg-foreground/5 dark:bg-foreground/10 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider text-foreground/60">
-              {language}
+          <div className="flex gap-[5px] items-center">
+            <span className="size-[11px] rounded-full bg-[#ff5f57] block ring-1 ring-inset ring-black/10" />
+            <span className="size-[11px] rounded-full bg-[#febc2e] block ring-1 ring-inset ring-black/10" />
+            <span className="size-[11px] rounded-full bg-[#28c840] block ring-1 ring-inset ring-black/10" />
+          </div>
+          <div className="flex items-center gap-2">
+            {caption && (
+              <span className="text-[12px] font-medium" style={{ color: "var(--prism-fg)", opacity: 0.7 }}>
+                {caption}
+              </span>
+            )}
+            {!caption && (
+              <span className="text-[12px] font-medium" style={{ color: "var(--prism-gutter-fg)" }}>
+                Code
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Right: language badge + copy */}
+        <div className="flex items-center gap-2">
+          {langLabel && (
+            <span
+              className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
+              style={{
+                color: accent,
+                background: `color-mix(in oklch, ${accent} 12%, transparent)`,
+                border: `1px solid color-mix(in oklch, ${accent} 30%, transparent)`,
+              }}
+            >
+              <span
+                className="size-1.5 rounded-full flex-shrink-0"
+                style={{ background: accent }}
+              />
+              {langLabel}
             </span>
           )}
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium transition-all hover:bg-foreground/5 active:scale-95 text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+            className="group/copy flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all duration-200 active:scale-95 cursor-pointer focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+            style={{
+              color: copied ? undefined : "var(--prism-gutter-fg)",
+              background: copied
+                ? "color-mix(in oklch, oklch(0.55 0.18 148) 12%, transparent)"
+                : "color-mix(in oklch, var(--prism-gutter-bg) 80%, transparent)",
+              border: `1px solid ${copied
+                ? "color-mix(in oklch, oklch(0.55 0.18 148) 30%, transparent)"
+                : "var(--prism-gutter-sep)"}`,
+            }}
             title="Copy code"
           >
             {copied ? (
               <>
-                <Check className="size-3 text-emerald-500" />
-                <span className="text-emerald-500 font-semibold">Copied</span>
+                <Check className="size-3 shrink-0" style={{ color: "oklch(0.55 0.18 148)" }} />
+                <span style={{ color: "oklch(0.55 0.18 148)" }}>Copied!</span>
               </>
             ) : (
               <>
-                <Copy className="size-3" />
+                <Copy className="size-3 shrink-0 transition-transform group-hover/copy:scale-110" />
                 <span>Copy</span>
               </>
             )}
           </button>
         </div>
       </div>
-      <pre className="p-3.5 overflow-x-auto text-foreground/90 whitespace-pre scrollbar-thin max-h-[500px]">
-        <code
-          className={`language-${language || 'clike'}`}
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      </pre>
+
+      {/* ── Code body ── */}
+      <div
+        className="flex overflow-x-auto max-h-[540px] prism-scroll"
+        data-lang={normalizedLang}
+      >
+        {/* Line numbers */}
+        {showLineNumbers && lineCount > 1 && (
+          <div
+            className="select-none flex-shrink-0 flex flex-col py-4 pr-3 pl-3 text-right text-[12px] bg-muted/50 dark:bg-muted/30"
+            style={{
+              minWidth: `${lineNumberWidth + 2}ch`,
+              color: "var(--prism-gutter-fg)",
+              borderRight: "1px solid var(--prism-gutter-sep)",
+              lineHeight: "1.75",
+            }}
+            aria-hidden="true"
+          >
+            {lines.map((_, idx) => (
+              <span
+                key={idx}
+                className="block prism-line leading-[1.75] px-1 rounded-sm transition-colors duration-100"
+              >
+                {idx + 1}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Highlighted code */}
+        <pre
+          className="p-4 flex-1 whitespace-pre min-w-0 m-0 prism-scroll"
+          style={{
+            color: "var(--prism-fg)",
+            background: "var(--prism-bg)",
+            lineHeight: "1.75",
+          }}
+        >
+          <code
+            className={`language-${normalizedLang} font-mono`}
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        </pre>
+      </div>
     </div>
   )
 }
 
+
+// ─── Block Types ──────────────────────────────────────────────────────────────
+
 interface Block {
   type:
-    | 'paragraph'
-    | 'heading'
-    | 'itemize'
-    | 'enumerate'
-    | 'item'
-    | 'verbatim'
-    | 'lstlisting'
-    | 'equation'
-    | 'align'
-    | 'figure'
-    | 'image'
-    | 'center'
-    | 'empty'
-  level?: number // section=1, subsection=2, subsubsection=3
+    | "paragraph"
+    | "heading"
+    | "itemize"
+    | "enumerate"
+    | "item"
+    | "verbatim"
+    | "lstlisting"
+    | "equation"
+    | "align"
+    | "figure"
+    | "image"
+    | "center"
+    | "empty"
+    | "blockquote"
+    | "theorem"
+    | "definition"
+    | "lemma"
+    | "corollary"
+    | "proof"
+    | "remark"
+    | "example"
+    | "warning"
+    | "note"
+    | "table"
+    | "hrule"
+  level?: number
   content?: string
   children?: Block[]
   options?: Record<string, string>
   caption?: string
   imageUrl?: string
+  // theorem-like
+  envName?: string
+  envTitle?: string
+  envNumber?: number
+  // table
+  rows?: string[][]
+  hasHeader?: boolean
 }
 
+// ─── Document Parser ──────────────────────────────────────────────────────────
+
 function parseLatexDocument(content: string): Block[] {
-  const lines = content.split('\n')
+  const lines = content.split("\n")
   const rootBlocks: Block[] = []
   const stack: { block: Block; endTag?: string }[] = []
+
+  let theoremCounters: Record<string, number> = {}
+  const bumpCounter = (name: string) => {
+    theoremCounters[name] = (theoremCounters[name] || 0) + 1
+    return theoremCounters[name]
+  }
 
   let i = 0
   while (i < lines.length) {
     const line = lines[i]
     const trimmed = line.trim()
 
-    // 1. Check if the active container is a code block or equation block
-    const activeTop = stack[stack.length - 1]
-    if (
-      activeTop &&
-      (activeTop.block.type === 'verbatim' ||
-        activeTop.block.type === 'lstlisting' ||
-        activeTop.block.type === 'equation' ||
-        activeTop.block.type === 'align')
-    ) {
-      if (activeTop.endTag && trimmed.startsWith(activeTop.endTag)) {
-        stack.pop()
+    // ── Active container: verbatim/lstlisting/equation/align/theorem-like ──
+    const top = stack[stack.length - 1]
+    if (top) {
+      const rawTypes: Block["type"][] = [
+        "verbatim", "lstlisting", "equation", "align",
+        "theorem", "definition", "lemma", "corollary", "proof", "remark", "example", "warning", "note",
+        "blockquote",
+      ]
+      if (rawTypes.includes(top.block.type)) {
+        if (top.endTag && trimmed.startsWith(top.endTag)) {
+          stack.pop()
+          i++
+          continue
+        }
+        top.block.content = (top.block.content || "") + line + "\n"
         i++
         continue
       }
-      activeTop.block.content = (activeTop.block.content || '') + line + '\n'
-      i++
-      continue
     }
 
-    // 2. Handle empty line
+    // ── Empty line ──
     if (!trimmed) {
-      const currentContainer = stack[stack.length - 1]
-      if (!currentContainer) {
-        rootBlocks.push({ type: 'empty' })
-      }
+      if (stack.length === 0) rootBlocks.push({ type: "empty" })
       i++
       continue
     }
 
-    // 3. Handle list environments
-    if (trimmed.startsWith('\\begin{itemize}')) {
-      const block: Block = { type: 'itemize', children: [] }
-      addBlock(block)
-      stack.push({ block, endTag: '\\end{itemize}' })
-      i++
-      continue
-    }
-    if (trimmed.startsWith('\\begin{enumerate}')) {
-      const block: Block = { type: 'enumerate', children: [] }
-      addBlock(block)
-      stack.push({ block, endTag: '\\end{enumerate}' })
+    // ── Horizontal rule ──
+    if (/^\\(?:hrule|noindent\s*\\hrule|hline|midrule|rule\{[^}]+\}\{[^}]+\})/.test(trimmed) || trimmed === "---") {
+      addBlock({ type: "hrule" })
       i++
       continue
     }
 
-    // 4. Handle center environment
-    if (trimmed.startsWith('\\begin{center}')) {
-      const block: Block = { type: 'center', children: [] }
-      addBlock(block)
-      stack.push({ block, endTag: '\\end{center}' })
-      i++
-      continue
-    }
+    // ── Environments ──
+    if (trimmed.startsWith("\\begin{")) {
+      const envMatch = trimmed.match(/^\\begin\{([^}]+)\}(.*)/)
+      if (envMatch) {
+        const env = envMatch[1].toLowerCase()
+        const rest = envMatch[2].trim()
 
-    // 5. Handle figure environment
-    if (trimmed.startsWith('\\begin{figure}')) {
-      const block: Block = { type: 'figure', children: [] }
-      addBlock(block)
-      stack.push({ block, endTag: '\\end{figure}' })
-      i++
-      continue
-    }
+        // List environments
+        if (env === "itemize") {
+          const b: Block = { type: "itemize", children: [] }
+          addBlock(b); stack.push({ block: b, endTag: "\\end{itemize}" })
+          i++; continue
+        }
+        if (env === "enumerate") {
+          const b: Block = { type: "enumerate", children: [] }
+          addBlock(b); stack.push({ block: b, endTag: "\\end{enumerate}" })
+          i++; continue
+        }
 
-    // 6. Handle verbatim & listings code block environment
-    if (trimmed.startsWith('\\begin{verbatim}')) {
-      const block: Block = { type: 'verbatim', content: '' }
-      addBlock(block)
-      stack.push({ block, endTag: '\\end{verbatim}' })
-      i++
-      continue
-    }
-    if (trimmed.startsWith('\\begin{lstlisting}')) {
-      let language = ''
-      let caption = ''
-      const optionsMatch = trimmed.match(/\\begin\{lstlisting\}\s*\[([\s\S]*?)\]/)
-      if (optionsMatch) {
-        const optionsStr = optionsMatch[1]
-        const pairRegex = /(\w+)\s*=\s*(?:\{([^}]*)\}|"([^"]*)"|([^,\s}]+))/g
-        let match
-        while ((match = pairRegex.exec(optionsStr)) !== null) {
-          const key = match[1].toLowerCase()
-          const val = match[2] ?? match[3] ?? match[4]
-          if (key === 'language') language = val
-          else if (key === 'caption') caption = val
+        // Center
+        if (env === "center") {
+          const b: Block = { type: "center", children: [] }
+          addBlock(b); stack.push({ block: b, endTag: "\\end{center}" })
+          i++; continue
+        }
+
+        // Figure
+        if (env === "figure") {
+          const b: Block = { type: "figure", children: [] }
+          addBlock(b); stack.push({ block: b, endTag: "\\end{figure}" })
+          i++; continue
+        }
+
+        // Quote/blockquote
+        if (env === "quote" || env === "quotation" || env === "blockquote") {
+          const b: Block = { type: "blockquote", content: "" }
+          addBlock(b); stack.push({ block: b, endTag: `\\end{${env}}` })
+          i++; continue
+        }
+
+        // Verbatim
+        if (env === "verbatim") {
+          const b: Block = { type: "verbatim", content: "" }
+          addBlock(b); stack.push({ block: b, endTag: "\\end{verbatim}" })
+          i++; continue
+        }
+
+        // lstlisting
+        if (env === "lstlisting") {
+          let language = "", caption = ""
+          const optMatch = trimmed.match(/\\begin\{lstlisting\}\s*\[([\s\S]*?)\]/)
+          if (optMatch) {
+            const pairRx = /(\w+)\s*=\s*(?:\{([^}]*)\}|"([^"]*)"|([^,\s}]+))/g
+            let m; while ((m = pairRx.exec(optMatch[1])) !== null) {
+              const k = m[1].toLowerCase(), v = m[2] ?? m[3] ?? m[4]
+              if (k === "language") language = v
+              else if (k === "caption") caption = v
+            }
+          }
+          const b: Block = { type: "lstlisting", content: "", options: { language, caption } }
+          addBlock(b); stack.push({ block: b, endTag: "\\end{lstlisting}" })
+          i++; continue
+        }
+
+        // Equations
+        if (env === "equation" || env === "equation*") {
+          const b: Block = { type: "equation", content: "" }
+          addBlock(b); stack.push({ block: b, endTag: `\\end{${env}}` })
+          i++; continue
+        }
+        if (env === "align" || env === "align*" || env === "aligned") {
+          const b: Block = { type: "align", content: "" }
+          addBlock(b); stack.push({ block: b, endTag: `\\end{${env}}` })
+          i++; continue
+        }
+
+        // Table
+        if (env === "tabular" || env === "table") {
+          // Collect all lines until \end{tabular} or \end{table}
+          const tableLines: string[] = []
+          let j = i + 1
+          const endEnv = env === "table" ? "\\end{table}" : "\\end{tabular}"
+          while (j < lines.length && !lines[j].trim().startsWith(endEnv)) {
+            tableLines.push(lines[j])
+            j++
+          }
+          const parsed = parseTabular(tableLines)
+          addBlock(parsed)
+          i = j + 1
+          continue
+        }
+
+        // Theorem-like environments
+        const THEOREM_LIKE: Record<string, { label: string; icon?: React.ReactNode }> = {
+          theorem:    { label: "Theorem" },
+          definition: { label: "Definition" },
+          lemma:      { label: "Lemma" },
+          corollary:  { label: "Corollary" },
+          proof:      { label: "Proof" },
+          remark:     { label: "Remark" },
+          example:    { label: "Example" },
+          warning:    { label: "Warning" },
+          note:       { label: "Note" },
+        }
+        if (THEOREM_LIKE[env]) {
+          const titleMatch = rest.match(/^\[(.*?)\]/)
+          const envTitle = titleMatch ? titleMatch[1] : undefined
+          const num = env !== "proof" ? bumpCounter(env) : undefined
+          const b: Block = {
+            type: env as Block["type"],
+            content: "",
+            envName: env,
+            envTitle,
+            envNumber: num,
+          }
+          addBlock(b); stack.push({ block: b, endTag: `\\end{${env}}` })
+          i++; continue
         }
       }
-      const block: Block = { type: 'lstlisting', content: '', options: { language, caption } }
-      addBlock(block)
-      stack.push({ block, endTag: '\\end{lstlisting}' })
-      i++
-      continue
     }
 
-    // 7. Handle math equation & align block environment
-    if (trimmed.startsWith('\\begin{equation}') || trimmed.startsWith('\\begin{align}')) {
-      const isAlign = trimmed.includes('align')
-      const block: Block = { type: isAlign ? 'align' : 'equation', content: '' }
-      addBlock(block)
-      stack.push({ block, endTag: isAlign ? '\\end{align}' : '\\end{equation}' })
-      i++
-      continue
-    }
-
-    // 8. Handle list item
-    if (trimmed.startsWith('\\item')) {
-      // Pop current item block if we are in one, so we start a new item in the parent list container
-      const currentContainer = stack[stack.length - 1]
-      if (currentContainer && currentContainer.block.type === 'item') {
-        stack.pop()
-      }
-
-      const parentContainer = stack[stack.length - 1]
-      if (
-        parentContainer &&
-        (parentContainer.block.type === 'itemize' || parentContainer.block.type === 'enumerate')
-      ) {
-        const itemBlock: Block = { type: 'item', children: [] }
-        parentContainer.block.children!.push(itemBlock)
-        stack.push({ block: itemBlock })
-
-        const itemContent = trimmed.slice(5).trim()
-        if (itemContent) {
-          itemBlock.children!.push({ type: 'paragraph', content: itemContent })
-        }
-      } else {
-        // loose item outside list
-        const itemContent = trimmed.slice(5).trim()
-        addBlock({ type: 'paragraph', content: `• ${itemContent}` })
-      }
-      i++
-      continue
-    }
-
-    // 9. Handle environment endings
-    if (trimmed.startsWith('\\end{')) {
+    // ── \end{...} fallback ──
+    if (trimmed.startsWith("\\end{")) {
       const envNameMatch = trimmed.match(/\\end\{([^}]+)\}/)
       if (envNameMatch) {
         const envName = envNameMatch[1]
-        // Pop stack until we close the corresponding environment
         while (stack.length > 0) {
           const popped = stack.pop()
-          if (popped && popped.block.type === envName) {
-            break
-          }
+          if (popped && (popped.block.type === envName || popped.block.envName === envName)) break
         }
       }
-      i++
-      continue
+      i++; continue
     }
 
-    // 10. Headings
-    const sectionMatch = trimmed.match(/^\\section\{([\s\S]+?)\}/)
-    if (sectionMatch) {
-      addBlock({ type: 'heading', level: 1, content: sectionMatch[1] })
-      i++
-      continue
-    }
-    const subsectionMatch = trimmed.match(/^\\subsection\{([\s\S]+?)\}/)
-    if (subsectionMatch) {
-      addBlock({ type: 'heading', level: 2, content: subsectionMatch[1] })
-      i++
-      continue
-    }
-    const subsubsectionMatch = trimmed.match(/^\\subsubsection\{([\s\S]+?)\}/)
-    if (subsubsectionMatch) {
-      addBlock({ type: 'heading', level: 3, content: subsubsectionMatch[1] })
-      i++
-      continue
+    // ── \item ──
+    if (trimmed.startsWith("\\item")) {
+      const curTop = stack[stack.length - 1]
+      if (curTop && curTop.block.type === "item") stack.pop()
+      const parentTop = stack[stack.length - 1]
+      if (parentTop && (parentTop.block.type === "itemize" || parentTop.block.type === "enumerate")) {
+        const itemBlock: Block = { type: "item", children: [] }
+        parentTop.block.children!.push(itemBlock)
+        stack.push({ block: itemBlock })
+        const itemContent = trimmed.slice(5).trim()
+        if (itemContent) itemBlock.children!.push({ type: "paragraph", content: itemContent })
+      } else {
+        const itemContent = trimmed.slice(5).trim()
+        addBlock({ type: "paragraph", content: `• ${itemContent}` })
+      }
+      i++; continue
     }
 
-    // 11. Figure specific commands (inside figure block)
-    const currentContainer = stack[stack.length - 1]
-    if (currentContainer && currentContainer.block.type === 'figure') {
+    // ── Headings ──
+    const HEADING_PATTERNS: [RegExp, number][] = [
+      [/^\\section\*?\{([\s\S]+?)\}/, 1],
+      [/^\\subsection\*?\{([\s\S]+?)\}/, 2],
+      [/^\\subsubsection\*?\{([\s\S]+?)\}/, 3],
+      [/^\\paragraph\*?\{([\s\S]+?)\}/, 4],
+    ]
+    let headingMatched = false
+    for (const [re, level] of HEADING_PATTERNS) {
+      const m = trimmed.match(re)
+      if (m) {
+        addBlock({ type: "heading", level, content: m[1] })
+        headingMatched = true
+        break
+      }
+    }
+    if (headingMatched) { i++; continue }
+
+    // ── Figure-specific commands ──
+    const figTop = stack[stack.length - 1]
+    if (figTop && figTop.block.type === "figure") {
       const captionMatch = trimmed.match(/\\caption\{([\s\S]+?)\}/)
-      if (captionMatch) {
-        currentContainer.block.caption = captionMatch[1]
-        i++
-        continue
-      }
-
-      const graphicsMatch = trimmed.match(/\\includegraphics(?:\[.*?\])?\{([^}]+)\}/)
-      if (graphicsMatch) {
-        const imgBlock: Block = { type: 'image', imageUrl: graphicsMatch[1] }
-        currentContainer.block.children!.push(imgBlock)
-        i++
-        continue
-      }
-
-      // Ignore figure positioning/label flags during layout parsing
-      if (trimmed.startsWith('\\centering') || trimmed.startsWith('\\label{')) {
-        i++
-        continue
-      }
+      if (captionMatch) { figTop.block.caption = captionMatch[1]; i++; continue }
+      const gfxMatch = trimmed.match(/\\includegraphics(?:\[.*?\])?\{([^}]+)\}/)
+      if (gfxMatch) { figTop.block.children!.push({ type: "image", imageUrl: gfxMatch[1] }); i++; continue }
+      if (trimmed.startsWith("\\centering") || trimmed.startsWith("\\label{")) { i++; continue }
     }
 
-    // 12. Loose graphics (outside figure environment)
-    const looseGraphicsMatch = trimmed.match(/\\includegraphics(?:\[.*?\])?\{([^}]+)\}/)
-    if (looseGraphicsMatch) {
-      addBlock({ type: 'image', imageUrl: looseGraphicsMatch[1] })
-      i++
-      continue
+    // ── Loose \includegraphics ──
+    const looseGfx = trimmed.match(/\\includegraphics(?:\[.*?\])?\{([^}]+)\}/)
+    if (looseGfx) { addBlock({ type: "image", imageUrl: looseGfx[1] }); i++; continue }
+
+    // ── Markdown-style image ──
+    if (trimmed.startsWith("![") && trimmed.endsWith(")")) {
+      const m = trimmed.match(/^!\[(.*?)\]\((.*?)\)$/)
+      if (m) { addBlock({ type: "image", imageUrl: m[2], caption: m[1] }); i++; continue }
     }
 
-    // 13. Markdown-style image tags
-    if (trimmed.startsWith('![') && trimmed.endsWith(')')) {
-      const match = trimmed.match(/^!\[(.*?)\]\((.*?)\)$/)
-      if (match) {
-        addBlock({ type: 'image', imageUrl: match[2], caption: match[1] })
-        i++
-        continue
-      }
-    }
-
-    // 14. Block math $$ ... $$
-    if (trimmed.startsWith('$$')) {
+    // ── Block math $$ ... $$ ──
+    if (trimmed.startsWith("$$")) {
       let blockContent = trimmed
-      const hasClosingDoubleDollar = trimmed.length > 2 && trimmed.endsWith('$$')
-
-      if (!hasClosingDoubleDollar) {
+      if (!(trimmed.length > 2 && trimmed.endsWith("$$"))) {
         let j = i + 1
         while (j < lines.length) {
-          const nextTrimmed = lines[j].trim()
-          blockContent += '\n' + lines[j]
-          if (nextTrimmed.endsWith('$$') || nextTrimmed.includes('$$')) {
-            break
-          }
+          const nt = lines[j].trim()
+          blockContent += "\n" + lines[j]
+          if (nt.endsWith("$$") || nt.includes("$$")) { break }
           j++
         }
         i = j
       }
-      addBlock({ type: 'equation', content: blockContent })
-      i++
-      continue
+      addBlock({ type: "equation", content: blockContent })
+      i++; continue
     }
 
-    // 15. Default paragraph
-    if (currentContainer && currentContainer.block.type === 'item') {
-      const lastChild =
-        currentContainer.block.children![currentContainer.block.children!.length - 1]
-      if (lastChild && lastChild.type === 'paragraph') {
-        lastChild.content += '\n' + line
+    // ── Skip common LaTeX preamble lines ──
+    const SKIP_PATTERNS = [
+      /^\\documentclass/, /^\\usepackage/, /^\\title\{/, /^\\author\{/, /^\\date\{/,
+      /^\\maketitle/, /^\\tableofcontents/, /^\\begin\{document\}/, /^\\end\{document\}/,
+      /^\\newcommand/, /^\\renewcommand/, /^\\setlength/, /^\\pagestyle/,
+      /^\\centering$/, /^\\noindent$/,
+    ]
+    if (SKIP_PATTERNS.some(re => re.test(trimmed))) { i++; continue }
+
+    // ── Default: paragraph ──
+    appendParagraphLine(line)
+    i++
+  }
+
+  // ── Helper: append to paragraph ──
+  function appendParagraphLine(line: string) {
+    const t = line.trim()
+    if (!t) return
+    if (stack.length > 0) {
+      const active = stack[stack.length - 1]
+      if (active.block.type === "itemize" || active.block.type === "enumerate") {
+        let lastItem = active.block.children![active.block.children!.length - 1]
+        if (!lastItem || lastItem.type !== "item") {
+          lastItem = { type: "item", children: [] }
+          active.block.children!.push(lastItem)
+        }
+        const lc = lastItem.children![lastItem.children!.length - 1]
+        if (lc && lc.type === "paragraph") lc.content += " " + t
+        else lastItem.children!.push({ type: "paragraph", content: t })
       } else {
-        currentContainer.block.children!.push({ type: 'paragraph', content: line })
+        if (!active.block.children) active.block.children = []
+        const lc = active.block.children[active.block.children.length - 1]
+        if (lc && lc.type === "paragraph") lc.content += " " + t
+        else active.block.children.push({ type: "paragraph", content: t })
       }
     } else {
-      addBlock({ type: 'paragraph', content: line })
+      const lb = rootBlocks[rootBlocks.length - 1]
+      if (lb && lb.type === "paragraph") lb.content += " " + t
+      else rootBlocks.push({ type: "paragraph", content: t })
     }
-
-    i++
   }
 
   function addBlock(block: Block) {
     if (stack.length > 0) {
       const active = stack[stack.length - 1]
-      if (
-        (active.block.type === 'itemize' || active.block.type === 'enumerate') &&
-        block.type !== 'item'
-      ) {
+      if ((active.block.type === "itemize" || active.block.type === "enumerate") && block.type !== "item") {
         let lastItem = active.block.children![active.block.children!.length - 1]
-        if (!lastItem || lastItem.type !== 'item') {
-          lastItem = { type: 'item', children: [] }
+        if (!lastItem || lastItem.type !== "item") {
+          lastItem = { type: "item", children: [] }
           active.block.children!.push(lastItem)
         }
         lastItem.children!.push(block)
@@ -596,168 +820,452 @@ function parseLatexDocument(content: string): Block[] {
   return rootBlocks
 }
 
+// ─── Table Parser ─────────────────────────────────────────────────────────────
+
+function parseTabular(lines: string[]): Block {
+  const rows: string[][] = []
+  for (const line of lines) {
+    const t = line.trim()
+    if (!t || t.startsWith("\\hline") || t.startsWith("\\toprule") || t.startsWith("\\midrule") || t.startsWith("\\bottomrule")) continue
+    if (t.startsWith("\\")) continue // skip other LaTeX commands
+    // Split by & (column separator), trim \\ from end
+    const cleaned = t.replace(/\\\\$/, "").trim()
+    const cells = cleaned.split("&").map(c => c.trim())
+    if (cells.length > 0) rows.push(cells)
+  }
+  return { type: "table", rows, hasHeader: rows.length > 1 }
+}
+
+// ─── Block Renderer ───────────────────────────────────────────────────────────
+
+const THEOREM_STYLES: Record<string, {
+  label: string
+  borderClass: string
+  bgClass: string
+  textClass: string
+  icon: React.ComponentType<{ className?: string }>
+  titleClass: string
+}> = {
+  theorem: {
+    label: "Theorem",
+    borderClass: "border-l-4 border-violet-500/70",
+    bgClass: "bg-violet-500/5 dark:bg-violet-500/8",
+    textClass: "text-violet-700 dark:text-violet-300",
+    titleClass: "text-violet-800 dark:text-violet-200",
+    icon: BookOpen,
+  },
+  definition: {
+    label: "Definition",
+    borderClass: "border-l-4 border-blue-500/70",
+    bgClass: "bg-blue-500/5 dark:bg-blue-500/8",
+    textClass: "text-blue-700 dark:text-blue-300",
+    titleClass: "text-blue-800 dark:text-blue-200",
+    icon: Info,
+  },
+  lemma: {
+    label: "Lemma",
+    borderClass: "border-l-4 border-cyan-500/70",
+    bgClass: "bg-cyan-500/5 dark:bg-cyan-500/8",
+    textClass: "text-cyan-700 dark:text-cyan-300",
+    titleClass: "text-cyan-800 dark:text-cyan-200",
+    icon: BookOpen,
+  },
+  corollary: {
+    label: "Corollary",
+    borderClass: "border-l-4 border-indigo-500/70",
+    bgClass: "bg-indigo-500/5 dark:bg-indigo-500/8",
+    textClass: "text-indigo-700 dark:text-indigo-300",
+    titleClass: "text-indigo-800 dark:text-indigo-200",
+    icon: BookOpen,
+  },
+  proof: {
+    label: "Proof",
+    borderClass: "border-l-4 border-zinc-400/60",
+    bgClass: "bg-zinc-500/5 dark:bg-zinc-500/8",
+    textClass: "text-zinc-600 dark:text-zinc-400",
+    titleClass: "text-zinc-700 dark:text-zinc-300",
+    icon: BookOpen,
+  },
+  remark: {
+    label: "Remark",
+    borderClass: "border-l-4 border-sky-400/60",
+    bgClass: "bg-sky-500/5 dark:bg-sky-500/8",
+    textClass: "text-sky-700 dark:text-sky-300",
+    titleClass: "text-sky-800 dark:text-sky-200",
+    icon: Info,
+  },
+  example: {
+    label: "Example",
+    borderClass: "border-l-4 border-emerald-500/70",
+    bgClass: "bg-emerald-500/5 dark:bg-emerald-500/8",
+    textClass: "text-emerald-700 dark:text-emerald-300",
+    titleClass: "text-emerald-800 dark:text-emerald-200",
+    icon: Lightbulb,
+  },
+  warning: {
+    label: "Warning",
+    borderClass: "border-l-4 border-amber-500/70",
+    bgClass: "bg-amber-500/5 dark:bg-amber-500/8",
+    textClass: "text-amber-700 dark:text-amber-300",
+    titleClass: "text-amber-800 dark:text-amber-200",
+    icon: AlertTriangle,
+  },
+  note: {
+    label: "Note",
+    borderClass: "border-l-4 border-teal-500/60",
+    bgClass: "bg-teal-500/5 dark:bg-teal-500/8",
+    textClass: "text-teal-700 dark:text-teal-300",
+    titleClass: "text-teal-800 dark:text-teal-200",
+    icon: Info,
+  },
+}
+
 function renderBlock(block: Block, index: number, figureNumber?: number): React.ReactNode {
   switch (block.type) {
-    case 'empty':
-      return <div key={`empty-${index}`} className="h-3" />
+    case "empty":
+      return null
 
-    case 'paragraph': {
+    case "hrule":
+      return (
+        <hr
+          key={`hr-${index}`}
+          className="my-8 border-0 h-px bg-gradient-to-r from-transparent via-border/60 to-transparent"
+        />
+      )
+
+    case "paragraph": {
       if (!block.content?.trim()) return null
       return (
-        <p key={`p-${index}`} className="text-foreground/85 leading-relaxed text-sm my-2">
+        <p
+          key={`p-${index}`}
+          className="text-foreground/80 leading-[1.85] text-[15px] my-4 font-normal"
+        >
           {parseLatexInline(block.content)}
         </p>
       )
     }
 
-    case 'heading': {
-      const headingContent = parseLatexInline(block.content || '')
+    case "heading": {
+      const headingContent = parseLatexInline(block.content || "")
       if (block.level === 1) {
         return (
           <h1
             key={`h1-${index}`}
-            className="text-base font-bold text-foreground mt-4 mb-3 border-b pb-1 border-border/45"
+            className={cn(
+              "font-cirka text-2xl md:text-3xl font-bold tracking-tight text-foreground",
+              index === 0 ? "mt-0" : "mt-10",
+              "mb-4"
+            )}
           >
             {headingContent}
+            <div className="mt-2.5 h-px bg-gradient-to-r from-border/70 via-border/30 to-transparent" />
           </h1>
         )
       } else if (block.level === 2) {
         return (
-          <h2 key={`h2-${index}`} className="text-sm font-semibold text-foreground mt-5 mb-2">
+          <h2
+            key={`h2-${index}`}
+            className={cn(
+              "font-cirka text-xl font-semibold tracking-tight text-foreground",
+              index === 0 ? "mt-0" : "mt-8",
+              "mb-3"
+            )}
+          >
+            <span className="inline-block mr-2 text-primary/50 font-mono text-sm select-none">§</span>
             {headingContent}
           </h2>
         )
-      } else {
+      } else if (block.level === 3) {
         return (
-          <h3 key={`h3-${index}`} className="text-xs font-medium text-foreground mt-4 mb-1.5">
+          <h3
+            key={`h3-${index}`}
+            className={cn(
+              "font-cirka text-lg font-semibold text-foreground/85",
+              index === 0 ? "mt-0" : "mt-6",
+              "mb-2"
+            )}
+          >
             {headingContent}
           </h3>
         )
+      } else {
+        return (
+          <h4
+            key={`h4-${index}`}
+            className={cn(
+              "font-cirka text-base font-semibold text-foreground/80 uppercase tracking-wider",
+              index === 0 ? "mt-0" : "mt-5",
+              "mb-1.5"
+            )}
+          >
+            {headingContent}
+          </h4>
+        )
+
       }
     }
 
-    case 'itemize':
+    case "itemize":
       return (
         <ul
           key={`ul-${index}`}
-          className="list-disc pl-6 space-y-1.5 my-3 text-muted-foreground text-sm"
+          className="list-none pl-0 space-y-1.5 my-5 text-foreground/80 text-[15px]"
         >
           {block.children?.map((child, idx) => renderBlock(child, idx, figureNumber))}
         </ul>
       )
 
-    case 'enumerate':
+    case "enumerate":
       return (
         <ol
           key={`ol-${index}`}
-          className="list-decimal pl-6 space-y-1.5 my-3 text-muted-foreground text-sm"
+          className="list-decimal pl-6 space-y-1.5 my-5 text-foreground/80 text-[15px] marker:text-primary/70 marker:font-semibold"
         >
           {block.children?.map((child, idx) => renderBlock(child, idx, figureNumber))}
         </ol>
       )
 
-    case 'item': {
+    case "item": {
       if (!block.children || block.children.length === 0) return <li key={`li-${index}`} />
-
       const firstChild = block.children[0]
-      const remainingChildren = block.children.slice(1)
-
-      if (firstChild.type === 'paragraph') {
-        return (
-          <li key={`li-${index}`} className="text-foreground/85 leading-relaxed text-sm my-1">
-            <span>{parseLatexInline(firstChild.content || '')}</span>
-            {remainingChildren.map((child, idx) => renderBlock(child, idx, figureNumber))}
-          </li>
+      const rest = block.children.slice(1)
+      const itemContent =
+        firstChild.type === "paragraph" ? (
+          <>
+            <span>{parseLatexInline(firstChild.content || "")}</span>
+            {rest.map((c, idx) => renderBlock(c, idx, figureNumber))}
+          </>
+        ) : (
+          block.children.map((c, idx) => renderBlock(c, idx, figureNumber))
         )
-      }
 
+      // Custom bullet for itemize items
+      const parentIsOl = false // Can't easily detect parent here; use neutral styling
       return (
-        <li key={`li-${index}`} className="text-foreground/85 leading-relaxed text-sm my-1">
-          {block.children.map((child, idx) => renderBlock(child, idx, figureNumber))}
+        <li
+          key={`li-${index}`}
+          className="flex items-start gap-2.5 leading-relaxed text-foreground/85 pl-0"
+        >
+          <span className="mt-[0.35em] size-1.5 rounded-full bg-primary/50 flex-shrink-0 block" />
+          <span className="flex-1">{itemContent}</span>
         </li>
       )
     }
 
-    case 'center':
+    case "center":
       return (
-        <div key={`center-${index}`} className="text-center my-4">
+        <div key={`center-${index}`} className="text-center my-6">
           {block.children?.map((child, idx) => renderBlock(child, idx, figureNumber))}
         </div>
       )
 
-    case 'figure': {
-      const caption = block.caption
+    case "figure": {
       return (
-        <figure key={`fig-${index}`} className="my-6 w-full flex flex-col items-center">
+        <figure
+          key={`fig-${index}`}
+          className="my-8 w-full flex flex-col items-center bg-muted/20 dark:bg-muted/10 border border-border/50 rounded-2xl p-5 md:p-6 shadow-xs transition-all duration-300 hover:shadow-sm hover:border-border/70"
+        >
           <div className="w-full flex flex-col items-center gap-4">
             {block.children?.map((child, idx) => renderBlock(child, idx, figureNumber))}
           </div>
-          {caption && (
-            <figcaption className="mt-2 text-center text-[11px] text-muted-foreground/80 italic font-sans select-none max-w-[90%]">
-              <span className="font-semibold not-italic text-foreground/80">Figure {figureNumber}: </span>
-              {parseLatexInline(caption)}
+          {block.caption && (
+            <figcaption className="mt-4 text-center text-xs text-muted-foreground leading-relaxed select-none max-w-[90%] border-t border-border/30 pt-3.5 w-full">
+              {figureNumber !== undefined && (
+                <span className="font-semibold text-foreground/70">Figure {figureNumber}. </span>
+              )}
+              {parseLatexInline(block.caption)}
             </figcaption>
           )}
         </figure>
       )
     }
 
-    case 'image': {
+    case "image": {
       const url = block.imageUrl
       if (!url) return null
       return (
-        <div key={`img-${index}`} className="my-4 w-full flex justify-center">
+        <div key={`img-${index}`} className="my-6 w-full flex flex-col items-center justify-center">
           <img
             src={url}
-            alt={block.caption || 'Image'}
-            className="max-h-[350px] w-auto max-w-full object-contain rounded-md select-none"
+            alt={block.caption || "Image"}
+            className="max-h-[400px] w-auto max-w-full object-contain rounded-xl shadow-sm border border-border/50 select-none bg-background/50 p-2 hover:shadow-md transition-all duration-300"
           />
+          {block.caption && (
+            <p className="mt-2 text-center text-xs text-muted-foreground select-none italic">
+              {block.caption}
+            </p>
+          )}
         </div>
       )
     }
 
-    case 'verbatim':
+    case "verbatim":
       return (
         <div
           key={`verbatim-${index}`}
-          className="bg-muted/50 border border-border/50 rounded-lg overflow-hidden my-3 font-mono text-xs"
+          className="rounded-lg border border-border/60 overflow-hidden my-5 font-mono text-[13px] transition-colors duration-200"
+          style={{ background: "var(--prism-bg)" }}
         >
-          <pre className="p-3 overflow-x-auto text-foreground/80 whitespace-pre scrollbar-thin">
+          <div
+            className="flex items-center gap-2 border-b border-border/50 px-4 py-2 select-none"
+            style={{ background: "var(--prism-gutter-bg)" }}
+          >
+            <Terminal className="size-3.5" style={{ color: "var(--prism-comment)" }} />
+            <span className="text-[11px] font-sans" style={{ color: "var(--prism-comment)" }}>Output</span>
+          </div>
+          <pre
+            className="p-4 overflow-x-auto whitespace-pre max-h-[400px] leading-[1.7] m-0"
+            style={{ color: "var(--prism-fg)", background: "var(--prism-bg)" }}
+          >
             <code>{block.content?.trim()}</code>
           </pre>
         </div>
       )
 
-    case 'lstlisting': {
+
+    case "lstlisting": {
       const language = block.options?.language
       const caption = block.options?.caption
       return (
         <CodeBlock
           key={`lstlisting-${index}`}
-          code={block.content?.trim() || ''}
+          code={block.content?.trim() || ""}
           language={language}
           caption={caption}
+          showLineNumbers={true}
         />
       )
     }
 
-    case 'equation':
-    case 'align': {
-      const isAlign = block.type === 'align'
-      const content = block.content?.trim() || ''
+    case "equation":
+    case "align": {
+      const isAlign = block.type === "align"
+      const content = block.content?.trim() || ""
       let rawFormula = content
-      if (!content.startsWith('$$')) {
+      if (!content.startsWith("$$")) {
         rawFormula = isAlign
           ? `$$ \\begin{aligned} ${content} \\end{aligned} $$`
           : `$$ ${content} $$`
       }
-
       return (
         <div
           key={`eq-${index}`}
-          className="my-4 block text-center overflow-x-auto max-w-full"
+          className="my-7 relative group/eq"
         >
-          <MathText>{rawFormula}</MathText>
+          <div className="p-4 md:p-6 bg-muted/20 dark:bg-muted/10 border border-border/40 rounded-xl overflow-x-auto max-w-full flex justify-center items-center shadow-xs hover:border-border/60 transition-all duration-200">
+            <MathText className="w-full text-center">{rawFormula}</MathText>
+          </div>
+        </div>
+      )
+    }
+
+    case "blockquote": {
+      const text = block.content?.trim() || ""
+      return (
+        <blockquote
+          key={`bq-${index}`}
+          className="my-6 pl-5 pr-4 py-4 border-l-4 border-primary/40 bg-primary/5 rounded-r-xl relative"
+        >
+          <Quote className="absolute top-3 right-3 size-4 text-primary/20 select-none" />
+          <div className="text-foreground/75 leading-relaxed italic text-[15px] space-y-2">
+            {text.split("\n").filter(Boolean).map((line, li) => (
+              <p key={li}>{parseLatexInline(line.trim())}</p>
+            ))}
+          </div>
+        </blockquote>
+      )
+    }
+
+    // Theorem-like environments
+    case "theorem":
+    case "definition":
+    case "lemma":
+    case "corollary":
+    case "proof":
+    case "remark":
+    case "example":
+    case "warning":
+    case "note": {
+      const envKey = block.type
+      const style = THEOREM_STYLES[envKey] || THEOREM_STYLES.note
+      const IconComp = style.icon
+      const displayLabel = style.label
+      const num = block.envNumber
+      const title = block.envTitle
+
+      const innerText = block.content?.trim() || ""
+      const innerParagraphs = innerText.split(/\n{2,}/).filter(Boolean)
+
+      return (
+        <div
+          key={`thm-${index}`}
+          className={cn(
+            "my-6 rounded-r-xl rounded-l-sm p-4 md:p-5",
+            style.borderClass,
+            style.bgClass
+          )}
+        >
+          <div className={cn("flex items-center gap-2 mb-2.5", style.textClass)}>
+            <IconComp className="size-3.5 flex-shrink-0" />
+            <span className="text-[13px] font-semibold uppercase tracking-wider">
+              {displayLabel}{num !== undefined ? ` ${num}` : ""}
+              {title && <span className="font-normal normal-case tracking-normal ml-1.5 text-foreground/60">({title})</span>}
+            </span>
+          </div>
+          <div className="text-[14.5px] leading-[1.8] text-foreground/80 space-y-2">
+            {innerParagraphs.length > 0
+              ? innerParagraphs.map((para, pi) => (
+                  <p key={pi}>{parseLatexInline(para.trim())}</p>
+                ))
+              : block.children?.map((c, ci) => renderBlock(c, ci, figureNumber))
+            }
+            {envKey === "proof" && (
+              <span className="block text-right font-serif text-base text-foreground/50 select-none mt-2" title="QED">□</span>
+            )}
+          </div>
+        </div>
+      )
+    }
+
+    case "table": {
+      const rows = block.rows || []
+      if (rows.length === 0) return null
+      const [headerRow, ...bodyRows] = rows
+      return (
+        <div key={`tbl-${index}`} className="my-6 w-full overflow-x-auto rounded-xl border border-border/50 shadow-xs">
+          <table className="w-full text-[13.5px] border-collapse">
+            {block.hasHeader && (
+              <thead>
+                <tr className="bg-muted/40 border-b border-border/60">
+                  {headerRow.map((cell, ci) => (
+                    <th
+                      key={ci}
+                      className="px-4 py-3 text-left font-semibold text-foreground/90 whitespace-nowrap"
+                    >
+                      {parseLatexInline(cell)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {(block.hasHeader ? bodyRows : rows).map((row, ri) => (
+                <tr
+                  key={ri}
+                  className={cn(
+                    "border-b border-border/30 last:border-0",
+                    ri % 2 === 0 ? "bg-transparent" : "bg-muted/20"
+                  )}
+                >
+                  {row.map((cell, ci) => (
+                    <td key={ci} className="px-4 py-2.5 text-foreground/75">
+                      {parseLatexInline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )
     }
@@ -767,14 +1275,16 @@ function renderBlock(block: Block, index: number, figureNumber?: number): React.
   }
 }
 
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 interface LatexRendererProps {
   content?: string
   className?: string
 }
 
-export function LatexRenderer({ content = '', className }: LatexRendererProps) {
+export function LatexRenderer({ content = "", className }: LatexRendererProps) {
   const elements = useMemo(() => {
-    if (!content) {
+    if (!content?.trim()) {
       return [
         <p key="empty" className="text-xs italic text-muted-foreground/60">
           No content provided.
@@ -782,20 +1292,38 @@ export function LatexRenderer({ content = '', className }: LatexRendererProps) {
       ]
     }
 
-    const blocks = parseLatexDocument(content)
+    const rawBlocks = parseLatexDocument(content)
 
-    // Pre-calculate sequential figure numbers for proper LaTeX floats numbering
-    let figureCounter = 0
-    const blockFigureNumbers: Record<number, number> = {}
-    blocks.forEach((block, idx) => {
-      if (block.type === 'figure') {
-        figureCounter++
-        blockFigureNumbers[idx] = figureCounter
+    // Collapse & filter empty blocks
+    const collapsed: Block[] = []
+    for (const block of rawBlocks) {
+      if (block.type === "empty") {
+        if (collapsed.length > 0 && collapsed[collapsed.length - 1].type === "empty") continue
       }
+      collapsed.push(block)
+    }
+
+    const blocks = collapsed.filter((block, idx) => {
+      if (block.type !== "empty") return true
+      if (idx === 0 || idx === collapsed.length - 1) return false
+      const prev = collapsed[idx - 1]
+      const next = collapsed[idx + 1]
+      return prev?.type === "paragraph" && next?.type === "paragraph"
     })
 
-    return blocks.map((block, idx) => renderBlock(block, idx, blockFigureNumbers[idx]))
+    // Pre-calculate figure numbers
+    let figureCounter = 0
+    const figNums: Record<number, number> = {}
+    blocks.forEach((block, idx) => {
+      if (block.type === "figure") figNums[idx] = ++figureCounter
+    })
+
+    return blocks.map((block, idx) => renderBlock(block, idx, figNums[idx]))
   }, [content])
 
-  return <div className={className}>{elements}</div>
+  return (
+    <div className={cn("w-full text-foreground/80", className)}>
+      {elements}
+    </div>
+  )
 }

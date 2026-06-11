@@ -567,7 +567,7 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
     if (!instituteId) e.institute = "Institution is required";
     if (!courseName) e.courseName = "Branch/Course is required";
     if (!passoutYear) e.passoutYear = "Expected graduation year is required";
-    
+
     if (!sscPercentage) {
       e.sscPercentage = "SSC percentage is required";
     } else {
@@ -578,9 +578,9 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
     }
 
     if (!sscPassYear) e.sscPassYear = "SSC passing year is required";
-    
+
     if (!isHsc && !isDiploma) e.educationAfterSsc = "Select at least one option (HSC or Diploma)";
-    
+
     if (isHsc) {
       if (!hscPercentage) {
         e.hscPercentage = "HSC percentage is required";
@@ -667,14 +667,14 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
   function validateProfessional(): Record<string, string> {
     const e: Record<string, string> = {};
     if (selectedSkills.length === 0) e.skills = "Select at least one skill";
-    
+
     if (linkedinUrl.trim() && !/^(https?:\/\/)?(www\.)?linkedin\.com\/.*$/i.test(linkedinUrl)) {
       e.linkedinUrl = "Please enter a valid LinkedIn URL.";
     }
     if (githubUrl.trim() && !/^(https?:\/\/)?(www\.)?github\.com\/.*$/i.test(githubUrl)) {
       e.githubUrl = "Please enter a valid GitHub URL.";
     }
-    
+
     const invalidLinks = portfolioLinks.filter(l => l.trim() && !/^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}.*$/i.test(l));
     if (invalidLinks.length > 0) {
       e.portfolioLinks = "One or more portfolio links are invalid URLs.";
@@ -931,7 +931,7 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row items-center gap-6">
-              <div 
+              <div
                 className="relative group cursor-pointer shrink-0"
                 onClick={() => !isUploadingAvatar && avatarInputRef.current?.click()}
               >
@@ -959,10 +959,10 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
                   className="hidden"
                   onChange={handleAvatarFileChange}
                 />
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => avatarInputRef.current?.click()} 
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => avatarInputRef.current?.click()}
                   disabled={isUploadingAvatar}
                   className="shadow-sm"
                 >
@@ -1377,12 +1377,12 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
                 </div>
 
                 <Separator />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                  <ReadonlyField label="SSC Percentage" value={sscPercentage ? `${sscPercentage}%` : null} />
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                  <ReadonlyField label="SSC Percentage" value={sscPercentage && !isNaN(parseFloat(sscPercentage)) ? `${parseFloat(sscPercentage).toFixed(2)}%` : null} />
                   <ReadonlyField label="SSC Passing Year" value={sscPassYear} />
-                  <ReadonlyField label="HSC Percentage" value={isHsc && hscPercentage ? `${hscPercentage}%` : null} />
+                  <ReadonlyField label="HSC Percentage" value={isHsc && hscPercentage && !isNaN(parseFloat(hscPercentage)) ? `${parseFloat(hscPercentage).toFixed(2)}%` : null} />
                   <ReadonlyField label="HSC Passing Year" value={isHsc ? hscPassYear : null} />
-                  <ReadonlyField label="Diploma Percentage" value={isDiploma && diplomaPercentage ? `${diplomaPercentage}%` : null} />
+                  <ReadonlyField label="Diploma Percentage" value={isDiploma && diplomaPercentage && !isNaN(parseFloat(diplomaPercentage)) ? `${parseFloat(diplomaPercentage).toFixed(2)}%` : null} />
                   <ReadonlyField label="Diploma Passing Year" value={isDiploma ? diplomaPassYear : null} />
                 </div>
 
@@ -1396,9 +1396,9 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
                   <p className="text-xs text-muted-foreground mb-2">Semester SGPA</p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {sgpaValues.map((val, i) => (
-                      <div key={i} className="bg-secondary/40 rounded p-2 text-left border border-muted/20">
+                      <div key={i}>
                         <p className="text-[10px] text-muted-foreground">Sem {i + 1}</p>
-                        <p className="text-sm font-medium">{val || "—"}</p>
+                        <p className="text-sm font-medium">{val && !isNaN(parseFloat(val)) ? parseFloat(val).toFixed(2) : "—"}</p>
                       </div>
                     ))}
                   </div>

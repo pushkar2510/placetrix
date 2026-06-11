@@ -11,7 +11,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { cn, formatDuration } from "@/lib/utils"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
+import { cn, formatDuration, parseDurationToMinutes } from "@/lib/utils"
 import { toast } from "sonner"
 import { enrollInCourseAction, generateCertificateAction } from "../actions"
 import { CourseCover } from "../components/CourseCover"
@@ -31,7 +43,6 @@ interface Course {
   description: string
   level: string
   duration: string
-  type: string
   cover_image_path?: string
   instructor: {
     name: string
@@ -63,6 +74,7 @@ function CTABanner({ mode, nextModule, courseId, totalModules, nextIndex, onNavi
 
   return (
     <div
+      id="course-cta-banner"
       className={cn(
         "flex items-center justify-between gap-4 rounded-xl border p-4 cursor-pointer group transition-colors",
         isStart
@@ -73,14 +85,14 @@ function CTABanner({ mode, nextModule, courseId, totalModules, nextIndex, onNavi
     >
       <div className="flex items-center gap-3 min-w-0">
         <div className={cn(
-          "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border transition-colors",
+          "size-9 rounded-xl flex items-center justify-center shrink-0 border transition-colors",
           isStart
             ? "bg-emerald-500/10 border-emerald-500/20 group-hover:bg-emerald-500/20"
             : "bg-primary/10 border-primary/20 group-hover:bg-primary/20"
         )}>
           {isStart
-            ? <PlayCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            : <Zap className="h-4 w-4 text-primary" />
+            ? <PlayCircle className="size-4 text-emerald-600 dark:text-emerald-400" />
+            : <Zap className="size-4 text-primary" />
           }
         </div>
 
@@ -96,7 +108,7 @@ function CTABanner({ mode, nextModule, courseId, totalModules, nextIndex, onNavi
           </p>
           {nextModule.duration && (
             <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-              <Clock className="h-3 w-3 shrink-0" />
+              <Clock className="size-3 shrink-0" />
               {formatDuration(nextModule.duration)} · Module {nextIndex + 1} of {totalModules}
             </p>
           )}
@@ -104,11 +116,12 @@ function CTABanner({ mode, nextModule, courseId, totalModules, nextIndex, onNavi
       </div>
 
       <Button
+        id="course-cta-action"
         size="sm"
         className={cn(
-          "shrink-0 rounded-full text-xs font-semibold gap-1.5",
+          "shrink-0 rounded-full text-xs font-semibold",
           isStart
-            ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+            ? "bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-600 dark:text-zinc-950 shadow-xs"
             : "shadow-xs"
         )}
         onClick={(e) => {
@@ -116,7 +129,7 @@ function CTABanner({ mode, nextModule, courseId, totalModules, nextIndex, onNavi
           onNavigate(nextModule.id)
         }}
       >
-        <PlayCircle className="h-3.5 w-3.5" />
+        <PlayCircle data-icon="inline-start" />
         {isStart ? "Start Course" : "Resume"}
       </Button>
     </div>
@@ -128,6 +141,8 @@ export function CandidateCourseDetailClient({ course, isEnrolled, certificateId,
   const [isEnrolling, setIsEnrolling] = useState(false)
   const [currentCertId, setCurrentCertId] = useState<string | null>(certificateId)
   const [isGeneratingCert, setIsGeneratingCert] = useState(false)
+
+
 
   const handleGenerateCertificate = async () => {
     setIsGeneratingCert(true)
@@ -162,6 +177,17 @@ export function CandidateCourseDetailClient({ course, isEnrolled, certificateId,
     }
   }, [modules])
 
+  // Calculate time remaining for incomplete modules
+  const timeRemaining = useMemo(() => {
+    let totalMins = 0
+    modules.forEach(mod => {
+      if (!mod.completed) {
+        totalMins += parseDurationToMinutes(mod.duration)
+      }
+    })
+    return totalMins
+  }, [modules])
+
   // The next incomplete module for "continue" banner
   const nextModule = useMemo(() => {
     return modules.find(m => !m.completed) ?? null
@@ -193,22 +219,52 @@ export function CandidateCourseDetailClient({ course, isEnrolled, certificateId,
   }
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 md:px-8 md:py-8 animate-in fade-in duration-300">
+    <div className="flex flex-col gap-6 mx-auto w-full px-4 py-6 md:px-8 md:py-8 animate-in fade-in duration-300">
 
       {/* Back button */}
       <div>
         <Button
+          id="course-back-button"
           variant="outline"
           size="sm"
           onClick={() => router.push("/courses")}
-          className="group rounded-full gap-2 border-border/80 text-muted-foreground hover:text-foreground transition-all duration-200"
+          className="group rounded-full gap-1.5 border-border/80 text-muted-foreground hover:text-foreground transition-all duration-200"
         >
-          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+          <ArrowLeft className="transition-transform group-hover:-translate-x-1" data-icon="inline-start" />
           Back to Courses
         </Button>
       </div>
 
       {/* CTA Banner */}
+      {!isEnrolled && (
+        <div
+          id="course-enroll-cta-banner"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-primary/20 bg-primary/5 p-4 md:p-5 shadow-xs"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-10 rounded-xl flex items-center justify-center shrink-0 border border-primary/20 bg-primary/10 text-primary">
+              <Zap className="size-5 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">
+                Unlock Course Content
+              </p>
+              <p className="text-sm font-semibold text-foreground mt-0.5">
+                Enroll in this course to get access to all {modules.length} modules, track your learning progress, and earn a completion certificate.
+              </p>
+            </div>
+          </div>
+          <Button
+            id="course-enroll-cta-button"
+            size="sm"
+            onClick={handleEnroll}
+            disabled={isEnrolling}
+            className="w-full sm:w-auto shrink-0 rounded-full text-xs font-semibold shadow-xs"
+          >
+            {isEnrolling ? "Enrolling..." : "Enroll in Course"}
+          </Button>
+        </div>
+      )}
       {isEnrolled && nextModule && stats.percentage === 0 && (
         <CTABanner
           mode="start"
@@ -230,304 +286,292 @@ export function CandidateCourseDetailClient({ course, isEnrolled, certificateId,
         />
       )}
 
-      {/* Course Header */}
-      <div className="flex flex-col-reverse md:flex-row items-start justify-between gap-6 border-b pb-5 border-border/60">
-        <div className="flex-1 flex flex-col gap-2">
+      {/* Certificate Download Banner */}
+      {isEnrolled && stats.percentage === 100 && currentCertId && (
+        <div
+          id="course-certificate-download-banner"
+          className="flex items-center justify-between gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-9 rounded-xl flex items-center justify-center shrink-0 border border-emerald-500/20 bg-emerald-500/10">
+              <Award className="size-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                Course Completed!
+              </p>
+              <p className="text-sm font-semibold text-foreground line-clamp-1 mt-0.5">
+                Congratulations! Your certificate is unlocked and ready for download.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            id="course-download-certificate-cta"
+            size="sm"
+            className="shrink-0 rounded-full text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-600 dark:text-zinc-950 shadow-xs"
+            asChild
+          >
+            <a href={`/api/courses/certificate/${currentCertId}`}>
+              Download Certificate
+            </a>
+          </Button>
+        </div>
+      )}
+
+      {/* Certificate Generate Banner */}
+      {isEnrolled && stats.percentage === 100 && !currentCertId && (
+        <div
+          id="course-certificate-generate-banner"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 md:p-5 shadow-xs"
+        >
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="size-10 rounded-xl flex items-center justify-center shrink-0 border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mt-0.5">
+              <Award className="size-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+
+            <div className="min-w-0 space-y-1">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                Course Completed!
+              </p>
+              <p className="text-sm font-semibold text-foreground">
+                You have completed all modules! Generate your certificate below.
+              </p>
+            </div>
+          </div>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                id="course-generate-certificate-cta"
+                size="sm"
+                disabled={isGeneratingCert}
+                className="w-full sm:w-auto shrink-0 rounded-full text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-600 dark:text-zinc-950 shadow-xs"
+              >
+                {isGeneratingCert ? "Generating..." : "Generate Certificate"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Generate Certificate</AlertDialogTitle>
+                <AlertDialogDescription className="space-y-3 text-left">
+                  <span className="block text-foreground">
+                    Your certificate will be printed with the name:
+                  </span>
+                  <span className="block text-lg font-bold text-foreground bg-muted p-2.5 rounded-lg text-center my-2 border border-border/40 select-all">
+                    {userProfile?.display_name || "Shabbir Ezzy"}
+                  </span>
+                  <span className="block text-xs text-muted-foreground leading-relaxed">
+                    Please verify that this name is correct and has no typos before generating your certificate.
+                  </span>
+                  <span className="block text-xs font-semibold text-destructive dark:text-red-400">
+                    Note: This name cannot be changed once the certificate has been generated.
+                  </span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleGenerateCertificate}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-600 dark:text-zinc-950"
+                >
+                  Confirm & Generate
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
+
+      {/* Course Header Hero Banner */}
+      <div className="flex flex-col-reverse lg:flex-row items-stretch justify-between gap-8 border-b pb-8 border-border/60">
+        <div className="flex-1 flex flex-col justify-center gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+            <Badge variant="secondary" className="uppercase tracking-wider text-[10px] font-semibold">
               {course.level}
             </Badge>
           </div>
 
-          <h1 className="text-2xl md:text-3xl font-bold font-cirka tracking-tight text-foreground">
-            {course.title}
-          </h1>
+          <div className="space-y-2">
+            <h1 className="text-3xl md:text-4xl font-extrabold font-cirka tracking-tight text-foreground">
+              {course.title}
+            </h1>
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+              {course.description}
+            </p>
+          </div>
 
-          <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-            {course.description}
-          </p>
+          {/* Instructor Info */}
+          <div className="flex items-center gap-2 pt-1">
+            {course.instructor.avatar ? (
+              <img
+                src={course.instructor.avatar}
+                alt=""
+                className="size-6 rounded-full object-cover border border-border shadow-xs"
+              />
+            ) : (
+              <div className="size-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary text-[10px] shrink-0">
+                {course.instructor.name.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <span className="text-xs text-foreground font-semibold">
+              {course.instructor.name}
+            </span>
+          </div>
 
-          <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5" />
-              {formatDuration(course.duration)}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <BookOpen className="h-3.5 w-3.5" />
-              {modules.length} {modules.length === 1 ? "module" : "modules"}
-            </span>
-            <span className="inline-flex items-center gap-1.5 font-medium text-foreground/80">
-              {course.type}
-            </span>
+          {/* Metadata & Progress */}
+          <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-6 gap-y-3 pt-2 text-sm text-muted-foreground">
+            <div className="inline-flex items-center gap-2">
+              <Clock className="size-4 text-muted-foreground/60" />
+              <span>{formatDuration(course.duration)}</span>
+            </div>
+            <div className="inline-flex items-center gap-2">
+              <BookOpen className="size-4 text-muted-foreground/60" />
+              <span>{modules.length} {modules.length === 1 ? "module" : "modules"}</span>
+            </div>
+
+            {isEnrolled && (
+              <>
+                <div className="inline-flex items-center gap-2">
+                  <CheckCircle2 className="size-4 text-muted-foreground/60" />
+                  <span>{stats.percentage}% Complete</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="w-32 md:w-40 shrink-0 mx-auto md:mr-0">
-          <div className="aspect-video w-full overflow-hidden rounded-xl border border-border/50 dark:border-zinc-800/80 relative shadow-xs">
+        <div className="hidden lg:block w-full lg:w-80 shrink-0 self-center lg:self-start">
+          <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border/40 dark:border-zinc-800/80 relative shadow-sm hover:shadow transition-shadow duration-300">
             <CourseCover coverImagePath={course.cover_image_path} title={course.title} />
           </div>
         </div>
       </div>
 
-      {/* Two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Syllabus (Left / Main) */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Course Syllabus
-            </h2>
-            {isEnrolled && (
-              <span className="text-[11px] text-muted-foreground">
-                <span className="font-semibold text-foreground">{stats.completed}</span>/{stats.total} complete
-              </span>
-            )}
-          </div>
-
-          <div className="space-y-2.5">
-            {modules.map((mod, index) => {
-              const isModCompleted = mod.completed
-
-              return (
-                <div
-                  key={mod.id}
-                  onClick={() => handleModuleClick(mod.id)}
-                  className={cn(
-                    "group flex items-center justify-between gap-4 p-4 rounded-xl border border-border/50 bg-card select-none transition-all duration-200",
-                    isEnrolled
-                      ? "hover:border-primary/30 hover:shadow-md hover:bg-muted/10 cursor-pointer"
-                      : "cursor-not-allowed opacity-75"
-                  )}
-                >
-                  {/* Module number */}
-                  <div className={cn(
-                    "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold shrink-0 transition-colors duration-200",
-                    isEnrolled
-                      ? isModCompleted
-                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                        : "bg-muted text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground"
-                      : "bg-muted/40 text-muted-foreground/40"
-                  )}>
-                    {isModCompleted && isEnrolled
-                      ? <CheckCircle2 className="h-3.5 w-3.5" />
-                      : index + 1
-                    }
-                  </div>
-
-                  {/* Module info */}
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={cn(
-                        "font-medium text-sm leading-tight transition-colors",
-                        isEnrolled
-                          ? isModCompleted
-                            ? "text-muted-foreground line-through decoration-muted-foreground/40"
-                            : "text-foreground group-hover:text-primary"
-                          : "text-muted-foreground"
-                      )}>
-                        {mod.title}
-                      </span>
-                      {!isEnrolled && (
-                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground/60 rounded-full border-dashed flex items-center gap-0.5">
-                          <Lock className="h-2.5 w-2.5" /> Locked
-                        </Badge>
-                      )}
-                    </div>
-
-                    {mod.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-1 leading-relaxed">
-                        {mod.description}
-                      </p>
-                    )}
-
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-x-2 gap-y-1 pt-0.5">
-                      <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/40 px-2 py-0.5 rounded-full border border-border/20">
-                        <FileText className="h-3 w-3 text-primary shrink-0" />
-                        <span className="capitalize">{mod.type}</span>
-                      </span>
-                      {mod.duration && (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/40 px-2 py-0.5 rounded-full border border-border/20">
-                          <Clock className="h-3 w-3 shrink-0" />
-                          {formatDuration(mod.duration)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Arrow */}
-                  <div className={cn(
-                    "h-8 w-8 flex items-center justify-center rounded-full border shrink-0 transition-all duration-200",
-                    isEnrolled
-                      ? "bg-muted/40 border-border/40 text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary group-hover:translate-x-0.5"
-                      : "bg-muted/10 border-border/10 text-muted-foreground/30"
-                  )}>
-                    {isEnrolled ? (
-                      <ChevronRight className="h-4 w-4" />
-                    ) : (
-                      <Lock className="h-3.5 w-3.5" />
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+      {/* Syllabus Layout (Centered & focused) */}
+      <div className="w-full space-y-6 pt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-border/40">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Course Syllabus
+          </h2>
+          {isEnrolled && (
+            <span className="text-[11px] text-muted-foreground">
+              <span className="font-semibold text-foreground">{stats.completed}</span>/{stats.total} complete
+            </span>
+          )}
         </div>
 
-        {/* Sidebar (Right) */}
-        <div className="space-y-4">
+        {/* Syllabus Modules List */}
+        <div className="flex flex-col gap-3">
+          {modules.map((mod, index) => {
+            const isModCompleted = mod.completed
+            const isNextUp = isEnrolled && nextModule && nextModule.id === mod.id
 
-          {/* Enrollment / Progress Card */}
-          {!isEnrolled ? (
-            <Card className="border border-border/50 bg-card rounded-xl shadow-xs">
-              <CardHeader className="">
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <BookOpen className="h-3.5 w-3.5" />
-                  Start Learning
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Enroll to gain full access to the curriculum, track your progress, and earn a verified completion certificate.
-                </p>
-                <Button
-                  onClick={handleEnroll}
-                  disabled={isEnrolling}
-                  size="sm"
-                  className="w-full text-xs h-9 rounded-full font-semibold shadow-xs"
-                >
-                  {isEnrolling ? "Enrolling..." : "Enroll in Course"}
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="border border-border/50 bg-card rounded-xl shadow-xs">
-              <CardHeader>
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Course Progress
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Completed</span>
-                  <span className={cn(
-                    "font-semibold tabular-nums",
-                    stats.percentage === 100 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
-                  )}>{stats.percentage}%</span>
-                </div>
-                <Progress
-                  value={stats.percentage}
-                  className={cn(
-                    "h-1.5 bg-muted",
-                    stats.percentage === 100 && "[&>[data-slot=progress-indicator]]:bg-emerald-500"
+            return (
+              <div
+                key={mod.id}
+                id={`course-module-item-${mod.id}`}
+                onClick={() => handleModuleClick(mod.id)}
+                className={cn(
+                  "group flex items-center justify-between gap-4 p-4 rounded-xl border select-none transition-all duration-200",
+                  isEnrolled
+                    ? isModCompleted
+                      ? "border-emerald-500/15 dark:border-emerald-500/10 bg-emerald-500/[0.02] dark:bg-emerald-500/[0.01] hover:bg-emerald-500/[0.04] cursor-pointer border-l-4 border-l-emerald-500"
+                      : isNextUp
+                        ? "border-primary/25 bg-primary/[0.02] dark:bg-primary/[0.01] hover:bg-primary/[0.04] cursor-pointer border-l-4 border-l-primary"
+                        : "border-border/60 bg-card hover:border-border hover:shadow-xs cursor-pointer border-l-4 border-l-transparent"
+                    : "border-border/40 bg-muted/10 opacity-70 cursor-not-allowed border-l-4 border-l-transparent"
+                )}
+              >
+                {/* Module number / status */}
+                <div className={cn(
+                  "flex size-8 items-center justify-center rounded-full text-xs font-bold shrink-0 transition-all duration-200 border",
+                  isEnrolled
+                    ? isModCompleted
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                      : isNextUp
+                        ? "bg-primary border-primary text-primary-foreground scale-105"
+                        : "bg-muted/60 border-border/40 text-muted-foreground group-hover:bg-primary/10 group-hover:border-primary/20 group-hover:text-primary"
+                    : "bg-muted/40 border-border/20 text-muted-foreground/40"
+                )}>
+                  {isModCompleted && isEnrolled ? (
+                    <CheckCircle2 className="size-4" />
+                  ) : (
+                    <span className="tabular-nums">{index + 1}</span>
                   )}
-                />
-                <div className="pt-3 flex flex-col gap-2 border-t border-border/40 text-xs divide-y divide-border/30">
-                  {[
-                    { label: "Level", value: course.level },
-                    { label: "Duration", value: formatDuration(course.duration) },
-                    { label: "Modules", value: `${stats.completed} / ${stats.total}` },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="flex justify-between pt-2 first:pt-0">
-                      <span className="text-muted-foreground">{label}</span>
-                      <span className="font-medium text-foreground">{value}</span>
-                    </div>
-                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
 
-          {/* Certificate Card */}
-          {isEnrolled && (
-            <Card className="border border-border/50 bg-card rounded-xl shadow-xs">
-              <CardHeader className="">
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Award className="h-3.5 w-3.5" />
-                  Certificate
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {currentCertId ? (
-                  <div className="space-y-3">
-                    <div className="p-3 border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-950/20 rounded-xl flex items-start gap-2.5">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                      <span className="text-[11px] leading-relaxed text-emerald-800 dark:text-emerald-300 font-medium">
-                        Course completed! Your certificate has been unlocked.
-                      </span>
-                    </div>
-                    <Button
-                      asChild
-                      size="sm"
-                      className="w-full text-xs h-9 rounded-full bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white font-semibold"
-                    >
-                      <a href={`/api/courses/certificate/${currentCertId}`}>
-                        Download Certificate
-                      </a>
-                    </Button>
-                  </div>
-                ) : stats.percentage === 100 ? (
-                  <div className="space-y-3">
-                    <div className="p-3 border border-indigo-500/20 bg-indigo-500/5 dark:bg-indigo-950/20 rounded-xl flex items-start gap-2.5">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-                      <span className="text-[11px] leading-relaxed text-indigo-800 dark:text-indigo-300 font-medium">
-                        Congratulations! You have completed all modules. Generate your certificate below.
-                      </span>
-                    </div>
-                    <Button
-                      onClick={handleGenerateCertificate}
-                      disabled={isGeneratingCert}
-                      size="sm"
-                      className="w-full text-xs h-9 rounded-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold"
-                    >
-                      {isGeneratingCert ? "Generating..." : "Generate Certificate"}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="p-3.5 bg-muted/40 border border-border/40 rounded-xl flex items-start gap-2.5">
-                    <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                    <span className="text-[11px] text-muted-foreground leading-relaxed">
-                      Complete all curriculum modules to unlock your certificate.
+                {/* Module info */}
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={cn(
+                      "font-semibold text-sm leading-tight transition-colors",
+                      isEnrolled
+                        ? isModCompleted
+                          ? "text-muted-foreground line-through decoration-muted-foreground/30"
+                          : isNextUp
+                            ? "text-foreground font-bold"
+                            : "text-foreground group-hover:text-primary"
+                        : "text-muted-foreground"
+                    )}>
+                      {mod.title}
                     </span>
+                    {!isEnrolled && (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground/60 rounded-full border-dashed flex items-center gap-0.5">
+                        <Lock className="size-2.5" /> Locked
+                      </Badge>
+                    )}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
-          {/* Instructor Card */}
-          <Card className="border border-border/50 bg-card rounded-xl shadow-xs">
-            <CardHeader className="">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Instructor
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3">
-                {course.instructor.avatar ? (
-                  <img
-                    src={course.instructor.avatar}
-                    alt=""
-                    className="h-9 w-9 rounded-full object-cover shrink-0 border border-primary/20 shadow-xs"
-                  />
-                ) : (
-                  <div className="h-9 w-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary text-xs shrink-0 shadow-xs">
-                    {course.instructor.name.slice(0, 2).toUpperCase()}
+                  {mod.description && (
+                    <p className={cn(
+                      "text-xs leading-relaxed line-clamp-1",
+                      isModCompleted ? "text-muted-foreground/60" : "text-muted-foreground"
+                    )}>
+                      {mod.description}
+                    </p>
+                  )}
+
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-2 pt-0.5">
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "text-[9px] font-normal px-2 py-0 rounded-full",
+                        mod.type === "video" && "bg-blue-500/5 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-500/10",
+                        mod.type === "text" && "bg-purple-500/5 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400 border border-purple-500/10",
+                        mod.type === "test" && "bg-amber-500/5 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border border-amber-500/10"
+                      )}
+                    >
+                      <FileText className="size-2.5 mr-1 inline-block" />
+                      <span className="capitalize">{mod.type}</span>
+                    </Badge>
+                    {mod.duration && (
+                      <Badge variant="secondary" className="text-[9px] font-normal px-2 py-0 rounded-full bg-muted/40 text-muted-foreground border border-border/20">
+                        <Clock className="size-2.5 mr-1 inline-block" />
+                        {formatDuration(mod.duration)}
+                      </Badge>
+                    )}
                   </div>
-                )}
-                <div>
-                  <h4 className="text-xs font-semibold text-foreground">
-                    {course.instructor.name}
-                  </h4>
-                  <p className="text-[10px] text-muted-foreground">
-                    {course.instructor.role}
-                  </p>
+                </div>
+
+                {/* Arrow/Access Indicator */}
+                <div className={cn(
+                  "size-8 flex items-center justify-center rounded-full border shrink-0 transition-all duration-200",
+                  isEnrolled
+                    ? "bg-muted/40 border-border/40 text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary group-hover:translate-x-0.5"
+                    : "bg-muted/10 border-border/10 text-muted-foreground/30"
+                )}>
+                  {isEnrolled ? (
+                    <ChevronRight className="size-4" />
+                  ) : (
+                    <Lock className="size-3.5" />
+                  )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
+            )
+          })}
         </div>
       </div>
     </div>

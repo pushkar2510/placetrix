@@ -24,8 +24,6 @@ interface CourseListItem {
   description: string
   level: string
   duration: string
-  type: string
-  badge?: string | null
   cover_image_path?: string | null
   instructor_name?: string | null
   instructor_avatar_path?: string | null
@@ -358,8 +356,9 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
                 return (
                   <Card
                     key={course.id}
+                    onClick={() => router.push(`/courses/${course.id}`)}
                     className={cn(
-                      "group flex flex-col justify-between overflow-hidden border border-border/50 dark:border-zinc-800/80 bg-card",
+                      "group flex flex-col justify-between overflow-hidden border border-border/50 dark:border-zinc-800/80 bg-card cursor-pointer",
                       "hover:border-primary/40 hover:shadow-[0_8px_30px_rgb(99,102,241,0.08)] hover:-translate-y-1.5",
                       "transition-all duration-300 h-full p-0 gap-0"
                     )}
@@ -371,49 +370,47 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
                           <CourseCover coverImagePath={course.cover_image_path} title={course.title} />
                         </div>
 
-                        {/* Badge overlay */}
-                        {course.badge && (
-                          <span className="absolute top-2.5 left-2.5 backdrop-blur-md bg-black/60 text-white border border-white/10 text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider">
-                            {course.badge}
-                          </span>
-                        )}
-
-                        {/* Published / Draft pill */}
-                        <span className={cn(
-                          "absolute top-2.5 right-2.5 border text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider bg-black/65 backdrop-blur-xs",
-                          course.is_published
-                            ? "text-emerald-400 border-emerald-500/25"
-                            : "text-amber-400 border-amber-500/25"
-                        )}>
-                          {course.is_published ? "Published" : "Draft"}
-                        </span>
+                        {/* Edit / Delete actions overlay */}
+                        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            asChild
+                            variant="secondary"
+                            size="icon-xs"
+                            className="bg-black/60 hover:bg-black/80 text-white border border-white/10 size-7 rounded-full shadow-md"
+                          >
+                            <Link href={`/courses/${course.id}/edit`}>
+                              <PenLine className="size-3.5" />
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="icon-xs"
+                            onClick={() => handleDelete(course)}
+                            className="bg-red-600/90 hover:bg-red-600 text-white size-7 rounded-full shadow-md"
+                            disabled={isPending}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
                       </div>
 
                       {/* Info Area */}
                       <div className="flex flex-col flex-1">
-                        <CardHeader className="px-4 pt-4 pb-0 gap-2">
-                          {/* Instructor details row */}
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              {course.instructor_avatar_path ? (
-                                <img
-                                  src={buildStorageUrl("avatars", course.instructor_avatar_path) || ""}
-                                  alt=""
-                                  className="h-4.5 w-4.5 rounded-full object-cover shrink-0 border border-primary/20"
-                                />
-                              ) : (
-                                <div className="h-4.5 w-4.5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-[9px] text-primary shrink-0">
-                                  {course.instructor_name?.charAt(0) ?? "I"}
-                                </div>
-                              )}
-                              <span className="text-[10px] text-muted-foreground font-medium truncate">
-                                {course.instructor_name || "Instructor"}
-                              </span>
-                            </div>
-
-                            {/* Type badge */}
-                            <span className="text-[9px] font-semibold text-muted-foreground/85 uppercase tracking-wider bg-muted px-2 py-0.5 rounded-md border border-border/40 whitespace-nowrap">
-                              {course.type || "Course"}
+                        <CardHeader className="px-4 pt-4 pb-4 gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {course.instructor_avatar_path ? (
+                              <img
+                                src={buildStorageUrl("avatars", course.instructor_avatar_path) || ""}
+                                alt=""
+                                className="h-4.5 w-4.5 rounded-full object-cover shrink-0 border border-primary/20"
+                              />
+                            ) : (
+                              <div className="h-4.5 w-4.5 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-[9px] text-primary shrink-0">
+                                {course.instructor_name?.charAt(0) ?? "I"}
+                              </div>
+                            )}
+                            <span className="text-[10px] text-muted-foreground font-medium truncate">
+                              {course.instructor_name || "Instructor"}
                             </span>
                           </div>
 
@@ -427,67 +424,25 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
                             {course.description}
                           </p>
 
-                          {/* Level badge */}
-                          <div className="flex items-center pt-0.5">
+                          {/* Level & Status badge */}
+                          <div className="flex flex-wrap items-center gap-2 pt-0.5">
                             <Badge variant="outline" className={cn("text-[9px] font-semibold flex items-center gap-1 px-2 py-0 h-5 rounded-full uppercase tracking-wider", levelColor)}>
                               <span className={cn("h-1.5 w-1.5 rounded-full", dotColor)} />
                               {course.level}
                             </Badge>
+                            <Badge 
+                              variant="secondary" 
+                              className={cn(
+                                "text-[9px] font-semibold px-2 py-0 h-5 rounded-full uppercase tracking-wider border",
+                                course.is_published 
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
+                                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25"
+                              )}
+                            >
+                              {course.is_published ? "Published" : "Draft"}
+                            </Badge>
                           </div>
                         </CardHeader>
-
-                        {/* Bottom Stats + Actions */}
-                        <CardContent className="mt-auto pt-4 pb-4 px-4">
-                          <div className="border-t border-border/40 pt-3.5 w-full space-y-3">
-
-                            {/* Quick stats row */}
-                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                              <span className="inline-flex items-center gap-1">
-                                <BookOpen className="h-3.5 w-3.5" />
-                                {course.modules_count} module{course.modules_count !== 1 ? "s" : ""}
-                              </span>
-                              <span className="inline-flex items-center gap-1">
-                                <Users className="h-3.5 w-3.5" />
-                                {course.enrollments_count} enrolled
-                              </span>
-                            </div>
-
-                            {/* Action buttons */}
-                            <div className="flex gap-2">
-                              <Button
-                                asChild
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 text-xs rounded-full h-8"
-                              >
-                                <Link href={`/courses/${course.id}`}>
-                                  <Eye className="h-3.5 w-3.5 mr-1" />
-                                  View
-                                </Link>
-                              </Button>
-                              <Button
-                                asChild
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 text-xs rounded-full h-8"
-                              >
-                                <Link href={`/courses/${course.id}/edit`}>
-                                  <PenLine className="h-3.5 w-3.5 mr-1" />
-                                  Edit
-                                </Link>
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDelete(course)}
-                                className="text-xs text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/10 hover:border-destructive/30 rounded-full h-8 px-3"
-                                disabled={isPending}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
                       </div>
                     </div>
                   </Card>

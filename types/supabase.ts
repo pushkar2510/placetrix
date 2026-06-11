@@ -555,7 +555,6 @@ export type Database = {
       }
       courses: {
         Row: {
-          badge: string | null
           cover_image_path: string | null
           created_at: string
           created_by: string | null
@@ -566,11 +565,9 @@ export type Database = {
           is_published: boolean
           level: string
           title: string
-          type: string
           updated_at: string
         }
         Insert: {
-          badge?: string | null
           cover_image_path?: string | null
           created_at?: string
           created_by?: string | null
@@ -581,11 +578,9 @@ export type Database = {
           is_published?: boolean
           level?: string
           title: string
-          type?: string
           updated_at?: string
         }
         Update: {
-          badge?: string | null
           cover_image_path?: string | null
           created_at?: string
           created_by?: string | null
@@ -596,7 +591,6 @@ export type Database = {
           is_published?: boolean
           level?: string
           title?: string
-          type?: string
           updated_at?: string
         }
         Relationships: [

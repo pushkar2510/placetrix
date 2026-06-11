@@ -12,6 +12,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   MoreVertical,
+  MoreHorizontal,
   ChevronUp,
   FileText,
   Folder,
@@ -88,27 +89,27 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "Home", url: "/home", icon: Home },
     { title: "Job Search", url: "/jobs", icon: Search },
     { title: "My Applications", url: "/applications", icon: ClipboardList },
+    { title: "Logic Lab", url: "/logiclab", icon: Code },
+    { title: "Courses", url: "/courses", icon: BookOpen },
     { title: "Tests", url: "/tests", icon: BarChart3 },
     { title: "Events", url: "/events", icon: Calendar },
-    { title: "Courses", url: "/courses", icon: BookOpen },
-    { title: "Logic Lab", url: "/logiclab", icon: Code },
     { title: "Tools", url: "/tools", icon: Wrench },
   ],
   institute: [
     { title: "Home", url: "/home", icon: Home },
-    { title: "Students", url: "/students", icon: GraduationCap },
     { title: "Placement", url: "/placement-management", icon: Trophy },
     { title: "Drives", url: "/drives", icon: Folder },
+    { title: "Students", url: "/students", icon: GraduationCap },
+    { title: "Recruiters", url: "/recruiters", icon: Briefcase },
     { title: "Tests", url: "/tests", icon: BarChart3 },
     { title: "Events", url: "/events", icon: Calendar },
-    { title: "Recruiters", url: "/recruiters", icon: Briefcase },
   ],
   admin: [
     { title: "Home", url: "/home", icon: Home },
+    { title: "Analytics", url: "/analytics", icon: FileBarChart },
     { title: "Users", url: "/users", icon: Users },
     { title: "Courses", url: "/courses", icon: BookOpen },
     { title: "LogicLab", url: "/logiclab/admin", icon: Code },
-    { title: "Analytics", url: "/analytics", icon: FileBarChart },
     { title: "Support Queue", url: "/support", icon: CircleHelp },
   ],
   recruiter: [
@@ -123,6 +124,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
 
 
 const NAV_SECONDARY: NavItem[] = [
+  { title: "My Profile", url: "/myprofile", icon: CircleUser },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Settings", url: "/settings", icon: Settings },
   { title: "Get Help", url: "/gethelp", icon: CircleHelp },
@@ -222,7 +224,7 @@ export function NavUser({ user }: { user: UserProfile | null }) {
               <div className="flex items-center gap-2.5 w-full" suppressHydrationWarning>
                 {user ? (
                   <>
-                    <Avatar className="h-9 w-9 rounded-lg shrink-0 border border-sidebar-border group-hover/user:border-primary/20 group-data-[state=open]/user:border-primary/20 transition-all duration-200">
+                    <Avatar className="h-9 w-9 rounded-lg shrink-0 border border-sidebar-border group-hover/user:border-primary/20 group-data-[state=open]/user:border-primary/20 transition-all duration-200 group-hover/user:scale-105">
                       <AvatarImage src={avatarUrl ?? undefined} alt={displayName} className="object-cover" />
                       <AvatarFallback className="rounded-lg bg-sidebar-border text-sidebar-foreground font-semibold">{initials}</AvatarFallback>
                     </Avatar>
@@ -230,7 +232,7 @@ export function NavUser({ user }: { user: UserProfile | null }) {
                       <span className="truncate font-semibold text-sm leading-none text-sidebar-foreground">{displayName}</span>
                       <span className="truncate text-[11px] text-muted-foreground leading-none">{sidebarSubtitle}</span>
                     </div>
-                    <ChevronUp className="ml-auto shrink-0 size-4 text-muted-foreground/80 group-hover/user:text-sidebar-foreground group-data-[state=open]/user:text-sidebar-foreground transition-colors duration-200 group-data-[state=collapsed]/sidebar-wrapper:hidden" />
+                    <MoreVertical className="ml-auto shrink-0 size-4 text-muted-foreground/80 group-hover/user:text-sidebar-foreground group-data-[state=open]/user:text-sidebar-foreground transition-all group-hover/user:translate-x-0.5 duration-200 group-data-[state=collapsed]/sidebar-wrapper:hidden" />
                   </>
                 ) : (
                   <>
@@ -269,17 +271,6 @@ export function NavUser({ user }: { user: UserProfile | null }) {
                   </div>
                 </div>
               </DropdownMenuLabel>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuGroup>
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/myprofile">
-                    <CircleUser className="size-4 shrink-0" />
-                    <span>My Profile</span>
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
 
               <DropdownMenuSeparator />
 
@@ -360,21 +351,26 @@ export function NavMain({ items }: { items: NavItem[] }) {
                     </CollapsibleTrigger>
                     <CollapsibleContent className="collapsible-content" suppressHydrationWarning>
                       <SidebarMenuSub suppressHydrationWarning>
-                        {item.items.map((subItem) => (
-                          <SidebarMenuSubItem key={subItem.title}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={
-                                pathname === subItem.url ||
-                                pathname.startsWith(subItem.url + "/")
-                              }
-                            >
-                              <Link href={subItem.url} onClick={() => setOpenMobile(false)}>
-                                <span>{subItem.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
+                        {item.items.map((subItem) => {
+                          const isSubActive = pathname === subItem.url || pathname.startsWith(subItem.url + "/")
+                          return (
+                            <SidebarMenuSubItem key={subItem.title}>
+                              <SidebarMenuSubButton
+                                asChild
+                                isActive={isSubActive}
+                                className={cn(
+                                  "transition-all duration-200",
+                                  isSubActive &&
+                                    "border-l-2 border-primary rounded-l-none pl-1.5 bg-sidebar-accent/50 text-sidebar-accent-foreground font-semibold"
+                                )}
+                              >
+                                <Link href={subItem.url} onClick={() => setOpenMobile(false)}>
+                                  <span>{subItem.title}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          )
+                        })}
                       </SidebarMenuSub>
                     </CollapsibleContent>
                   </SidebarMenuItem>
@@ -392,6 +388,11 @@ export function NavMain({ items }: { items: NavItem[] }) {
                   tooltip={item.title}
                   asChild
                   isActive={isActive}
+                  className={cn(
+                    "transition-all duration-200",
+                    isActive &&
+                      "group-data-[state=expanded]/sidebar-wrapper:border-l-2 group-data-[state=expanded]/sidebar-wrapper:border-primary group-data-[state=expanded]/sidebar-wrapper:rounded-l-none group-data-[state=expanded]/sidebar-wrapper:pl-1.5 bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold"
+                  )}
                 >
                   <Link href={item.url} onClick={() => setOpenMobile(false)}>
                     <item.icon className="transition-transform duration-200" />
@@ -424,25 +425,31 @@ export function NavSecondary({
     <SidebarGroup {...props}>
       <SidebarGroupContent>
         <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton
-                asChild
-                isActive={
-                  pathname === item.url ||
-                  pathname.startsWith(item.url + "/")
-                }
-              >
-                <Link
-                  href={item.url}
-                  onClick={() => setOpenMobile(false)}
+          {items.map((item) => {
+            const isActive = pathname === item.url || pathname.startsWith(item.url + "/")
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={item.title}
+                  isActive={isActive}
+                  className={cn(
+                    "transition-all duration-200",
+                    isActive &&
+                      "group-data-[state=expanded]/sidebar-wrapper:border-l-2 group-data-[state=expanded]/sidebar-wrapper:border-primary group-data-[state=expanded]/sidebar-wrapper:rounded-l-none group-data-[state=expanded]/sidebar-wrapper:pl-1.5 bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold"
+                  )}
                 >
-                  <item.icon />
-                  <span>{item.title}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+                  <Link
+                    href={item.url}
+                    onClick={() => setOpenMobile(false)}
+                  >
+                    <item.icon className="transition-transform duration-200" />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )
+          })}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
@@ -458,7 +465,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 const Logo = React.memo(() => (
-  <div className="shrink-0 size-5 flex items-center justify-center">
+  <div className="shrink-0 size-5 flex items-center justify-center transition-transform duration-300 group-hover/logo:scale-110">
     <Image
       src={PlaceTrixLogo}
       alt="PlaceTrix"

@@ -99,7 +99,6 @@ export default async function ModuleDetailPage({ params }: PageProps) {
     description: course.description,
     level: course.level as any,
     duration: course.duration,
-    type: course.type as any,
     cover_image_path: course.cover_image_path || undefined,
     instructor: {
       name: course.instructor?.display_name || "Instructor",

@@ -13,9 +13,7 @@ export interface Course {
   description: string
   level: "Beginner" | "Intermediate" | "Advanced"
   duration: string
-  type: "Specialization" | "Professional Certificate" | "Course"
   cover_image_path?: string
-  badge?: string | null
   instructor: {
     name: string
     role: string
@@ -32,7 +30,6 @@ export const INITIAL_COURSES: Course[] = [
     description: "Master complex algorithms and data structures to ace your technical interviews. Covers trees, graphs, dynamic programming, and system design basics.",
     level: "Advanced",
     duration: "24h 15m",
-    type: "Specialization",
     instructor: {
       name: "Dr. Evelyn Vance",
       role: "Ex-Google Staff Engineer",
@@ -79,7 +76,6 @@ export const INITIAL_COURSES: Course[] = [
     description: "Build modern, scalable web applications using Next.js App Router, Tailwind CSS, and Supabase for database and authentication.",
     level: "Intermediate",
     duration: "18h 30m",
-    type: "Professional Certificate",
     instructor: {
       name: "Marcus Chen",
       role: "Lead Frontend Architect",
@@ -118,7 +114,6 @@ export const INITIAL_COURSES: Course[] = [
     description: "Learn how to structure your answers using the STAR method, answer tricky behavioral questions, and showcase leadership.",
     level: "Beginner",
     duration: "6h 45m",
-    type: "Course",
     instructor: {
       name: "Sarah Jenkins",
       role: "HR Director at Tech Corp",
@@ -157,7 +152,6 @@ export const INITIAL_COURSES: Course[] = [
     description: "Learn how to design highly scalable, fault-tolerant distributed systems. Covers caching, load balancing, sharding, and real-world system architecture.",
     level: "Advanced",
     duration: "14h 20m",
-    type: "Specialization",
     instructor: {
       name: "Alex Mercer",
       role: "Principal Infrastructure Architect",
@@ -188,7 +182,6 @@ export const INITIAL_COURSES: Course[] = [
     description: "Gain in-demand skills that will prepare you for an entry-level job. Learn how to process and analyze data.",
     level: "Beginner",
     duration: "32h 45m",
-    type: "Professional Certificate",
     instructor: {
       name: "Sarah Jenkins",
       role: "Lead Google Data Analyst",
@@ -211,7 +204,6 @@ export const INITIAL_COURSES: Course[] = [
     description: "This is the first course in the Google Data Analytics Professional Certificate. You will be introduced to data analytics.",
     level: "Beginner",
     duration: "8h 12m",
-    type: "Course",
     instructor: {
       name: "Marcus Chen",
       role: "Google Course Instructor",
@@ -234,7 +226,6 @@ export const INITIAL_COURSES: Course[] = [
     description: "Learn to program and analyze data with Python. Develop programs to clean, analyze, and visualize data.",
     level: "Beginner",
     duration: "10h 15m",
-    type: "Specialization",
     instructor: {
       name: "Dr. Evelyn Vance",
       role: "UMich Adjunct Professor",
@@ -257,7 +248,6 @@ export const INITIAL_COURSES: Course[] = [
     description: "This course teaches the basics of programming computers using Python, covering fundamental variables and loops.",
     level: "Beginner",
     duration: "6h 20m",
-    type: "Course",
     instructor: {
       name: "Alex Mercer",
       role: "UMich Course Instructor",

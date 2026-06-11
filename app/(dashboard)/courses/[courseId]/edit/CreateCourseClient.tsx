@@ -32,7 +32,6 @@ interface Props {
     level: string
     duration: string
     type: string
-    badge?: string | null
     cover_image_path?: string | null
     instructor_id?: string | null
     is_published: boolean
@@ -91,8 +90,6 @@ export function CreateCourseClient({ initialCourse, initialModules = [], adminPr
   const [title, setTitle] = useState(initialCourse?.title ?? "")
   const [description, setDescription] = useState(initialCourse?.description ?? "")
   const [level, setLevel] = useState(initialCourse?.level ?? "Beginner")
-  const [courseType, setCourseType] = useState(initialCourse?.type ?? "Course")
-  const [badge, setBadge] = useState<string>(initialCourse?.badge ?? "")
   const [coverImagePath, setCoverImagePath] = useState<string | null>(
     initialCourse?.cover_image_path ?? null
   )
@@ -287,8 +284,6 @@ export function CreateCourseClient({ initialCourse, initialModules = [], adminPr
           description,
           level,
           duration,
-          type: courseType,
-          badge: badge.trim() || null,
           cover_image_path: finalCoverPath,
           instructor_id: initialCourse?.instructor_id || adminProfile?.id || null,
           is_published: isPublished,
@@ -404,7 +399,7 @@ export function CreateCourseClient({ initialCourse, initialModules = [], adminPr
                   />
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="course-level">Level</Label>
                     <Select value={level} onValueChange={setLevel}>
@@ -430,31 +425,6 @@ export function CreateCourseClient({ initialCourse, initialModules = [], adminPr
                       value={duration}
                       disabled
                       className="bg-muted cursor-not-allowed font-medium"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="course-type">Type</Label>
-                    <Select value={courseType} onValueChange={setCourseType}>
-                      <SelectTrigger id="course-type">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Course">Course</SelectItem>
-                        <SelectItem value="Specialization">Specialization</SelectItem>
-                        <SelectItem value="Professional Certificate">Professional Certificate</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="course-badge">Badge / Category</Label>
-                    <Input
-                      id="course-badge"
-                      placeholder="e.g. Hot, SQL, Python"
-                      value={badge}
-                      onChange={(e) => setBadge(e.target.value)}
-                      maxLength={30}
                     />
                   </div>
                 </div>

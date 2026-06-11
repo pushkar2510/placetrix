@@ -727,24 +727,7 @@ export function ProblemsDirectoryClient({
                   </div>
                 )}
 
-                {/* Clean Horizontal Progress Bar for Acceptance Rate */}
-                {activeChallenge?.acceptance_rate !== undefined && activeChallenge?.acceptance_rate !== null && (
-                  <div className="space-y-2 pt-2 select-none">
-                    <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
-                      <span>Acceptance Rate</span>
-                      <span className="font-semibold text-foreground">{activeChallenge.acceptance_rate}%</span>
-                    </div>
-                    <Progress
-                      value={activeChallenge.acceptance_rate}
-                      className={cn(
-                        "h-1.5 bg-muted/60",
-                        activeChallenge?.solved_status === "Accepted"
-                          ? "[&>div]:bg-emerald-500"
-                          : "[&>div]:bg-orange-500"
-                      )}
-                    />
-                  </div>
-                )}
+
               </div>
 
               {/* Action Button: Minimal Outline Button */}
