@@ -400,12 +400,12 @@ export function ProblemsDirectoryClient({
   const activePage = Math.min(initialPage, Math.max(1, totalPages))
 
   return (
-    <div className="flex flex-col gap-8 px-4 py-8 md:px-8">
+    <div className="flex flex-col gap-6 px-4 py-6 md:px-8 md:py-8">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1.5">
-          <h1 className="text-4xl font-bold font-cirka tracking-tight text-foreground">Logic Lab</h1>
-          <p className="text-base text-muted-foreground">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Logic Lab</h1>
+          <p className="text-sm text-muted-foreground">
             Master your coding skills with our curated problem set.
           </p>
         </div>
