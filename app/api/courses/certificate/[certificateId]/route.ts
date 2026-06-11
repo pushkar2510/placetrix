@@ -132,7 +132,8 @@ export async function GET(_request: NextRequest, props: RouteParams) {
       courses(
         title,
         instructor:profiles!courses_instructor_id_fkey(
-          display_name
+          display_name,
+          signature_path
         )
       ),
       profiles(display_name)
@@ -152,12 +153,25 @@ export async function GET(_request: NextRequest, props: RouteParams) {
   const recipientName  = (certificate as any).issued_to_name ?? certificate.profiles?.display_name ?? "Candidate"
   const courseTitle    = courseData?.title ?? "Training Track"
   const instructorName = courseData?.instructor?.display_name || "Course Instructor"
+  const signaturePath  = courseData?.instructor?.signature_path || null
   const issueDateStr   = new Date(certificate.issued_at).toLocaleDateString("en-IN", {
     year: "numeric", month: "long", day: "numeric",
   })
 
   const siteUrl    = process.env.NEXT_PUBLIC_SITE_URL ?? "https://placetrix.app"
   const verifyLink = `${siteUrl}/verify/${certificateId}`
+
+  let signatureBase64: string | null = null
+  if (signaturePath) {
+    try {
+      const { data: storageData } = supabase.storage.from("avatars").getPublicUrl(signaturePath)
+      if (storageData?.publicUrl) {
+        signatureBase64 = await fetchFontBase64(storageData.publicUrl)
+      }
+    } catch (e) {
+      console.error("Error fetching signature:", e)
+    }
+  }
 
   try {
     // ── Generate QR Code Data URL ─────────────────────────────────────────────
@@ -369,16 +383,37 @@ export async function GET(_request: NextRequest, props: RouteParams) {
     const leftX = 220
     const rightX = W - 220
 
-    // Left Column: Handwritten Signature of Instructor
-    doc.setDrawColor(15, 23, 42) // Slate-900
-    doc.setLineWidth(1.0)
-    doc.moveTo(leftX - 50, sigY - 15)
-    doc.lineTo(leftX - 35, sigY - 20)
-    doc.curveTo(leftX - 25, sigY - 35, leftX - 15, sigY - 30, leftX - 10, sigY - 15)
-    doc.curveTo(leftX, sigY - 5, leftX + 5, sigY - 35, leftX + 15, sigY - 25)
-    doc.curveTo(leftX + 25, sigY - 15, leftX + 35, sigY - 30, leftX + 50, sigY - 15)
-    doc.lineTo(leftX + 70, sigY - 18)
-    doc.stroke()
+    // Left Column: Signature of Instructor
+    if (signatureBase64) {
+      try {
+        const sigWidth = 100
+        const sigHeight = 30
+        const sigX = leftX - sigWidth / 2
+        const sigYAdjusted = sigY - sigHeight - 5
+
+        let format = "PNG"
+        if (signaturePath && (signaturePath.endsWith(".jpg") || signaturePath.endsWith(".jpeg"))) {
+          format = "JPEG"
+        } else if (signaturePath && signaturePath.endsWith(".webp")) {
+          format = "WEBP"
+        }
+
+        doc.addImage(signatureBase64, format, sigX, sigYAdjusted, sigWidth, sigHeight)
+      } catch (err) {
+        console.error("Failed to add signature image, falling back to text:", err)
+        // Fallback to "Digitally Signed" text
+        doc.setFont(G, hasGaramond ? "bolditalic" : "italic")
+        doc.setFontSize(10)
+        doc.setTextColor(100, 116, 139) // Slate-500
+        doc.text("Digitally Signed", leftX, sigY - 12, { align: "center" })
+      }
+    } else {
+      // Fallback to "Digitally Signed" text
+      doc.setFont(G, hasGaramond ? "bolditalic" : "italic")
+      doc.setFontSize(10)
+      doc.setTextColor(100, 116, 139) // Slate-500
+      doc.text("Digitally Signed", leftX, sigY - 12, { align: "center" })
+    }
 
     // Signature line
     doc.setDrawColor(203, 213, 225) // Slate-300
@@ -419,7 +454,7 @@ export async function GET(_request: NextRequest, props: RouteParams) {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="certificate_${certificateId.slice(0, 8)}.pdf"`,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
       },
     })
   } catch (err: any) {
