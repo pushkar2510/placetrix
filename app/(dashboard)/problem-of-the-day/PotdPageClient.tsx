@@ -11,8 +11,10 @@ import { cn } from "@/lib/utils"
 interface PotdHistoryItem {
   date: string
   problem_id: string
+  number?: number
   title: string
   difficulty: string
+  tags?: string[]
   solved_status: string | null
   total_submissions: number
   acceptance_rate: number
@@ -33,22 +35,31 @@ const DIFFICULTY_COLORS: Record<string, string> = {
 
 export function PotdPageClient({ history, currentPotd, totalPotds, solvedPotds }: PotdPageClientProps) {
   const router = useRouter()
+  const calculateTimeLeft = () => {
+    const now = new Date()
+    const istOffset = 5.5 * 60 * 60 * 1000
+    const istTime = new Date(now.getTime() + istOffset)
+    
+    const nextMidnightIST = new Date(istTime)
+    nextMidnightIST.setUTCHours(24, 0, 0, 0)
+    
+    const diff = nextMidnightIST.getTime() - istTime.getTime()
+    if (diff <= 0) return "00h 00m 00s"
+    
+    const h = Math.floor(diff / (1000 * 60 * 60))
+    const m = Math.floor((diff / (1000 * 60)) % 60)
+    const s = Math.floor((diff / 1000) % 60)
+    
+    return `${h.toString().padStart(2, '0')}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`
+  }
+
   const [page, setPage] = useState(1)
-  const [timeLeft, setTimeLeft] = useState("")
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft)
   const pageSize = 15
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const now = new Date()
-      const midnight = new Date()
-      midnight.setHours(24, 0, 0, 0)
-      const diff = midnight.getTime() - now.getTime()
-      
-      const h = Math.floor(diff / (1000 * 60 * 60))
-      const m = Math.floor((diff / (1000 * 60)) % 60)
-      const s = Math.floor((diff / 1000) % 60)
-      
-      setTimeLeft(`${h.toString().padStart(2, '0')}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`)
+      setTimeLeft(calculateTimeLeft())
     }, 1000)
     return () => clearInterval(timer)
   }, [])
@@ -132,12 +143,30 @@ export function PotdPageClient({ history, currentPotd, totalPotds, solvedPotds }
                   {currentPotd.title}
                 </h3>
                 
-                <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground mt-1">
+                <div className="flex items-center flex-wrap gap-2 text-sm font-medium text-muted-foreground mt-1">
                   <span className="flex items-center gap-1.5">
                     <Timer className="w-4 h-4" /> {formatNumber(currentPotd.total_submissions)} Submissions
                   </span>
                   <span className="text-muted-foreground/30">•</span>
                   <span>{currentPotd.acceptance_rate.toFixed(1)}% Acceptance</span>
+                  
+                  {currentPotd.tags && currentPotd.tags.length > 0 && (
+                    <>
+                      <span className="text-muted-foreground/30 hidden sm:inline">•</span>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {currentPotd.tags.slice(0, 3).map(tag => (
+                          <span key={tag} className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border border-border/60 bg-muted/30">
+                            {tag}
+                          </span>
+                        ))}
+                        {currentPotd.tags.length > 3 && (
+                          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border border-border/60 bg-muted/30">
+                            +{currentPotd.tags.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -184,7 +213,7 @@ export function PotdPageClient({ history, currentPotd, totalPotds, solvedPotds }
             <Card 
               key={item.date}
               onClick={() => router.push(`/logiclab/problems/${item.problem_id}`)}
-              className="group flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:py-3 sm:px-4 border-border/60 hover:border-orange-500/30 hover:shadow-sm transition-all cursor-pointer bg-card hover:bg-muted/10 gap-3 rounded-lg"
+              className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:py-4 sm:px-5 border border-border/40 hover:border-orange-500/40 hover:shadow-md hover:shadow-orange-500/5 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer bg-card/50 hover:bg-card gap-4 rounded-xl"
             >
               <div className="flex items-start gap-3">
                 <div className="mt-0.5">
@@ -193,37 +222,54 @@ export function PotdPageClient({ history, currentPotd, totalPotds, solvedPotds }
                     isSolved ? "text-emerald-500 fill-emerald-500/20" : "text-muted-foreground/40 group-hover:text-orange-500"
                   )} />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider w-[80px] shrink-0">
+                <div className="flex flex-col gap-1.5 w-full">
+                  <div className="flex items-center flex-wrap gap-2">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest w-[85px] shrink-0 bg-muted/50 px-2 py-0.5 rounded text-center">
                       {formatDate(item.date)}
                     </span>
-                    <span className="text-sm font-semibold text-foreground group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors line-clamp-1">
-                      {item.title}
+                    <span className="text-base font-bold text-foreground group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors line-clamp-1">
+                      {item.number ? `${item.number}. ` : ""}{item.title}
                     </span>
+                    
+                    <div className="hidden md:flex gap-1.5 ml-2">
+                      {item.tags?.slice(0, 2).map((tag) => (
+                        <span key={tag} className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border border-border/40 bg-muted/20 text-muted-foreground">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   
-                  <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground ml-[88px]">
-                    <span className={cn("font-bold tracking-wide", DIFFICULTY_COLORS[item.difficulty])}>
+                  <div className="flex items-center flex-wrap gap-2.5 text-[11px] font-medium text-muted-foreground md:ml-[93px]">
+                    <span className={cn("font-extrabold tracking-widest uppercase text-[10px] px-1.5 py-0.5 rounded-md bg-muted/20", DIFFICULTY_COLORS[item.difficulty])}>
                       {item.difficulty}
                     </span>
                     <span className="text-muted-foreground/30">•</span>
-                    <span>{formatNumber(item.total_submissions)} Submissions</span>
+                    <span className="flex items-center gap-1"><Timer className="w-3 h-3" /> {formatNumber(item.total_submissions)} Submissions</span>
                     <span className="text-muted-foreground/30">•</span>
-                    <span>{item.acceptance_rate.toFixed(1)}% Acceptance</span>
+                    <span>{item.acceptance_rate.toFixed(1)}% Acc</span>
+                    
+                    {/* Mobile tags fallback */}
+                    {item.tags && item.tags.length > 0 && (
+                      <div className="flex md:hidden gap-1 ml-auto">
+                        <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border border-border/40 bg-muted/20">
+                          +{item.tags.length} Topics
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center sm:pl-3 pl-[108px] mt-1 sm:mt-0">
+              <div className="flex items-center sm:pl-3 pl-[108px] mt-2 sm:mt-0 shrink-0">
                 {isSolved ? (
-                  <Button variant="ghost" className="pointer-events-none text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/10 gap-1.5 h-8 px-3 rounded-full text-xs font-bold">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  <Button variant="ghost" className="pointer-events-none text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/10 gap-1.5 h-9 px-4 rounded-full text-xs font-bold border border-emerald-500/20 shadow-sm">
+                    <CheckCircle2 className="w-4 h-4" />
                     Solved
                   </Button>
                 ) : (
-                  <Button variant="outline" className="text-foreground hover:text-orange-600 hover:border-orange-500/50 hover:bg-orange-500/5 gap-1.5 h-8 px-3 rounded-full text-xs font-bold transition-all">
-                    <PlayCircle className="w-3.5 h-3.5" />
+                  <Button variant="outline" className="text-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:border-orange-500/50 hover:bg-orange-500/5 gap-1.5 h-9 px-4 rounded-full text-xs font-bold transition-all shadow-sm group-hover:border-orange-500/30 group-hover:bg-orange-500/5">
+                    <PlayCircle className="w-4 h-4 group-hover:text-orange-500" />
                     Solve
                   </Button>
                 )}

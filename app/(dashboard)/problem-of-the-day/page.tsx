@@ -17,7 +17,7 @@ export default async function PotdHistoryPage() {
   // Fetch all POTDs
   const { data: historyData, error } = await supabase
     .from("daily_challenges")
-    .select("date, problem_id, coding_problems ( id, title, difficulty )")
+    .select("date, problem_id, coding_problems ( id, number, title, difficulty, tags )")
     .order("date", { ascending: false })
 
   if (error || !historyData) {
@@ -32,10 +32,10 @@ export default async function PotdHistoryPage() {
     .eq("user_id", profile.id)
     .in("problem_id", problemIds)
 
-  // Fetch acceptance rates for these problems
-  const { data: allSubmissions } = await supabase
-    .from("coding_submissions")
-    .select("problem_id, status")
+  // Fetch acceptance rates using problem_global_stats view (Massively reduces DB reads)
+  const { data: allStats } = await supabase
+    .from("problem_global_stats")
+    .select("problem_id, total_submissions, accepted_submissions")
     .in("problem_id", problemIds)
 
   // Build solved map for the user
@@ -48,10 +48,11 @@ export default async function PotdHistoryPage() {
 
   // Build acceptance stats map
   const statsMap: Record<string, { total: number; accepted: number }> = {}
-  for (const sub of allSubmissions ?? []) {
-    if (!statsMap[sub.problem_id]) statsMap[sub.problem_id] = { total: 0, accepted: 0 }
-    statsMap[sub.problem_id].total++
-    if (sub.status === "Accepted") statsMap[sub.problem_id].accepted++
+  for (const stat of allStats ?? []) {
+    statsMap[stat.problem_id] = {
+      total: Number(stat.total_submissions),
+      accepted: Number(stat.accepted_submissions)
+    }
   }
 
   // Enrich history data
@@ -62,8 +63,10 @@ export default async function PotdHistoryPage() {
     return {
       date: h.date,
       problem_id: pId,
+      number: h.coding_problems?.number,
       title: h.coding_problems?.title || "Unknown Problem",
       difficulty: h.coding_problems?.difficulty || "Medium",
+      tags: h.coding_problems?.tags || [],
       solved_status: solvedMap[pId] || null,
       total_submissions: stats?.total || 0,
       acceptance_rate: accRate,
@@ -74,8 +77,10 @@ export default async function PotdHistoryPage() {
   const totalPotds = enrichedHistory.length
   const solvedPotds = enrichedHistory.filter((h: any) => h.solved_status === "Accepted").length
 
+  const istOffset = 5.5 * 60 * 60 * 1000
   const today = new Date()
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+  const istDate = new Date(today.getTime() + istOffset)
+  const todayStr = istDate.toISOString().split("T")[0]
   const currentPotd = enrichedHistory.find((h: any) => h.date === todayStr) || null
   const pastHistory = enrichedHistory.filter((h: any) => h.date !== todayStr)
 

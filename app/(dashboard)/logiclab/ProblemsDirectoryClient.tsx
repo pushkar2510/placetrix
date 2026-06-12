@@ -227,29 +227,32 @@ export function ProblemsDirectoryClient({
   const cellRadiusClass = "rounded-[18%]"
 
   const potd = initialPotd
-  const [timeLeft, setTimeLeft] = useState<string>("")
+
+  const calculateTimeLeft = () => {
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istTime = new Date(now.getTime() + istOffset);
+    
+    const nextMidnightIST = new Date(istTime);
+    nextMidnightIST.setUTCHours(24, 0, 0, 0);
+    
+    const diff = nextMidnightIST.getTime() - istTime.getTime();
+
+    if (diff <= 0) return "00h 00m 00s";
+
+    const h = Math.floor(diff / (1000 * 60 * 60)).toString().padStart(2, '0');
+    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+    const s = Math.floor((diff % (1000 * 60)) / 1000).toString().padStart(2, '0');
+
+    return `${h}h ${m}m ${s}s`;
+  }
+
+  const [timeLeft, setTimeLeft] = useState<string>(calculateTimeLeft)
 
   // UTC Midnight Countdown Timer
   useEffect(() => {
     if (!potd) return;
-    const updateTimer = () => {
-      const now = new Date();
-      const nextMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-      const diff = nextMidnight.getTime() - now.getTime();
-
-      if (diff <= 0) {
-        setTimeLeft("00h 00m 00s");
-        return;
-      }
-
-      const h = Math.floor(diff / (1000 * 60 * 60)).toString().padStart(2, '0');
-      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
-      const s = Math.floor((diff % (1000 * 60)) / 1000).toString().padStart(2, '0');
-
-      setTimeLeft(`${h}h ${m}m ${s}s`);
-    };
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
+    const interval = setInterval(() => setTimeLeft(calculateTimeLeft()), 1000);
     return () => clearInterval(interval);
   }, [potd]);
 
@@ -259,14 +262,7 @@ export function ProblemsDirectoryClient({
     const pId = potd.problem_id || potd.coding_problems?.id;
     const found = problems.find((p) => p.id === pId);
     if (found) return found;
-    return {
-      title: potd.coding_problems?.title,
-      difficulty: potd.coding_problems?.difficulty,
-      tags: [],
-      solved_status: null,
-      acceptance_rate: null,
-      total_submissions: 0
-    };
+    return null; // Return null explicitly if no problem is matched, avoiding broken stub object
   }, [fullPotdProblem, potd, problems]);
 
   const handleRandomProblem = async () => {
@@ -821,52 +817,59 @@ export function ProblemsDirectoryClient({
 
           <CardContent className="flex flex-col flex-1 justify-between gap-5 pb-4">
             <div className="flex flex-col gap-4 min-w-0">
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="font-bold text-lg sm:text-xl text-foreground leading-snug group-hover/potd:text-primary transition-colors">
-                    {activeChallenge?.title || "Loading..."}
-                  </h3>
-                  {activeChallenge?.solved_status === "Accepted" && (
-                    <CircleCheck className="size-6 text-emerald-500 shrink-0 mt-0.5" />
+              {activeChallenge ? (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="font-bold text-lg sm:text-xl text-foreground leading-snug group-hover/potd:text-primary transition-colors">
+                      {activeChallenge.title}
+                    </h3>
+                    {activeChallenge.solved_status === "Accepted" && (
+                      <CircleCheck className="size-6 text-emerald-500 shrink-0 mt-0.5" />
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground">
+                    {/* Difficulty (clean inline text) */}
+                    {activeChallenge.difficulty && (
+                      <span className={cn(
+                        "font-semibold",
+                        activeChallenge.difficulty === "Easy" ? "text-emerald-600 dark:text-emerald-400" :
+                          activeChallenge.difficulty === "Medium" ? "text-amber-600 dark:text-amber-400" :
+                            "text-rose-600 dark:text-rose-400"
+                      )}>
+                        {activeChallenge.difficulty}
+                      </span>
+                    )}
+
+                    <span>•</span>
+
+                    {/* Acceptance rate */}
+                    {activeChallenge.acceptance_rate !== undefined && activeChallenge.acceptance_rate !== null && (
+                      <>
+                        <span>{activeChallenge.acceptance_rate}% acceptance</span>
+                        <span>•</span>
+                      </>
+                    )}
+
+                    {/* Submissions count */}
+                    <span>{activeChallenge.total_submissions?.toLocaleString() || 0} submissions</span>
+                  </div>
+
+                  {/* Clean Tags Row */}
+                  {activeChallenge.tags && activeChallenge.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {activeChallenge.tags.slice(0, 2).map((t: string) => (
+                        <span key={t} className="text-[11px] bg-muted px-2.5 py-1 rounded-md text-muted-foreground font-medium">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
-
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground">
-                  {/* Difficulty (clean inline text) */}
-                  {activeChallenge?.difficulty && (
-                    <span className={cn(
-                      "font-semibold",
-                      activeChallenge.difficulty === "Easy" ? "text-emerald-600 dark:text-emerald-400" :
-                        activeChallenge.difficulty === "Medium" ? "text-amber-600 dark:text-amber-400" :
-                          "text-rose-600 dark:text-rose-400"
-                    )}>
-                      {activeChallenge.difficulty}
-                    </span>
-                  )}
-
-                  <span>•</span>
-
-                  {/* Acceptance rate */}
-                  {activeChallenge?.acceptance_rate !== undefined && activeChallenge?.acceptance_rate !== null && (
-                    <>
-                      <span>{activeChallenge.acceptance_rate}% acceptance</span>
-                      <span>•</span>
-                    </>
-                  )}
-
-                  {/* Submissions count */}
-                  <span>{activeChallenge?.total_submissions?.toLocaleString() || 0} submissions</span>
-                </div>
-              </div>
-
-              {/* Clean Tags Row */}
-              {activeChallenge?.tags && activeChallenge.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                  {activeChallenge.tags.slice(0, 2).map((t: string) => (
-                    <span key={t} className="text-[11px] bg-muted px-2.5 py-1 rounded-md text-muted-foreground font-medium">
-                      {t}
-                    </span>
-                  ))}
+              ) : (
+                <div className="flex flex-col items-center justify-center text-center gap-2 py-4 text-muted-foreground">
+                  <span className="text-sm font-semibold">No Challenge Available</span>
+                  <span className="text-xs">Check back later for today's puzzle.</span>
                 </div>
               )}
             </div>
@@ -876,6 +879,7 @@ export function ProblemsDirectoryClient({
               variant="outline"
               className={cn(
                 "w-full gap-2 py-5 font-semibold text-sm sm:text-base border transition-colors mt-auto",
+                !activeChallenge && "opacity-50 pointer-events-none",
                 activeChallenge?.solved_status === "Accepted"
                   ? "border-emerald-500/20 text-emerald-600 dark:border-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300"
                   : "border-orange-500/20 text-orange-600 dark:border-orange-500/10 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 hover:text-orange-700 dark:hover:text-orange-300"

@@ -38,7 +38,7 @@ const getCachedPotd = unstable_cache(
     return data
   },
   ["daily-potd-cache"],
-  { revalidate: 3600 } // Cache for 1 hour
+  { revalidate: 60, tags: ["potd"] } // Cache for 1 min, allow manual revalidation
 )
 
 const getCachedGlobalProblems = unstable_cache(
@@ -149,13 +149,14 @@ export default async function LogicLabPage(props: {
   
   let currentStreak = 0
   let maxStreak = 0
-  
+  // Force POTD to use IST (+5.5 hours)
+  const istOffset = 5.5 * 60 * 60 * 1000
   const today = new Date()
-  const todayStr = today.toISOString().split("T")[0]
+  const istDate = new Date(today.getTime() + istOffset)
+  const todayStr = istDate.toISOString().split("T")[0]
   
-  const yesterday = new Date(today)
-  yesterday.setUTCDate(today.getUTCDate() - 1)
-  const yesterdayStr = yesterday.toISOString().split("T")[0]
+  const yesterdayDate = new Date(istDate.getTime() - (24 * 60 * 60 * 1000))
+  const yesterdayStr = yesterdayDate.toISOString().split("T")[0]
 
   const hasActiveStreak = uniqueDatesWithStatus.has(todayStr) || uniqueDatesWithStatus.has(yesterdayStr)
 
@@ -183,7 +184,7 @@ export default async function LogicLabPage(props: {
     if (tempStreak > maxStreak) maxStreak = tempStreak
 
     if (hasActiveStreak) {
-      const checkDate = uniqueDatesWithStatus.has(todayStr) ? new Date(today) : new Date(yesterday)
+      const checkDate = uniqueDatesWithStatus.has(todayStr) ? new Date(istDate) : new Date(yesterdayDate)
       let checkStr = checkDate.toISOString().split("T")[0]
       
       while (uniqueDatesWithStatus.has(checkStr)) {
@@ -200,8 +201,7 @@ export default async function LogicLabPage(props: {
   const activityCalendar: any[] = []
   const daysToGenerate = 182 // 26 weeks * 7 days
   for (let i = daysToGenerate - 1; i >= 0; i--) {
-    const d = new Date(today)
-    d.setUTCDate(today.getUTCDate() - i)
+    const d = new Date(istDate.getTime() - (i * 24 * 60 * 60 * 1000))
     const dateStr = d.toISOString().split("T")[0]
     const activity = uniqueDatesWithStatus.get(dateStr)
     activityCalendar.push({
