@@ -1483,8 +1483,7 @@ export function ProblemIDEClient({
                         </li>
                         <li>
                           <code className={cn('px-1.5', 'py-0.5', 'bg-muted/60', 'dark:bg-muted/40', 'rounded-md', 'text-xs', 'font-mono', 'border', 'border-border/50')}>
-                            Memory Limit:{" "}
-                            {Math.round(problem.memory_limit / 1000)}MB
+                            Memory Limit: {problem.memory_limit}MB
                           </code>
                         </li>
                         {problem.constraints &&
@@ -2649,7 +2648,7 @@ export function ProblemIDEClient({
       {topNavbarContent}
       <div className={cn('flex-1', 'pt-0', 'px-2', 'pb-2', 'min-h-0', 'overflow-hidden')}>
         {!isMounted ? (
-          <div className="w-full h-full bg-card rounded-md border border-border/40 animate-pulse" />
+          <div className={cn('w-full', 'h-full', 'bg-card', 'rounded-md', 'border', 'border-border/40', 'animate-pulse')} />
         ) : (
           <>
             {ideLayout === "standard" && (
@@ -2933,7 +2932,7 @@ export function ProblemIDEClient({
                     {p.difficulty === "Medium" ? "Med." : p.difficulty}
                   </span>
                 </div>
-              ))
+              ))        
             ) : (
               <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-20', 'text-muted-foreground', 'text-sm')}>
                 No problems found.
