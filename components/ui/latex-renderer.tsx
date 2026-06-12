@@ -913,74 +913,74 @@ const THEOREM_STYLES: Record<string, {
 }> = {
   theorem: {
     label: "Theorem",
-    borderClass: "border-l-4 border-violet-500/70",
-    bgClass: "bg-violet-500/5 dark:bg-violet-500/8",
-    textClass: "text-violet-700 dark:text-violet-300",
-    titleClass: "text-violet-800 dark:text-violet-200",
+    borderClass: "border-l-violet-500/50",
+    bgClass: "bg-muted/15 dark:bg-muted/10",
+    textClass: "text-violet-600 dark:text-violet-400",
+    titleClass: "text-foreground font-medium",
     icon: BookOpen,
   },
   definition: {
     label: "Definition",
-    borderClass: "border-l-4 border-blue-500/70",
-    bgClass: "bg-blue-500/5 dark:bg-blue-500/8",
-    textClass: "text-blue-700 dark:text-blue-300",
-    titleClass: "text-blue-800 dark:text-blue-200",
+    borderClass: "border-l-blue-500/50",
+    bgClass: "bg-muted/15 dark:bg-muted/10",
+    textClass: "text-blue-600 dark:text-blue-400",
+    titleClass: "text-foreground font-medium",
     icon: Info,
   },
   lemma: {
     label: "Lemma",
-    borderClass: "border-l-4 border-cyan-500/70",
-    bgClass: "bg-cyan-500/5 dark:bg-cyan-500/8",
-    textClass: "text-cyan-700 dark:text-cyan-300",
-    titleClass: "text-cyan-800 dark:text-cyan-200",
+    borderClass: "border-l-cyan-500/50",
+    bgClass: "bg-muted/15 dark:bg-muted/10",
+    textClass: "text-cyan-600 dark:text-cyan-400",
+    titleClass: "text-foreground font-medium",
     icon: BookOpen,
   },
   corollary: {
     label: "Corollary",
-    borderClass: "border-l-4 border-indigo-500/70",
-    bgClass: "bg-indigo-500/5 dark:bg-indigo-500/8",
-    textClass: "text-indigo-700 dark:text-indigo-300",
-    titleClass: "text-indigo-800 dark:text-indigo-200",
+    borderClass: "border-l-indigo-500/50",
+    bgClass: "bg-muted/15 dark:bg-muted/10",
+    textClass: "text-indigo-600 dark:text-indigo-400",
+    titleClass: "text-foreground font-medium",
     icon: BookOpen,
   },
   proof: {
     label: "Proof",
-    borderClass: "border-l-4 border-zinc-400/60",
-    bgClass: "bg-zinc-500/5 dark:bg-zinc-500/8",
+    borderClass: "border-l-zinc-400/50",
+    bgClass: "bg-muted/15 dark:bg-muted/10",
     textClass: "text-zinc-600 dark:text-zinc-400",
-    titleClass: "text-zinc-700 dark:text-zinc-300",
+    titleClass: "text-foreground font-medium",
     icon: BookOpen,
   },
   remark: {
     label: "Remark",
-    borderClass: "border-l-4 border-sky-400/60",
-    bgClass: "bg-sky-500/5 dark:bg-sky-500/8",
-    textClass: "text-sky-700 dark:text-sky-300",
-    titleClass: "text-sky-800 dark:text-sky-200",
+    borderClass: "border-l-sky-400/50",
+    bgClass: "bg-muted/15 dark:bg-muted/10",
+    textClass: "text-sky-600 dark:text-sky-400",
+    titleClass: "text-foreground font-medium",
     icon: Info,
   },
   example: {
     label: "Example",
-    borderClass: "border-l-4 border-emerald-500/70",
-    bgClass: "bg-emerald-500/5 dark:bg-emerald-500/8",
-    textClass: "text-emerald-700 dark:text-emerald-300",
-    titleClass: "text-emerald-800 dark:text-emerald-200",
+    borderClass: "border-l-emerald-500/50",
+    bgClass: "bg-muted/15 dark:bg-muted/10",
+    textClass: "text-emerald-600 dark:text-emerald-400",
+    titleClass: "text-foreground font-medium",
     icon: Lightbulb,
   },
   warning: {
     label: "Warning",
-    borderClass: "border-l-4 border-amber-500/70",
-    bgClass: "bg-amber-500/5 dark:bg-amber-500/8",
-    textClass: "text-amber-700 dark:text-amber-300",
-    titleClass: "text-amber-800 dark:text-amber-200",
+    borderClass: "border-l-amber-500/50",
+    bgClass: "bg-muted/15 dark:bg-muted/10",
+    textClass: "text-amber-600 dark:text-amber-400",
+    titleClass: "text-foreground font-medium",
     icon: AlertTriangle,
   },
   note: {
     label: "Note",
-    borderClass: "border-l-4 border-teal-500/60",
-    bgClass: "bg-teal-500/5 dark:bg-teal-500/8",
-    textClass: "text-teal-700 dark:text-teal-300",
-    titleClass: "text-teal-800 dark:text-teal-200",
+    borderClass: "border-l-teal-500/50",
+    bgClass: "bg-muted/15 dark:bg-muted/10",
+    textClass: "text-teal-600 dark:text-teal-400",
+    titleClass: "text-foreground font-medium",
     icon: Info,
   },
 }
@@ -1036,7 +1036,6 @@ function renderBlock(block: Block, index: number, figureNumber?: number): React.
               "mb-3"
             )}
           >
-            <span className="inline-block mr-2 text-primary/50 font-mono text-sm select-none">§</span>
             {headingContent}
           </h2>
         )
@@ -1267,19 +1266,19 @@ function renderBlock(block: Block, index: number, figureNumber?: number): React.
         <div
           key={`thm-${index}`}
           className={cn(
-            "my-6 rounded-r-xl rounded-l-sm p-4 md:p-5",
+            "my-4 rounded-r-xl rounded-l-md py-3 px-4 border border-border/40 border-l-2",
             style.borderClass,
             style.bgClass
           )}
         >
-          <div className={cn("flex items-center gap-2 mb-2.5", style.textClass)}>
-            <IconComp className="size-3.5 flex-shrink-0" />
-            <span className="text-[13px] font-semibold uppercase tracking-wider">
-              {displayLabel}{num !== undefined ? ` ${num}` : ""}
-              {title && <span className="font-normal normal-case tracking-normal ml-1.5 text-foreground/60">({title})</span>}
-            </span>
-          </div>
-          <div className="text-[14.5px] leading-[1.8] text-foreground/80 space-y-2">
+          {title && (
+            <div className={cn("mb-1", style.textClass)}>
+              <span className="text-[13px] font-semibold tracking-wide">
+                {title}
+              </span>
+            </div>
+          )}
+          <div className="text-[14.5px] leading-[1.7] text-foreground/80 space-y-1.5">
             {innerParagraphs.length > 0
               ? innerParagraphs.map((para, pi) => (
                   <p key={pi}>{parseLatexInline(para.trim())}</p>
