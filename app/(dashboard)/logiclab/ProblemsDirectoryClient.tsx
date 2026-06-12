@@ -17,8 +17,6 @@ import {
   Flame,
   BookOpen,
   ChevronLeft,
-  ChevronUp,
-  ChevronDown,
   ChevronsLeft,
   ChevronsRight,
   Loader2,
@@ -114,7 +112,27 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   Hard: "bg-rose-100/80 text-rose-700 hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-400 border-transparent",
 }
 
-function ConcentricRing({ radius, value, max, color, trackColor }: { radius: number, value: number, max: number, color: string, trackColor: string }) {
+function ConcentricRing({
+  radius,
+  value,
+  max,
+  color,
+  trackColor,
+  isActive,
+  isDimmed,
+  onMouseEnter,
+  onMouseLeave
+}: {
+  radius: number
+  value: number
+  max: number
+  color: string
+  trackColor: string
+  isActive?: boolean
+  isDimmed?: boolean
+  onMouseEnter?: () => void
+  onMouseLeave?: () => void
+}) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
@@ -123,13 +141,41 @@ function ConcentricRing({ radius, value, max, color, trackColor }: { radius: num
   const strokeDashoffset = circumference - percent * circumference
 
   return (
-    <g transform="rotate(-90 50 50)">
-      <circle cx="50" cy="50" r={radius} fill="none" stroke={trackColor} strokeWidth="8" />
+    <g
+      transform="rotate(-90 50 50)"
+      className={cn(
+        "cursor-pointer group/ring transition-opacity duration-300",
+        isDimmed ? "opacity-30" : "opacity-100"
+      )}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       <circle
-        cx="50" cy="50" r={radius} fill="none" stroke={color} strokeWidth="8"
-        strokeDasharray={circumference} strokeDashoffset={mounted ? strokeDashoffset : circumference}
+        cx="50"
+        cy="50"
+        r={radius}
+        fill="none"
+        stroke={trackColor}
+        strokeWidth="8"
+        className={cn(
+          "transition-all duration-300 group-hover/ring:stroke-[10]",
+          isActive && "stroke-[10]"
+        )}
+      />
+      <circle
+        cx="50"
+        cy="50"
+        r={radius}
+        fill="none"
+        stroke={color}
+        strokeWidth="8"
+        strokeDasharray={circumference}
+        strokeDashoffset={mounted ? strokeDashoffset : circumference}
         strokeLinecap="round"
-        className="transition-all duration-1000 ease-out"
+        className={cn(
+          "transition-all duration-1000 ease-out group-hover/ring:stroke-[10] group-hover/ring:duration-300",
+          isActive && "stroke-[10] duration-300"
+        )}
       />
     </g>
   )
@@ -156,6 +202,7 @@ export function ProblemsDirectoryClient({
   const router = useRouter()
   const pathname = usePathname()
 
+  const [activeDifficulty, setActiveDifficulty] = useState<"Easy" | "Medium" | "Hard" | null>(null)
   const [isPending, startTransition] = useTransition()
   const [searchInput, setSearchInput] = useState(initialSearch)
   const [showAllTags, setShowAllTags] = useState(false)
@@ -164,7 +211,6 @@ export function ProblemsDirectoryClient({
     const sortedTags = [...allTags].sort((a, b) => (tagCounts[b] || 0) - (tagCounts[a] || 0))
     return sortedTags.slice(0, 8)
   }, [allTags, tagCounts, showAllTags])
-  const [showMetrics, setShowMetrics] = useState(true)
   const isOwnUpdateRef = useRef(false)
   const cellRadiusClass = "rounded-[18%]"
 
@@ -433,10 +479,6 @@ export function ProblemsDirectoryClient({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <Button variant="outline" size="icon" className="shrink-0" onClick={() => setShowMetrics(!showMetrics)} title="Toggle Dashboard">
-            {showMetrics ? <ChevronUp /> : <ChevronDown />}
-          </Button>
-
           <Button asChild variant="outline" className="gap-2 shrink-0" title="Playground">
             <Link href="/logiclab/playground" className="flex items-center justify-center gap-2">
               <Terminal className="size-4" />
@@ -454,331 +496,380 @@ export function ProblemsDirectoryClient({
       </div>
 
       {/* Metrics Row */}
-      {showMetrics && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-top-2 duration-300 min-w-0">
-          {/* Card 1: Progress & Difficulty */}
-          <Card className="min-w-0 flex flex-col relative transition-all hover:border-border/80 py-0">
-            <CardHeader className="flex flex-row items-center justify-between pt-6 pb-4">
-              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Overall Progress
-              </CardTitle>
-              <CardAction className="text-xs text-muted-foreground/80 font-medium select-none">
-                {globalStats.total > 0 ? Math.round((globalStats.solved / globalStats.total) * 100) : 0}% Solved
-              </CardAction>
-            </CardHeader>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-top-2 duration-300 min-w-0">
+        {/* Card 1: Progress & Difficulty */}
+        <Card className="min-w-0 flex flex-col relative transition-all hover:border-border/80 py-0">
+          <CardHeader className="flex flex-row items-center justify-between pt-4 pb-1">
+            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Overall Progress
+            </CardTitle>
+            <CardAction className="text-xs text-muted-foreground/80 font-medium select-none">
+              {globalStats.total > 0 ? Math.round((globalStats.solved / globalStats.total) * 100) : 0}% Solved
+            </CardAction>
+          </CardHeader>
 
-            <CardContent className="flex flex-col flex-1 justify-between gap-5 pb-6">
-              {/* Main Content: Stats and Chart */}
-              <div className="flex items-center justify-between gap-6 min-w-0 w-full">
-                {/* Stat rows */}
-                <div className="flex flex-col gap-3.5 flex-1 min-w-0">
-                  {/* Easy */}
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="size-2 rounded-full bg-emerald-500 shrink-0" />
-                      <span className="text-muted-foreground font-medium truncate">Easy</span>
-                    </div>
-                    <div className="flex items-baseline gap-1 shrink-0 font-semibold">
-                      <span className="text-emerald-600 dark:text-emerald-400">{globalStats.easy.solved}</span>
-                      <span className="text-xs text-muted-foreground/50">/ {globalStats.easy.total}</span>
-                    </div>
-                  </div>
-
-                  {/* Medium */}
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="size-2 rounded-full bg-amber-500 shrink-0" />
-                      <span className="text-muted-foreground font-medium truncate">Medium</span>
-                    </div>
-                    <div className="flex items-baseline gap-1 shrink-0 font-semibold">
-                      <span className="text-amber-600 dark:text-amber-400">{globalStats.medium.solved}</span>
-                      <span className="text-xs text-muted-foreground/50">/ {globalStats.medium.total}</span>
-                    </div>
-                  </div>
-
-                  {/* Hard */}
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="size-2 rounded-full bg-rose-500 shrink-0" />
-                      <span className="text-muted-foreground font-medium truncate">Hard</span>
-                    </div>
-                    <div className="flex items-baseline gap-1 shrink-0 font-semibold">
-                      <span className="text-rose-600 dark:text-rose-400">{globalStats.hard.solved}</span>
-                      <span className="text-xs text-muted-foreground/50">/ {globalStats.hard.total}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Concentric ring chart */}
-                <div className="relative size-24 sm:size-28 shrink-0">
-                  <svg className="w-full h-full drop-shadow-md" viewBox="0 0 100 100" preserveAspectRatio="xMaxYMid meet">
-                    <defs>
-                      <linearGradient id="easyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#34d399" />
-                        <stop offset="100%" stopColor="#059669" />
-                      </linearGradient>
-                      <linearGradient id="medGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#fbbf24" />
-                        <stop offset="100%" stopColor="#d97706" />
-                      </linearGradient>
-                      <linearGradient id="hardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#fb7185" />
-                        <stop offset="100%" stopColor="#be123c" />
-                      </linearGradient>
-                    </defs>
-                    <ConcentricRing radius={44} value={globalStats.easy.solved} max={globalStats.easy.total} color="url(#easyGrad)" trackColor="rgba(16, 185, 129, 0.15)" />
-                    <ConcentricRing radius={31} value={globalStats.medium.solved} max={globalStats.medium.total} color="url(#medGrad)" trackColor="rgba(245, 158, 11, 0.15)" />
-                    <ConcentricRing radius={18} value={globalStats.hard.solved} max={globalStats.hard.total} color="url(#hardGrad)" trackColor="rgba(244, 63, 94, 0.15)" />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Clean Horizontal Progress Bar for Total Progress */}
-              <div className="mt-auto select-none flex flex-col gap-2">
-                <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">Total Solved</span>
-                  <span className="font-bold text-foreground">
-                    {globalStats.solved} <span className="text-xs font-normal text-muted-foreground/60">/ {globalStats.total}</span>
-                  </span>
-                </div>
-                <Progress
-                  value={globalStats.total > 0 ? (globalStats.solved / globalStats.total) * 100 : 0}
-                  className="h-1.5 bg-muted/60 [&>div]:bg-blue-500 dark:[&>div]:bg-blue-400"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Card 2: Activity Heat Map */}
-          <Card className="min-w-0 flex flex-col relative transition-all hover:border-border/80 py-0">
-            <CardHeader className="pt-6 pb-4">
-              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Activity Graph
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="flex flex-col flex-1 justify-between gap-5 pb-6">
-              {/* Heatmap Grid Container */}
-              <div className="w-full">
+          <CardContent className="flex flex-col flex-1 justify-between gap-5 pb-4">
+            {/* Main Content: Stats and Chart */}
+            <div className="flex items-center justify-between gap-6 min-w-0 w-full">
+              {/* Stat rows */}
+              <div className="flex flex-col gap-1 flex-1 min-w-0">
+                {/* Easy */}
                 <div
-                  className="grid gap-x-[2px] gap-y-[2px] sm:gap-x-[3px] sm:gap-y-[3px] w-full"
-                  style={{
-                    gridTemplateColumns: `auto ${displayColumns.map(c => c === "GAP" ? "minmax(4px, 8px)" : "minmax(0, 1fr)").join(" ")}`
-                  }}
+                  className={cn(
+                    "flex items-center justify-between text-sm cursor-pointer transition-all duration-200 px-2 py-1 rounded-md",
+                    activeDifficulty === "Easy" ? "bg-emerald-500/10 dark:bg-emerald-500/20" : "hover:bg-muted/40"
+                  )}
+                  onMouseEnter={() => setActiveDifficulty("Easy")}
+                  onMouseLeave={() => setActiveDifficulty(null)}
                 >
-                  {/* Month Labels Row */}
-                  <div className=""></div>
-                  {(() => {
-                    const blocks: { label: string; span: number }[] = [];
-                    let currentLabel: string | null = null;
-                    let currentSpan = 0;
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="size-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-muted-foreground font-medium truncate">Easy</span>
+                  </div>
+                  <div className="flex items-baseline gap-1 shrink-0 font-semibold">
+                    <span className="text-emerald-600 dark:text-emerald-400">{globalStats.easy.solved}</span>
+                    <span className="text-xs text-muted-foreground/50">/ {globalStats.easy.total}</span>
+                  </div>
+                </div>
 
-                    displayColumns.forEach((col, wIdx) => {
-                      const m = visibleMonthLabels[wIdx];
-                      if (m) {
-                        if (currentSpan > 0) {
-                          blocks.push({ label: currentLabel || "", span: currentSpan });
-                        }
-                        currentLabel = m;
-                        currentSpan = 1;
-                      } else {
-                        if (currentLabel === null) {
-                          currentLabel = "";
-                        }
-                        currentSpan += 1;
+                {/* Medium */}
+                <div
+                  className={cn(
+                    "flex items-center justify-between text-sm cursor-pointer transition-all duration-200 px-2 py-1 rounded-md",
+                    activeDifficulty === "Medium" ? "bg-amber-500/10 dark:bg-amber-500/20" : "hover:bg-muted/40"
+                  )}
+                  onMouseEnter={() => setActiveDifficulty("Medium")}
+                  onMouseLeave={() => setActiveDifficulty(null)}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="size-2 rounded-full bg-amber-500 shrink-0" />
+                    <span className="text-muted-foreground font-medium truncate">Medium</span>
+                  </div>
+                  <div className="flex items-baseline gap-1 shrink-0 font-semibold">
+                    <span className="text-amber-600 dark:text-amber-400">{globalStats.medium.solved}</span>
+                    <span className="text-xs text-muted-foreground/50">/ {globalStats.medium.total}</span>
+                  </div>
+                </div>
+
+                {/* Hard */}
+                <div
+                  className={cn(
+                    "flex items-center justify-between text-sm cursor-pointer transition-all duration-200 px-2 py-1 rounded-md",
+                    activeDifficulty === "Hard" ? "bg-rose-500/10 dark:bg-rose-500/20" : "hover:bg-muted/40"
+                  )}
+                  onMouseEnter={() => setActiveDifficulty("Hard")}
+                  onMouseLeave={() => setActiveDifficulty(null)}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="size-2 rounded-full bg-rose-500 shrink-0" />
+                    <span className="text-muted-foreground font-medium truncate">Hard</span>
+                  </div>
+                  <div className="flex items-baseline gap-1 shrink-0 font-semibold">
+                    <span className="text-rose-600 dark:text-rose-400">{globalStats.hard.solved}</span>
+                    <span className="text-xs text-muted-foreground/50">/ {globalStats.hard.total}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Concentric ring chart */}
+              <div className="relative size-24 sm:size-28 shrink-0">
+                <svg className="w-full h-full drop-shadow-md" viewBox="0 0 100 100" preserveAspectRatio="xMaxYMid meet">
+                  <defs>
+                    <linearGradient id="easyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#34d399" />
+                      <stop offset="100%" stopColor="#059669" />
+                    </linearGradient>
+                    <linearGradient id="medGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#fbbf24" />
+                      <stop offset="100%" stopColor="#d97706" />
+                    </linearGradient>
+                    <linearGradient id="hardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#fb7185" />
+                      <stop offset="100%" stopColor="#be123c" />
+                    </linearGradient>
+                  </defs>
+                  <ConcentricRing
+                    radius={44}
+                    value={globalStats.easy.solved}
+                    max={globalStats.easy.total}
+                    color="url(#easyGrad)"
+                    trackColor="rgba(16, 185, 129, 0.15)"
+                    isActive={activeDifficulty === "Easy"}
+                    isDimmed={activeDifficulty !== null && activeDifficulty !== "Easy"}
+                    onMouseEnter={() => setActiveDifficulty("Easy")}
+                    onMouseLeave={() => setActiveDifficulty(null)}
+                  />
+                  <ConcentricRing
+                    radius={31}
+                    value={globalStats.medium.solved}
+                    max={globalStats.medium.total}
+                    color="url(#medGrad)"
+                    trackColor="rgba(245, 158, 11, 0.15)"
+                    isActive={activeDifficulty === "Medium"}
+                    isDimmed={activeDifficulty !== null && activeDifficulty !== "Medium"}
+                    onMouseEnter={() => setActiveDifficulty("Medium")}
+                    onMouseLeave={() => setActiveDifficulty(null)}
+                  />
+                  <ConcentricRing
+                    radius={18}
+                    value={globalStats.hard.solved}
+                    max={globalStats.hard.total}
+                    color="url(#hardGrad)"
+                    trackColor="rgba(244, 63, 94, 0.15)"
+                    isActive={activeDifficulty === "Hard"}
+                    isDimmed={activeDifficulty !== null && activeDifficulty !== "Hard"}
+                    onMouseEnter={() => setActiveDifficulty("Hard")}
+                    onMouseLeave={() => setActiveDifficulty(null)}
+                  />
+                </svg>
+              </div>
+            </div>
+
+            {/* Clean Horizontal Progress Bar for Total Progress */}
+            <div className="mt-auto select-none flex flex-col gap-2">
+              <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">Total Solved</span>
+                <span className="font-bold text-foreground">
+                  {globalStats.solved} <span className="text-xs font-normal text-muted-foreground/60">/ {globalStats.total}</span>
+                </span>
+              </div>
+              <Progress
+                value={globalStats.total > 0 ? (globalStats.solved / globalStats.total) * 100 : 0}
+                className="h-1.5 bg-muted/60 [&>div]:bg-blue-500 dark:[&>div]:bg-blue-400"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Card 2: Activity Heat Map */}
+        <Card className="min-w-0 flex flex-col relative transition-all hover:border-border/80 py-0">
+          <CardHeader className="pt-4 pb-1">
+            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Activity Graph
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="flex flex-col flex-1 justify-between gap-5 pb-4">
+            {/* Heatmap Grid Container */}
+            <div className="w-full">
+              <div
+                className="grid gap-x-[2px] gap-y-[2px] sm:gap-x-[3px] sm:gap-y-[3px] w-full"
+                style={{
+                  gridTemplateColumns: `auto ${displayColumns.map(c => c === "GAP" ? "minmax(4px, 8px)" : "minmax(0, 1fr)").join(" ")}`
+                }}
+              >
+                {/* Month Labels Row */}
+                <div className=""></div>
+                {(() => {
+                  const blocks: { label: string; span: number }[] = [];
+                  let currentLabel: string | null = null;
+                  let currentSpan = 0;
+
+                  displayColumns.forEach((col, wIdx) => {
+                    const m = visibleMonthLabels[wIdx];
+                    if (m) {
+                      if (currentSpan > 0) {
+                        blocks.push({ label: currentLabel || "", span: currentSpan });
                       }
-                    });
-                    if (currentSpan > 0) {
-                      blocks.push({ label: currentLabel || "", span: currentSpan });
+                      currentLabel = m;
+                      currentSpan = 1;
+                    } else {
+                      if (currentLabel === null) {
+                        currentLabel = "";
+                      }
+                      currentSpan += 1;
                     }
+                  });
+                  if (currentSpan > 0) {
+                    blocks.push({ label: currentLabel || "", span: currentSpan });
+                  }
 
-                    return blocks.map((block, i) => (
-                      <div key={`month-block-${i}`} className="relative h-5 flex items-end justify-center pb-1" style={{ gridColumn: `span ${block.span}` }}>
-                        {block.label && (
-                          <span className="text-[10px] font-semibold text-muted-foreground/70 whitespace-nowrap">
-                            {block.label}
-                          </span>
-                        )}
-                      </div>
-                    ));
-                  })()}
-
-                  {/* Day Rows */}
-                  {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => (
-                    <React.Fragment key={dayIndex}>
-                      {/* Y-Axis Label */}
-                      <div className="relative w-6 sm:w-7">
-                        <span className="absolute inset-y-0 right-2 flex items-center text-[10px] font-medium text-muted-foreground/50 leading-none">
-                          {dayIndex === 1 ? "Mon" : dayIndex === 3 ? "Wed" : dayIndex === 5 ? "Fri" : ""}
+                  return blocks.map((block, i) => (
+                    <div key={`month-block-${i}`} className="relative h-5 flex items-end justify-center pb-1" style={{ gridColumn: `span ${block.span}` }}>
+                      {block.label && (
+                        <span className="text-[10px] font-semibold text-muted-foreground/70 whitespace-nowrap">
+                          {block.label}
                         </span>
-                      </div>
-                      {/* Week Cells for this Day */}
-                      {displayColumns.map((col, wIdx) => {
-                        if (col === "GAP") return <div key={`gap-cell-${dayIndex}-${wIdx}`} className="" />;
+                      )}
+                    </div>
+                  ));
+                })()}
 
-                        const cell = col[dayIndex];
+                {/* Day Rows */}
+                {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => (
+                  <React.Fragment key={dayIndex}>
+                    {/* Y-Axis Label */}
+                    <div className="relative w-6 sm:w-7">
+                      <span className="absolute inset-y-0 right-2 flex items-center text-[10px] font-medium text-muted-foreground/50 leading-none">
+                        {dayIndex === 1 ? "Mon" : dayIndex === 3 ? "Wed" : dayIndex === 5 ? "Fri" : ""}
+                      </span>
+                    </div>
+                    {/* Week Cells for this Day */}
+                    {displayColumns.map((col, wIdx) => {
+                      if (col === "GAP") return <div key={`gap-cell-${dayIndex}-${wIdx}`} className="" />;
 
-                        if (!cell || !cell.date) {
-                          return (
-                            <div
-                              key={`cell-${dayIndex}-${wIdx}`}
-                              className={cn("w-full aspect-square bg-transparent pointer-events-none", cellRadiusClass)}
-                            />
-                          );
-                        }
+                      const cell = col[dayIndex];
 
-                        let cellColor = "bg-muted";
-                        if (cell.status === "attempted") {
-                          cellColor = "bg-amber-400/80 dark:bg-amber-500/60";
-                        } else if (cell.status === "solved") {
-                          if (cell.count === 1) cellColor = "bg-sky-300 dark:bg-sky-800";
-                          else if (cell.count <= 3) cellColor = "bg-sky-400 dark:bg-sky-600";
-                          else if (cell.count <= 6) cellColor = "bg-sky-500 dark:bg-sky-500";
-                          else cellColor = "bg-sky-600 dark:bg-sky-400";
-                        }
-
+                      if (!cell || !cell.date) {
                         return (
                           <div
                             key={`cell-${dayIndex}-${wIdx}`}
-                            className={cn(
-                              "w-full aspect-square cursor-pointer transition-all hover:ring-2 hover:ring-offset-1 hover:ring-foreground/20 dark:hover:ring-offset-background",
-                              cellRadiusClass,
-                              cellColor
-                            )}
-                            title={`${cell.date}: ${cell.count} submissions`}
+                            className={cn("w-full aspect-square bg-transparent pointer-events-none", cellRadiusClass)}
                           />
                         );
-                      })}
-                    </React.Fragment>
+                      }
+
+                      let cellColor = "bg-muted";
+                      if (cell.status === "attempted") {
+                        cellColor = "bg-rose-400/80 dark:bg-rose-500/60";
+                      } else if (cell.status === "solved") {
+                        if (cell.count === 1) cellColor = "bg-sky-300 dark:bg-sky-800";
+                        else if (cell.count <= 3) cellColor = "bg-sky-400 dark:bg-sky-600";
+                        else if (cell.count <= 6) cellColor = "bg-sky-500 dark:bg-sky-500";
+                        else cellColor = "bg-sky-600 dark:bg-sky-400";
+                      }
+
+                      return (
+                        <div
+                          key={`cell-${dayIndex}-${wIdx}`}
+                          className={cn(
+                            "w-full aspect-square cursor-pointer transition-all hover:ring-2 hover:ring-offset-1 hover:ring-foreground/20 dark:hover:ring-offset-background",
+                            cellRadiusClass,
+                            cellColor
+                          )}
+                          title={`${cell.date}: ${cell.count} submissions`}
+                        />
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer: Streak and Legend */}
+            <div className="mt-auto flex items-end justify-between gap-4 flex-wrap min-w-0 w-full">
+              {/* Legend */}
+              <div className="flex items-center gap-2 text-[10px] font-medium text-muted-foreground/70 pb-0.5">
+                <span>Less</span>
+                <div className="flex gap-[3px] items-center">
+                  <div className={cn("size-[10px] bg-muted", cellRadiusClass)} title="0 submissions" />
+                  <div className={cn("size-[10px] bg-rose-400/80 dark:bg-rose-500/60", cellRadiusClass)} title="Attempted" />
+                  <div className={cn("size-[10px] bg-sky-300 dark:bg-sky-800", cellRadiusClass)} title="1 submission" />
+                  <div className={cn("size-[10px] bg-sky-400 dark:bg-sky-600", cellRadiusClass)} title="2-3 submissions" />
+                  <div className={cn("size-[10px] bg-sky-500 dark:bg-sky-500", cellRadiusClass)} title="4-6 submissions" />
+                  <div className={cn("size-[10px] bg-sky-600 dark:bg-sky-400", cellRadiusClass)} title="7+ submissions" />
+                </div>
+                <span>More</span>
+              </div>
+
+              {/* Streak */}
+              <div className="flex items-center gap-2.5 shrink-0 text-sm font-semibold cursor-pointer group/streak">
+                <div className="flex items-center gap-1.5 text-foreground">
+                  <Flame className="size-4 text-orange-500 fill-orange-500/10 shrink-0 transition-all duration-300 group-hover/streak:scale-125 group-hover/streak:text-orange-600 dark:group-hover/streak:text-orange-400 group-hover/streak:rotate-12 group-hover/streak:filter group-hover/streak:drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
+                  <span className="transition-colors group-hover/streak:text-orange-500">{streakStats.currentStreak} day streak</span>
+                </div>
+                <span className="text-muted-foreground/30">|</span>
+                <span className="text-xs text-muted-foreground font-medium">
+                  Max: <span className="text-foreground font-semibold transition-colors group-hover/streak:text-foreground/80">{streakStats.maxStreak}</span>
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Card 3: POTD Card */}
+        <Card className="group/potd transition-all hover:border-border/80 min-w-0 flex flex-col relative py-0">
+          <CardHeader className="flex flex-row items-center justify-between pt-4 pb-1">
+            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Daily Challenge
+            </CardTitle>
+            {timeLeft && (
+              <CardAction className="text-xs text-muted-foreground/80 flex items-center gap-1 font-medium select-none">
+                <Clock className="size-3.5" />
+                {timeLeft}
+              </CardAction>
+            )}
+          </CardHeader>
+
+          <CardContent className="flex flex-col flex-1 justify-between gap-5 pb-4">
+            <div className="flex flex-col gap-4 min-w-0">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="font-bold text-lg sm:text-xl text-foreground leading-snug group-hover/potd:text-primary transition-colors">
+                    {activeChallenge?.title || "Loading..."}
+                  </h3>
+                  {activeChallenge?.solved_status === "Accepted" && (
+                    <CircleCheck className="size-6 text-emerald-500 shrink-0 mt-0.5" />
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground">
+                  {/* Difficulty (clean inline text) */}
+                  {activeChallenge?.difficulty && (
+                    <span className={cn(
+                      "font-semibold",
+                      activeChallenge.difficulty === "Easy" ? "text-emerald-600 dark:text-emerald-400" :
+                        activeChallenge.difficulty === "Medium" ? "text-amber-600 dark:text-amber-400" :
+                          "text-rose-600 dark:text-rose-400"
+                    )}>
+                      {activeChallenge.difficulty}
+                    </span>
+                  )}
+
+                  <span>•</span>
+
+                  {/* Acceptance rate */}
+                  {activeChallenge?.acceptance_rate !== undefined && activeChallenge?.acceptance_rate !== null && (
+                    <>
+                      <span>{activeChallenge.acceptance_rate}% acceptance</span>
+                      <span>•</span>
+                    </>
+                  )}
+
+                  {/* Submissions count */}
+                  <span>{activeChallenge?.total_submissions?.toLocaleString() || 0} submissions</span>
+                </div>
+              </div>
+
+              {/* Clean Tags Row */}
+              {activeChallenge?.tags && activeChallenge.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {activeChallenge.tags.slice(0, 2).map((t: string) => (
+                    <span key={t} className="text-[11px] bg-muted px-2.5 py-1 rounded-md text-muted-foreground font-medium">
+                      {t}
+                    </span>
                   ))}
                 </div>
-              </div>
-
-              {/* Footer: Streak and Legend */}
-              <div className="mt-auto flex items-end justify-between gap-4 flex-wrap min-w-0 w-full">
-                {/* Legend */}
-                <div className="flex items-center gap-2 text-[10px] font-medium text-muted-foreground/70 pb-0.5">
-                  <span>Less</span>
-                  <div className="flex gap-[3px] items-center">
-                    <div className={cn("size-[10px] bg-muted", cellRadiusClass)} title="0 submissions" />
-                    <div className={cn("size-[10px] bg-amber-400/80 dark:bg-amber-500/60", cellRadiusClass)} title="Attempted" />
-                    <div className={cn("size-[10px] bg-sky-300 dark:bg-sky-800", cellRadiusClass)} title="1 submission" />
-                    <div className={cn("size-[10px] bg-sky-400 dark:bg-sky-600", cellRadiusClass)} title="2-3 submissions" />
-                    <div className={cn("size-[10px] bg-sky-500 dark:bg-sky-500", cellRadiusClass)} title="4-6 submissions" />
-                    <div className={cn("size-[10px] bg-sky-600 dark:bg-sky-400", cellRadiusClass)} title="7+ submissions" />
-                  </div>
-                  <span>More</span>
-                </div>
-
-                {/* Streak */}
-                <div className="flex items-center gap-2.5 shrink-0 text-sm font-semibold">
-                  <div className="flex items-center gap-1.5 text-foreground">
-                    <Flame className="size-4 text-orange-500 fill-orange-500/10 shrink-0" />
-                    <span>{streakStats.currentStreak} day streak</span>
-                  </div>
-                  <span className="text-muted-foreground/30">|</span>
-                  <span className="text-xs text-muted-foreground font-medium">
-                    Max: <span className="text-foreground font-semibold">{streakStats.maxStreak}</span>
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Card 3: POTD Card */}
-          <Card className="group transition-all hover:border-border/80 min-w-0 flex flex-col relative py-0">
-            <CardHeader className="flex flex-row items-center justify-between pt-6 pb-4">
-              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Daily Challenge
-              </CardTitle>
-              {timeLeft && (
-                <CardAction className="text-xs text-muted-foreground/80 flex items-center gap-1 font-medium select-none">
-                  <Clock className="size-3.5" />
-                  {timeLeft}
-                </CardAction>
               )}
-            </CardHeader>
+            </div>
 
-            <CardContent className="flex flex-col flex-1 justify-between gap-5 pb-6">
-              <div className="flex flex-col gap-4 min-w-0">
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-bold text-lg sm:text-xl text-foreground leading-snug group-hover:text-primary transition-colors">
-                      {activeChallenge?.title || "Loading..."}
-                    </h3>
-                    {activeChallenge?.solved_status === "Accepted" && (
-                      <CircleCheck className="size-6 text-emerald-500 shrink-0 mt-0.5" />
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground">
-                    {/* Difficulty (clean inline text) */}
-                    {activeChallenge?.difficulty && (
-                      <span className={cn(
-                        "font-semibold",
-                        activeChallenge.difficulty === "Easy" ? "text-emerald-600 dark:text-emerald-400" :
-                          activeChallenge.difficulty === "Medium" ? "text-amber-600 dark:text-amber-400" :
-                            "text-rose-600 dark:text-rose-400"
-                      )}>
-                        {activeChallenge.difficulty}
-                      </span>
-                    )}
-
-                    <span>•</span>
-
-                    {/* Acceptance rate */}
-                    {activeChallenge?.acceptance_rate !== undefined && activeChallenge?.acceptance_rate !== null && (
-                      <>
-                        <span>{activeChallenge.acceptance_rate}% acceptance</span>
-                        <span>•</span>
-                      </>
-                    )}
-
-                    {/* Submissions count */}
-                    <span>{activeChallenge?.total_submissions?.toLocaleString() || 0} submissions</span>
-                  </div>
-                </div>
-
-                {/* Clean Tags Row */}
-                {activeChallenge?.tags && activeChallenge.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    {activeChallenge.tags.slice(0, 2).map((t: string) => (
-                      <span key={t} className="text-[11px] bg-muted px-2.5 py-1 rounded-md text-muted-foreground font-medium">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Action Button: Minimal Outline Button */}
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full gap-2 py-5 font-semibold text-sm sm:text-base border transition-colors mt-auto",
-                  activeChallenge?.solved_status === "Accepted"
-                    ? "border-emerald-500/20 text-emerald-600 dark:border-emerald-500/10 dark:text-emerald-400 hover:bg-transparent hover:text-emerald-600 dark:hover:text-emerald-400"
-                    : "border-orange-500/20 text-orange-600 dark:border-orange-500/10 dark:text-orange-400 hover:bg-transparent hover:text-orange-600 dark:hover:text-orange-400"
-                )}
-                onClick={() => potd && router.push(`/logiclab/problems/${potd.problem_id}`)}
-                disabled={!potd}
-              >
-                {activeChallenge?.solved_status === "Accepted" ? (
-                  <>
-                    Review Challenge
-                    <CircleCheck className="size-[18px]" />
-                  </>
-                ) : (
-                  <>
-                    Solve Challenge
-                    <ChevronRight className="size-[18px]" />
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            {/* Action Button: Minimal Outline Button */}
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full gap-2 py-5 font-semibold text-sm sm:text-base border transition-colors mt-auto",
+                activeChallenge?.solved_status === "Accepted"
+                  ? "border-emerald-500/20 text-emerald-600 dark:border-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300"
+                  : "border-orange-500/20 text-orange-600 dark:border-orange-500/10 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 hover:text-orange-700 dark:hover:text-orange-300"
+              )}
+              onClick={() => potd && router.push(`/logiclab/problems/${potd.problem_id}`)}
+              disabled={!potd}
+            >
+              {activeChallenge?.solved_status === "Accepted" ? (
+                <>
+                  Review Challenge
+                  <CircleCheck className="size-[18px] transition-transform duration-300 group-hover/potd:scale-110" />
+                </>
+              ) : (
+                <>
+                  Solve Challenge
+                  <ChevronRight className="size-[18px] transition-transform duration-300 group-hover/potd:translate-x-1" />
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Main Directory Layout */}
       <div className="flex flex-col gap-6 min-w-0">
