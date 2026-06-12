@@ -9,6 +9,7 @@ import {
   IconPlayerPlay,
   IconPlayerPause,
   IconUpload,
+  IconSend,
   IconCircleCheck,
   IconCircleX,
   IconClock,
@@ -39,6 +40,7 @@ import {
   IconSearch,
   IconFilter,
   IconFileDescription,
+  IconDeviceLaptop,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -51,6 +53,7 @@ import {
   Separator as PanelResizeHandle,
 } from "react-resizable-panels";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Sheet,
@@ -59,6 +62,16 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -78,6 +91,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
 // Robust memory usage display formatter
 const formatMemory = (
@@ -126,7 +140,7 @@ function parseInline(text: string) {
       return (
         <code
           key={idx}
-          className={cn('bg-card', 'border', 'border-border', 'px-1', 'py-0.5', 'rounded', 'text-xs', 'font-mono', 'text-emerald-600', 'dark:text-emerald-400')}
+          className={cn('bg-muted/70', 'border', 'border-border/40', 'px-1.5', 'py-0.5', 'rounded-md', 'text-xs', 'font-mono', 'text-zinc-900 dark:text-foreground/90')}
         >
           {part.slice(1, -1)}
         </code>
@@ -150,7 +164,7 @@ function MarkdownDescription({ content }: { content: string }) {
   const blocks = formatted.split(/(```[\s\S]*?```)/g);
 
   return (
-    <div className={cn('text-foreground/80', 'leading-relaxed', 'text-sm', 'space-y-4', 'font-sans')}>
+    <div className={cn('text-zinc-800 dark:text-foreground/80', 'leading-relaxed', 'text-sm', 'space-y-4', 'font-sans')}>
       {blocks.map((block, idx) => {
         if (block.startsWith("```")) {
           const match = block.match(/```(\w*)\n([\s\S]*?)```/);
@@ -159,14 +173,14 @@ function MarkdownDescription({ content }: { content: string }) {
           return (
             <div
               key={idx}
-              className={cn('bg-background', 'border', 'border-border', 'rounded-lg', 'overflow-hidden', 'my-3', 'font-mono', 'text-xs')}
+              className={cn('bg-muted/30', 'border', 'border-border/50', 'rounded-lg', 'overflow-hidden', 'my-3.5', 'font-mono', 'text-xs')}
             >
               {lang && (
-                <div className={cn('bg-card/60', 'px-3', 'py-1', 'border-b', 'border-border', 'text-[10px]', 'text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold')}>
+                <div className={cn('bg-muted/40', 'px-3', 'py-1.5', 'border-b', 'border-border/40', 'text-[10px]', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold')}>
                   {lang}
                 </div>
               )}
-              <pre className={cn('p-3', 'overflow-x-auto', 'text-foreground/80', 'whitespace-pre', 'scrollbar-thin')}>
+              <pre className={cn('p-3.5', 'overflow-x-auto', 'text-zinc-900 dark:text-foreground/90', 'whitespace-pre', 'scrollbar-thin')}>
                 {codeText.trim()}
               </pre>
             </div>
@@ -215,7 +229,7 @@ function MarkdownDescription({ content }: { content: string }) {
                 return (
                   <ul
                     key={lIdx}
-                    className={cn('list-disc', 'pl-5', 'space-y-1', 'text-muted-foreground')}
+                    className={cn('list-disc', 'pl-5', 'space-y-1', 'text-zinc-600 dark:text-muted-foreground')}
                   >
                     <li>{parseInline(trimmed.slice(2))}</li>
                   </ul>
@@ -227,7 +241,7 @@ function MarkdownDescription({ content }: { content: string }) {
                 return (
                   <ol
                     key={lIdx}
-                    className={cn('list-decimal', 'pl-5', 'space-y-1', 'text-muted-foreground')}
+                    className={cn('list-decimal', 'pl-5', 'space-y-1', 'text-zinc-600 dark:text-muted-foreground')}
                   >
                     <li value={parseInt(numMatch[1])}>
                       {parseInline(numMatch[2])}
@@ -240,7 +254,7 @@ function MarkdownDescription({ content }: { content: string }) {
                 return (
                   <blockquote
                     key={lIdx}
-                    className={cn('border-l-2', 'border-emerald-500', 'bg-card/40', 'px-3', 'py-2', 'rounded-r', 'text-muted-foreground', 'text-xs', 'italic', 'my-2')}
+                    className={cn('border-l-2', 'border-zinc-400 dark:border-zinc-500', 'bg-muted/20', 'px-4', 'py-2.5', 'rounded-r-md', 'text-zinc-650 dark:text-muted-foreground', 'text-sm', 'italic', 'my-3')}
                   >
                     {parseInline(trimmed.slice(2))}
                   </blockquote>
@@ -252,7 +266,7 @@ function MarkdownDescription({ content }: { content: string }) {
               }
 
               return (
-                <p key={lIdx} className={cn('text-foreground/80', 'leading-relaxed')}>
+                <p key={lIdx} className={cn('text-zinc-800 dark:text-foreground/80', 'leading-relaxed')}>
                   {parseInline(line)}
                 </p>
               );
@@ -374,12 +388,12 @@ export function ProblemIDEClient({
       if (typeof parsedBoilerplates === "string") {
         try {
           parsedBoilerplates = JSON.parse(parsedBoilerplates);
-        } catch {}
+        } catch { }
       }
 
       setCode(
         parsedBoilerplates[String(selectedLang.id)] ||
-          `// Write your ${selectedLang.name} solution here\n`,
+        `// Write your ${selectedLang.name} solution here\n`,
       );
       setActiveTab("description");
       setSubmitResult(null);
@@ -473,7 +487,7 @@ export function ProblemIDEClient({
       });
     } else {
       setIsFullScreen(false);
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch(() => { });
     }
   };
 
@@ -500,6 +514,8 @@ export function ProblemIDEClient({
   const [running, setRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [hasRun, setHasRun] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [runResult, setRunResult] = useState<any>(null);
   const [submitResult, setSubmitResult] = useState<any>(null);
   const [selectedCaseIndex, setSelectedCaseIndex] = useState(0);
@@ -630,7 +646,7 @@ export function ProblemIDEClient({
     } else {
       setCode(
         parsedBoilerplates[String(selectedLang.id)] ||
-          `// Write your ${selectedLang.name} solution here\n`,
+        `// Write your ${selectedLang.name} solution here\n`,
       );
     }
   }, [
@@ -719,7 +735,7 @@ export function ProblemIDEClient({
     return ["nums"];
   };
 
-  const renderLeetCodeInput = (
+  const renderInputParams = (
     inputStr: string,
     paramsList: string[],
     isEditable = false,
@@ -737,7 +753,7 @@ export function ProblemIDEClient({
 
           return (
             <div key={idx} className={cn('space-y-1.5', 'text-xs')}>
-              <span className={cn('text-xs', 'text-muted-foreground/80', 'font-bold', 'block', 'select-none')}>
+              <span className={cn('text-xs', 'text-zinc-600 dark:text-muted-foreground/80', 'font-bold', 'block', 'select-none')}>
                 {paramName} =
               </span>
               {isEditable ? (
@@ -745,10 +761,10 @@ export function ProblemIDEClient({
                   type="text"
                   value={line}
                   onChange={(e) => onChange?.(idx, e.target.value)}
-                  className={cn('w-full', 'p-2.5', 'bg-muted/40', 'hover:bg-muted/65', 'focus:bg-muted/80', 'border', 'border-zinc-200', 'dark:border-border/60', 'rounded-xl', 'text-foreground', 'text-sm', 'font-mono', 'outline-none', 'transition-colors', 'shadow-sm')}
+                  className={cn('w-full', 'px-3', 'py-2', 'bg-zinc-100/80 dark:bg-zinc-900/50', 'border', 'border-border/60', 'rounded-md', 'text-foreground', 'text-sm', 'font-mono', 'outline-none', 'transition-colors', 'focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 shadow-sm')}
                 />
               ) : (
-                <pre className={cn('p-2.5', 'bg-muted/40', 'dark:bg-black/40', 'border', 'border-zinc-200', 'dark:border-border/50', 'rounded-xl', 'text-foreground/90', 'text-sm', 'font-medium', 'whitespace-pre-wrap', 'leading-relaxed', 'max-h-32', 'overflow-y-auto')}>
+                <pre className={cn('p-3', 'bg-zinc-100/70 dark:bg-zinc-900/30', 'border', 'border-border/40', 'rounded-md', 'text-zinc-900 dark:text-foreground/90', 'text-sm', 'font-mono', 'whitespace-pre-wrap', 'leading-relaxed', 'max-h-32', 'overflow-y-auto')}>
                   {line}
                 </pre>
               )}
@@ -809,6 +825,7 @@ export function ProblemIDEClient({
       toast.warning("Please write your solution before running.");
       return;
     }
+    setHasRun(true);
     setRunning(true);
     setRunResult(null);
     setSelectedCaseIndex(0);
@@ -950,10 +967,10 @@ export function ProblemIDEClient({
   // Global Hotkeys
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd/Ctrl + Enter -> Submit
+      // Cmd/Ctrl + Enter -> open submit confirmation dialog
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
-        if (!running && !submitting) handleSubmitCode();
+        if (!running && !submitting) setShowSubmitConfirm(true);
       }
       // Cmd/Ctrl + ' -> Run
       if ((e.metaKey || e.ctrlKey) && e.key === "'") {
@@ -980,95 +997,86 @@ export function ProblemIDEClient({
   const topNavbarContent = (
     <div className={cn('flex', 'items-center', 'justify-between', 'px-4', 'py-2', 'bg-zinc-100', 'dark:bg-zinc-950', 'shrink-0', 'w-full', 'select-none')}>
       {/* Left section: Navigation & Title */}
-      <div className={cn('flex', 'items-center', 'gap-1')}>
-        <div className={cn('flex', 'items-center', 'gap-0.5')}>
-          <Link
-            href="/logiclab"
-            className={cn('flex', 'items-center', 'justify-center', 'h-8', 'w-8', 'rounded-lg', 'hover:bg-muted', 'text-muted-foreground', 'hover:text-foreground', 'transition-all', 'shrink-0')}
+      <div className={cn('flex', 'items-center', 'gap-3')}>
+        <div className={cn('flex', 'items-center', 'gap-1')}>
+          <Button
+            variant="outline"
+            size="icon"
+            asChild
+            className={cn('h-8', 'w-8')}
             title="Back to Problems"
           >
-            <IconArrowLeft className={cn('h-4', 'w-4')} />
-          </Link>
+            <Link href="/logiclab">
+              <IconArrowLeft className={cn('h-4', 'w-4')} />
+            </Link>
+          </Button>
           <Button
-            variant="ghost"
+            variant="outline"
+            size="icon"
             onClick={() => setIsProblemListOpen(!isProblemListOpen)}
-            className={cn('h-8', 'px-3', 'text-muted-foreground', 'hover:text-foreground', 'font-semibold')}
+            className={cn('h-8', 'w-8', 'text-zinc-600 dark:text-muted-foreground', 'hover:text-foreground')}
+            title="Toggle Problem List"
           >
-            <IconList className={cn('h-4', 'w-4', 'mr-2')} />
-            Problem List
+            <IconList className={cn('h-4', 'w-4')} />
           </Button>
         </div>
-        <div className={cn('h-4', 'w-px', 'bg-border', 'mx-1')} />
+
         <div className={cn('flex', 'items-center', 'gap-1')}>
-          {prevProblemId ? (
-            <button
-              onClick={() => handleNavigate(prevProblemId)}
-              className={cn('p-1', 'hover:bg-muted', 'rounded', 'text-muted-foreground', 'hover:text-foreground', 'transition-colors')}
-              title="Previous"
-            >
-              <IconChevronLeft className={cn('h-4', 'w-4')} />
-            </button>
-          ) : (
-            <div className={cn('p-1', 'text-muted-foreground/30')}>
-              <IconChevronLeft className={cn('h-4', 'w-4')} />
-            </div>
-          )}
-          {nextProblemId ? (
-            <button
-              onClick={() => handleNavigate(nextProblemId)}
-              className={cn('p-1', 'hover:bg-muted', 'rounded', 'text-muted-foreground', 'hover:text-foreground', 'transition-colors')}
-              title="Next"
-            >
-              <IconChevronRight className={cn('h-4', 'w-4')} />
-            </button>
-          ) : (
-            <div className={cn('p-1', 'text-muted-foreground/30')}>
-              <IconChevronRight className={cn('h-4', 'w-4')} />
-            </div>
-          )}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => prevProblemId && handleNavigate(prevProblemId)}
+            disabled={!prevProblemId}
+            className={cn('h-8', 'w-8')}
+            title="Previous"
+          >
+            <IconChevronLeft className={cn('h-4', 'w-4')} />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => nextProblemId && handleNavigate(nextProblemId)}
+            disabled={!nextProblemId}
+            className={cn('h-8', 'w-8')}
+            title="Next"
+          >
+            <IconChevronRight className={cn('h-4', 'w-4')} />
+          </Button>
         </div>
       </div>
 
       {/* Center section: Run & Submit */}
-      <div className={cn('flex', 'items-center', 'gap-2', 'absolute', 'left-1/2', '-translate-x-1/2')}>
-        <Button
-          variant="secondary"
-          onClick={handleRunCode}
-          disabled={running || submitting}
-          title="Run Code (Ctrl + ')"
-          className={cn('h-8', 'px-4', 'text-xs', 'font-semibold', 'bg-muted/50', 'hover:bg-muted')}
-        >
-          {running ? (
-            <>
-              <div className={cn('h-3', 'w-3', 'border', 'border-current', 'border-t-transparent', 'rounded-full', 'animate-spin', 'mr-1.5')} />{" "}
-              Running
-            </>
-          ) : (
-            <>
-              <IconPlayerPlay className={cn('h-3.5', 'w-3.5', 'text-emerald-500', 'mr-1.5')} />{" "}
-              Run
-            </>
-          )}
-        </Button>
-        <Button
-          variant="ghost"
-          onClick={handleSubmitCode}
-          disabled={running || submitting}
-          title="Submit Code (Ctrl + Enter)"
-          className={cn('h-8', 'px-4', 'text-xs', 'font-bold', 'text-emerald-500', 'hover:text-emerald-400', 'hover:bg-emerald-500/10', 'group')}
-        >
-          {submitting ? (
-            <>
-              <div className={cn('h-3', 'w-3', 'border', 'border-current', 'border-t-transparent', 'rounded-full', 'animate-spin', 'mr-1.5')} />{" "}
-              Judging
-            </>
-          ) : (
-            <>
-              <IconUpload className={cn('h-3.5', 'w-3.5', 'group-hover:-translate-y-0.5', 'transition-transform', 'mr-1.5')} />{" "}
-              Submit
-            </>
-          )}
-        </Button>
+      <div className={cn('absolute', 'left-1/2', '-translate-x-1/2')}>
+        <ButtonGroup>
+          <Button
+            variant="outline"
+            onClick={handleRunCode}
+            disabled={running || submitting}
+            title="Run Code (Ctrl + ')"
+            className={cn('h-8', 'px-3', 'text-xs', 'font-semibold', 'bg-background', 'hover:bg-accent', 'flex', 'items-center', 'gap-1.5', 'group')}
+          >
+            {running ? (
+              <div className={cn('h-3.5', 'w-3.5', 'border', 'border-current', 'border-t-transparent', 'rounded-full', 'animate-spin')} />
+            ) : (
+              <IconPlayerPlay className={cn('h-3.5', 'w-3.5', 'text-emerald-600', 'dark:text-emerald-400', 'fill-emerald-500/20')} />
+            )}
+            <span>{running ? "Running" : "Run"}</span>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowSubmitConfirm(true)}
+            disabled={running || submitting}
+            title="Submit Code (Ctrl + Enter)"
+            className={cn('h-8', 'px-3', 'text-xs', 'font-semibold', 'bg-background', 'hover:bg-accent', 'flex', 'items-center', 'gap-1.5', 'group')}
+          >
+            {submitting ? (
+              <div className={cn('h-3.5', 'w-3.5', 'border', 'border-current', 'border-t-transparent', 'rounded-full', 'animate-spin')} />
+            ) : (
+              <IconSend className={cn('h-3.5', 'w-3.5', 'text-sky-600', 'dark:text-sky-400', 'fill-sky-500/20')} />
+            )}
+            <span>{submitting ? "Judging" : "Submit"}</span>
+          </Button>
+        </ButtonGroup>
       </div>
 
       {/* Right section: Settings, Language, Toggle */}
@@ -1076,14 +1084,14 @@ export function ProblemIDEClient({
         <Popover>
           <PopoverTrigger asChild>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               title="Coding Time"
-              className={cn('h-7', 'px-2', 'text-muted-foreground', 'hover:text-foreground', 'flex', 'items-center', 'gap-1.5', 'font-mono', 'text-[11px]', 'font-semibold', 'transition-colors', 'select-none')}
+              className={cn('h-7', 'px-2', 'text-zinc-600 dark:text-muted-foreground', 'hover:text-foreground', 'flex', 'items-center', 'gap-1.5', 'font-mono', 'text-[11px]', 'font-semibold', 'transition-colors', 'select-none', 'bg-background')}
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => e.currentTarget.blur()}
             >
-              <IconClock className={`h-3.5 w-3.5 ${timerRunning ? "animate-pulse text-emerald-500" : "text-muted-foreground/60"}`} />
+              <IconClock className={`h-3.5 w-3.5 ${timerRunning ? "animate-pulse text-emerald-500" : "text-zinc-600 dark:text-muted-foreground"}`} />
               {(timerSeconds > 0 || timerRunning) && (
                 <span className={cn('tabular-nums', 'font-bold', 'tracking-wider')}>{formatTimer(timerSeconds)}</span>
               )}
@@ -1096,7 +1104,7 @@ export function ProblemIDEClient({
             onCloseAutoFocus={(e) => e.preventDefault()}
           >
             <div className={cn('flex', 'flex-col', 'gap-3.5', 'items-center', 'text-center')}>
-              <span className={cn('text-[10px]', 'font-extrabold', 'uppercase', 'tracking-widest', 'text-muted-foreground')}>Coding Time</span>
+              <span className={cn('text-[10px]', 'font-extrabold', 'uppercase', 'tracking-widest', 'text-zinc-500 dark:text-muted-foreground')}>Coding Time</span>
               <span className={cn('text-2xl', 'font-black', 'font-mono', 'tracking-wide', 'text-foreground', 'tabular-nums', 'select-all')}>
                 {formatTimer(timerSeconds)}
               </span>
@@ -1144,10 +1152,10 @@ export function ProblemIDEClient({
         <Popover>
           <PopoverTrigger asChild>
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
               title="Change Layout"
-              className={cn('h-7', 'w-7', 'text-muted-foreground', 'hover:text-foreground')}
+              className={cn('h-7', 'w-7', 'text-zinc-600 dark:text-muted-foreground', 'hover:text-foreground', 'bg-background')}
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => e.currentTarget.blur()}
             >
@@ -1161,7 +1169,7 @@ export function ProblemIDEClient({
             onCloseAutoFocus={(e) => e.preventDefault()}
           >
             <div className="space-y-4">
-              <div className={cn('flex', 'items-center', 'justify-between', 'text-muted-foreground')}>
+              <div className={cn('flex', 'items-center', 'justify-between', 'text-zinc-600 dark:text-muted-foreground')}>
                 <span className={cn('text-sm', 'font-bold', 'text-foreground')}>
                   Layouts
                 </span>
@@ -1190,7 +1198,7 @@ export function ProblemIDEClient({
                     </div>
                   </div>
                   <span
-                    className={`text-[13px] font-bold text-left w-full transition-colors ${ideLayout === "standard" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground group-hover:text-foreground"}`}
+                    className={`text-[13px] font-bold text-center w-full transition-colors ${ideLayout === "standard" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500 dark:text-muted-foreground group-hover:text-foreground"}`}
                   >
                     Standard
                   </span>
@@ -1219,7 +1227,7 @@ export function ProblemIDEClient({
                     </div>
                   </div>
                   <span
-                    className={`text-[13px] font-bold text-left w-full transition-colors ${ideLayout === "vertical" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground group-hover:text-foreground"}`}
+                    className={`text-[13px] font-bold text-center w-full transition-colors ${ideLayout === "vertical" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500 dark:text-muted-foreground group-hover:text-foreground"}`}
                   >
                     Stacked
                   </span>
@@ -1247,7 +1255,7 @@ export function ProblemIDEClient({
                     />
                   </div>
                   <span
-                    className={`text-[13px] font-bold text-left w-full transition-colors ${ideLayout === "split" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground group-hover:text-foreground"}`}
+                    className={`text-[13px] font-bold text-center w-full transition-colors ${ideLayout === "split" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500 dark:text-muted-foreground group-hover:text-foreground"}`}
                   >
                     Columns
                   </span>
@@ -1256,63 +1264,9 @@ export function ProblemIDEClient({
             </div>
           </PopoverContent>
         </Popover>
-        <Popover open={isResetOpen} onOpenChange={setIsResetOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={running || submitting}
-              title="Reset code"
-              className={cn('h-7', 'w-7', 'text-muted-foreground')}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={(e) => e.currentTarget.blur()}
-            >
-              <IconRefresh className={cn('h-4', 'w-4')} />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className={cn('w-64', 'p-3', 'z-[9999]')}
-            side="bottom"
-            align="end"
-            onOpenAutoFocus={(e) => e.preventDefault()}
-            onCloseAutoFocus={(e) => e.preventDefault()}
-          >
-            <div className={cn('flex', 'flex-col', 'gap-3')}>
-              <span className={cn('text-sm', 'font-medium')}>Reset code?</span>
-              <span className={cn('text-xs', 'text-muted-foreground')}>
-                This will delete your current code and restore the default
-                boilerplate.
-              </span>
-              <div className={cn('flex', 'gap-2', 'justify-end', 'mt-1')}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn('h-7', 'text-xs')}
-                  onClick={() => setIsResetOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className={cn('h-7', 'text-xs')}
-                  onClick={() => {
-                    const boilerplate =
-                      parsedBoilerplates[String(selectedLang.id)] ||
-                      `// Write your ${selectedLang.name} solution here\n`;
-                    setCode(boilerplate);
-                    toast.success("Code reset to boilerplate");
-                    setIsResetOpen(false);
-                  }}
-                >
-                  Reset
-                </Button>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
+
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
           onMouseDown={(e) => e.preventDefault()}
           onClick={(e) => {
@@ -1320,7 +1274,7 @@ export function ProblemIDEClient({
             e.currentTarget.blur();
           }}
           title={isFullScreen ? "Exit Full Screen" : "Full Screen Mode"}
-          className={cn('h-7', 'w-7', 'text-muted-foreground')}
+          className={cn('h-7', 'w-7', 'text-zinc-600 dark:text-muted-foreground', 'hover:text-foreground', 'bg-background')}
         >
           {isFullScreen ? (
             <IconMinimize className={cn('h-4', 'w-4')} />
@@ -1340,45 +1294,45 @@ export function ProblemIDEClient({
         className={cn('flex', 'flex-col', 'h-full', 'w-full')}
       >
         {/* Tabs */}
-        <TabsList className={cn('flex', 'bg-card', 'shrink-0', 'justify-start', 'h-[40px]', 'p-0', 'rounded-none', 'bg-transparent', 'overflow-x-auto', 'scrollbar-hide')}>
+        <TabsList className={cn('flex', 'bg-card', 'shrink-0', 'justify-start', 'h-[40px]', 'p-0', 'rounded-none', 'border-b', 'border-border/50', 'bg-transparent', 'overflow-x-auto', 'scrollbar-hide')}>
           <TabsTrigger
             value="description"
-            className={cn('flex', 'items-center', 'px-4', 'h-full', 'text-[11px]', 'font-bold', 'uppercase', 'tracking-widest', 'transition-colors', 'cursor-pointer', 'data-[state=active]:text-foreground', 'data-[state=active]:border-b-2', 'data-[state=active]:border-emerald-400', 'data-[state=active]:!bg-transparent', 'dark:data-[state=active]:!bg-transparent', 'data-[state=active]:!border-t-transparent', 'data-[state=active]:!border-x-transparent', 'dark:data-[state=active]:!border-t-transparent', 'dark:data-[state=active]:!border-x-transparent', 'data-[state=active]:shadow-none', 'text-muted-foreground/80', 'hover:text-foreground/80', '!rounded-none', 'border-b-2', 'border-transparent', 'focus-visible:ring-0', 'focus-visible:outline-none')}
+            className={cn('flex', 'items-center', 'px-4', 'h-full', 'text-[11px]', 'font-bold', 'uppercase', 'tracking-widest', 'transition-colors', 'cursor-pointer', 'data-[state=active]:text-foreground', 'data-[state=active]:border-b-2', 'data-[state=active]:border-foreground', 'data-[state=active]:!bg-transparent', 'dark:data-[state=active]:!bg-transparent', 'data-[state=active]:!border-t-transparent', 'data-[state=active]:!border-x-transparent', 'dark:data-[state=active]:!border-t-transparent', 'dark:data-[state=active]:!border-x-transparent', 'data-[state=active]:shadow-none', 'text-zinc-550 dark:text-muted-foreground/80', 'hover:text-foreground/80', '!rounded-none', 'border-b-2', 'border-transparent', 'focus-visible:ring-0', 'focus-visible:outline-none')}
           >
-            <IconFileDescription className={cn('h-4', 'w-4', 'mr-1.5')} /> Description
+            <IconFileDescription className={cn('h-3.5', 'w-3.5', 'mr-1.5')} /> Description
           </TabsTrigger>
           {(activeTab === "submission_result" ||
             submitResult ||
             submitting) && (
-            <TabsTrigger
-              value="submission_result"
-              className={cn('px-4', 'h-full', 'text-[11px]', 'font-bold', 'uppercase', 'tracking-widest', 'transition-colors', 'cursor-pointer', 'flex', 'items-center', 'gap-1.5', 'data-[state=active]:text-foreground', 'data-[state=active]:border-b-2', 'data-[state=active]:border-emerald-400', 'data-[state=active]:!bg-transparent', 'dark:data-[state=active]:!bg-transparent', 'data-[state=active]:!border-t-transparent', 'data-[state=active]:!border-x-transparent', 'dark:data-[state=active]:!border-t-transparent', 'dark:data-[state=active]:!border-x-transparent', 'data-[state=active]:shadow-none', 'text-muted-foreground/80', 'hover:text-foreground/80', '!rounded-none', 'border-b-2', 'border-transparent', 'focus-visible:ring-0', 'focus-visible:outline-none')}
-            >
-              {submitting ? (
-                <IconRefresh className={cn('h-3.5', 'w-3.5', 'text-blue-400', 'animate-spin')} />
-              ) : submitResult?.status === "Accepted" ? (
-                <IconSparkles className={cn('h-3.5', 'w-3.5', 'text-emerald-400')} />
-              ) : (
-                <IconAlertTriangle className={cn('h-3.5', 'w-3.5', 'text-rose-400')} />
-              )}
-              Submission
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveTab("description");
-                  setSubmitResult(null);
-                }}
-                className={cn('p-0.5', 'hover:bg-muted', 'rounded', 'text-muted-foreground', 'hover:text-foreground', 'shrink-0', 'cursor-pointer', 'ml-1')}
+              <TabsTrigger
+                value="submission_result"
+                className={cn('flex', 'items-center', 'px-4', 'h-full', 'text-[11px]', 'font-bold', 'uppercase', 'tracking-widest', 'transition-colors', 'cursor-pointer', 'data-[state=active]:text-foreground', 'data-[state=active]:border-b-2', 'data-[state=active]:border-foreground', 'data-[state=active]:!bg-transparent', 'dark:data-[state=active]:!bg-transparent', 'data-[state=active]:!border-t-transparent', 'data-[state=active]:!border-x-transparent', 'dark:data-[state=active]:!border-t-transparent', 'dark:data-[state=active]:!border-x-transparent', 'data-[state=active]:shadow-none', 'text-zinc-550 dark:text-muted-foreground/80', 'hover:text-foreground/80', '!rounded-none', 'border-b-2', 'border-transparent', 'focus-visible:ring-0', 'focus-visible:outline-none')}
               >
-                <IconX className={cn('h-3', 'w-3')} />
-              </div>
-            </TabsTrigger>
-          )}
+                {submitting ? (
+                  <IconRefresh className={cn('h-3.5', 'w-3.5', 'text-blue-400', 'animate-spin', 'mr-1.5')} />
+                ) : submitResult?.status === "Accepted" ? (
+                  <IconSparkles className={cn('h-3.5', 'w-3.5', 'text-emerald-400', 'mr-1.5')} />
+                ) : (
+                  <IconAlertTriangle className={cn('h-3.5', 'w-3.5', 'text-rose-400', 'mr-1.5')} />
+                )}
+                Submission
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveTab("description");
+                    setSubmitResult(null);
+                  }}
+                  className={cn('rounded', 'text-zinc-600 dark:text-muted-foreground', 'shrink-0', 'cursor-pointer', 'ml-1')}
+                >
+                  <IconX className={cn('h-3', 'w-3')} />
+                </div>
+              </TabsTrigger>
+            )}
           <TabsTrigger
             value="submissions"
-            className={cn('px-4', 'h-full', 'text-[11px]', 'font-bold', 'uppercase', 'tracking-widest', 'transition-colors', 'cursor-pointer', 'flex', 'items-center', 'gap-1.5', 'data-[state=active]:text-foreground', 'data-[state=active]:border-b-2', 'data-[state=active]:border-emerald-400', 'data-[state=active]:!bg-transparent', 'dark:data-[state=active]:!bg-transparent', 'data-[state=active]:!border-t-transparent', 'data-[state=active]:!border-x-transparent', 'dark:data-[state=active]:!border-t-transparent', 'dark:data-[state=active]:!border-x-transparent', 'data-[state=active]:shadow-none', 'text-muted-foreground/80', 'hover:text-foreground/80', '!rounded-none', 'border-b-2', 'border-transparent', 'focus-visible:ring-0', 'focus-visible:outline-none')}
+            className={cn('flex', 'items-center', 'px-4', 'h-full', 'text-[11px]', 'font-bold', 'uppercase', 'tracking-widest', 'transition-colors', 'cursor-pointer', 'data-[state=active]:text-foreground', 'data-[state=active]:border-b-2', 'data-[state=active]:border-foreground', 'data-[state=active]:!bg-transparent', 'dark:data-[state=active]:!bg-transparent', 'data-[state=active]:!border-t-transparent', 'data-[state=active]:!border-x-transparent', 'dark:data-[state=active]:!border-t-transparent', 'dark:data-[state=active]:!border-x-transparent', 'data-[state=active]:shadow-none', 'text-zinc-550 dark:text-muted-foreground/80', 'hover:text-foreground/80', '!rounded-none', 'border-b-2', 'border-transparent', 'focus-visible:ring-0', 'focus-visible:outline-none')}
           >
-            <IconHistory className={cn('h-3', 'w-3')} /> Submissions (
+            <IconHistory className={cn('h-3.5', 'w-3.5', 'mr-1.5')} /> Submissions (
             {submissions.length})
           </TabsTrigger>
         </TabsList>
@@ -1419,7 +1373,7 @@ export function ProblemIDEClient({
                         {problem.difficulty || "Hard"}
                       </span>
                       {problem.tags && problem.tags.length > 0 && problem.tags.map((tag: string, i: number) => (
-                        <span key={i} className={cn('px-2.5', 'py-0.5', 'bg-muted/50', 'border', 'border-border/50', 'text-muted-foreground', 'rounded-full', 'text-[11px]', 'font-semibold', 'tracking-wide')}>
+                        <span key={i} className={cn('px-2.5', 'py-0.5', 'bg-muted/50', 'border', 'border-border/50', 'text-zinc-600 dark:text-muted-foreground', 'rounded-full', 'text-[11px]', 'font-semibold', 'tracking-wide')}>
                           {tag}
                         </span>
                       ))}
@@ -1427,7 +1381,7 @@ export function ProblemIDEClient({
                   </div>
 
                   {/* Description */}
-                  <div className={cn('text-sm', 'text-foreground/90', 'leading-relaxed', 'mt-4')}>
+                  <div className={cn('text-sm', 'text-zinc-900 dark:text-foreground/90', 'leading-relaxed', 'mt-4')}>
                     <MarkdownDescription content={problem.description} />
                     {/* Sample Test Cases */}
                     {sampleTestCases.length > 0 && (
@@ -1447,7 +1401,7 @@ export function ProblemIDEClient({
                               <p className={cn('text-sm', 'font-bold', 'text-foreground')}>
                                 Example {idx + 1}:
                               </p>
-                              <div className={cn('pl-3', 'border-l-2', 'border-muted-foreground/30', 'py-1.5', 'font-mono', 'text-[13px]', 'text-foreground/90', 'space-y-1.5', 'bg-muted/5', 'rounded-r-md')}>
+                              <div className={cn('pl-3', 'border-l-2', 'border-zinc-300 dark:border-muted-foreground/30', 'py-1.5', 'font-mono', 'text-[13px]', 'text-zinc-900 dark:text-foreground/90', 'space-y-1.5', 'bg-zinc-100/40 dark:bg-muted/5', 'rounded-r-md')}>
                                 <div>
                                   <span className="font-bold">Input: </span>
                                   <span>{formattedInput}</span>
@@ -1457,8 +1411,8 @@ export function ProblemIDEClient({
                                   <span>{tc.expected_output}</span>
                                 </div>
                                 {tc.explanation && (
-                                  <div className="text-muted-foreground/90">
-                                    <span className={cn('font-bold', 'text-foreground/90')}>
+                                  <div className="text-zinc-650 dark:text-muted-foreground/90">
+                                    <span className={cn('font-bold', 'text-zinc-900 dark:text-foreground/90')}>
                                       Explanation:{" "}
                                     </span>
                                     <span>{tc.explanation}</span>
@@ -1475,14 +1429,14 @@ export function ProblemIDEClient({
                       <p className={cn('text-sm', 'font-bold', 'text-foreground')}>
                         Constraints:
                       </p>
-                      <ul className={cn('list-disc', 'pl-5', 'space-y-2', 'text-sm', 'text-foreground/80')}>
+                      <ul className={cn('list-disc', 'pl-5', 'space-y-2', 'text-sm', 'text-zinc-800 dark:text-foreground/80')}>
                         <li>
-                          <code className={cn('px-1.5', 'py-0.5', 'bg-muted/60', 'dark:bg-muted/40', 'rounded-md', 'text-xs', 'font-mono', 'border', 'border-border/50')}>
+                          <code className={cn('px-1.5', 'py-0.5', 'bg-zinc-100 dark:bg-muted/60', 'dark:bg-muted/40', 'rounded-md', 'text-xs', 'font-mono', 'border', 'border-border/50')}>
                             Time Limit: {problem.time_limit}s
                           </code>
                         </li>
                         <li>
-                          <code className={cn('px-1.5', 'py-0.5', 'bg-muted/60', 'dark:bg-muted/40', 'rounded-md', 'text-xs', 'font-mono', 'border', 'border-border/50')}>
+                          <code className={cn('px-1.5', 'py-0.5', 'bg-zinc-100 dark:bg-muted/60', 'dark:bg-muted/40', 'rounded-md', 'text-xs', 'font-mono', 'border', 'border-border/50')}>
                             Memory Limit: {problem.memory_limit}MB
                           </code>
                         </li>
@@ -1490,7 +1444,7 @@ export function ProblemIDEClient({
                           problem.constraints.length > 0 &&
                           problem.constraints.map((c: string, i: number) => (
                             <li key={i}>
-                              <code className={cn('px-1.5', 'py-0.5', 'bg-muted/60', 'dark:bg-muted/40', 'rounded-md', 'text-xs', 'font-mono', 'border', 'border-border/50')}>
+                              <code className={cn('px-1.5', 'py-0.5', 'bg-zinc-100 dark:bg-muted/60', 'dark:bg-muted/40', 'rounded-md', 'text-xs', 'font-mono', 'border', 'border-border/50')}>
                                 {c}
                               </code>
                             </li>
@@ -1545,14 +1499,14 @@ export function ProblemIDEClient({
                                 >
                                   {sub.status}
                                   {canViewCode && (
-                                    <span className={cn('text-[9px]', 'text-muted-foreground/80', 'font-normal', 'group-hover:text-emerald-600', 'dark:group-hover:text-emerald-400', 'transition-colors')}>
+                                    <span className={cn('text-[9px]', 'text-zinc-550 dark:text-muted-foreground/80', 'font-normal', 'group-hover:text-emerald-600', 'dark:group-hover:text-emerald-400', 'transition-colors')}>
                                       {isExpanded
                                         ? "(Hide code)"
                                         : "(View code →)"}
                                     </span>
                                   )}
                                 </p>
-                                <p className={cn('text-[10px]', 'text-muted-foreground/60')}>
+                                <p className={cn('text-[10px]', 'text-zinc-500 dark:text-muted-foreground/60')}>
                                   {sub.passed_count}/{sub.total_count} passed ·{" "}
                                   {LANGUAGES.find(
                                     (l) => l.id === sub.language_id,
@@ -1561,7 +1515,7 @@ export function ProblemIDEClient({
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className={cn('flex', 'items-center', 'gap-3', 'text-[10px]', 'text-muted-foreground/80')}>
+                              <div className={cn('flex', 'items-center', 'gap-3', 'text-[10px]', 'text-zinc-600 dark:text-muted-foreground/80')}>
                                 {sub.runtime !== null && (
                                   <span className={cn('flex', 'items-center', 'gap-0.5')}>
                                     <IconClock className={cn('h-3', 'w-3')} />
@@ -1575,7 +1529,7 @@ export function ProblemIDEClient({
                                   </span>
                                 )}
                               </div>
-                              <p className={cn('text-[9px]', 'text-muted-foreground/40', 'mt-0.5')}>
+                              <p className={cn('text-[9px]', 'text-zinc-500 dark:text-muted-foreground/40', 'mt-0.5')}>
                                 {new Date(sub.created_at).toLocaleString()}
                               </p>
                             </div>
@@ -1583,7 +1537,7 @@ export function ProblemIDEClient({
                           {isExpanded && (
                             <div className={cn('border', 'border-border/60', 'rounded-lg', 'overflow-hidden', 'animate-in', 'slide-in-from-top-1', 'fade-in', 'duration-200', 'shadow-sm', 'mt-1')}>
                               {loadingCode ? (
-                                <div className={cn('p-6', 'text-center', 'text-[10px]', 'uppercase', 'tracking-widest', 'font-bold', 'text-muted-foreground/60', 'animate-pulse', 'bg-muted/20')}>
+                                <div className={cn('p-6', 'text-center', 'text-[10px]', 'uppercase', 'tracking-widest', 'font-bold', 'text-zinc-600 dark:text-zinc-500', 'animate-pulse', 'bg-zinc-100 dark:bg-zinc-900')}>
                                   Loading code...
                                 </div>
                               ) : (
@@ -1654,7 +1608,7 @@ export function ProblemIDEClient({
                   ) : (
                     <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-12', 'gap-2', 'select-none')}>
                       <IconHistory className={cn('h-8', 'w-8', 'text-muted-foreground/20')} />
-                      <p className={cn('text-[10px]', 'text-muted-foreground/40', 'uppercase', 'font-bold', 'tracking-widest')}>
+                      <p className={cn('text-[10px]', 'text-zinc-500 dark:text-muted-foreground/40', 'uppercase', 'font-bold', 'tracking-widest')}>
                         No submissions yet
                       </p>
                     </div>
@@ -1678,7 +1632,7 @@ export function ProblemIDEClient({
                     <p className={cn('text-base', 'font-bold', 'text-emerald-500', 'uppercase', 'tracking-widest', 'shadow-emerald-500')}>
                       Judging Submission...
                     </p>
-                    <p className={cn('text-xs', 'text-muted-foreground/80', 'font-medium')}>
+                    <p className={cn('text-xs', 'text-zinc-600 dark:text-muted-foreground/80', 'font-medium')}>
                       Running against hidden test cases
                     </p>
                   </div>
@@ -1766,15 +1720,15 @@ export function ProblemIDEClient({
                             <span className={cn('text-emerald-500', 'font-extrabold', 'text-lg', 'tracking-tight', 'uppercase', 'flex', 'items-center', 'gap-1.5', 'animate-pulse')}>
                               Accepted
                             </span>
-                            <span className={cn('text-muted-foreground/80', 'text-xs', 'font-semibold')}>
+                            <span className={cn('text-zinc-600 dark:text-muted-foreground/80', 'text-xs', 'font-semibold')}>
                               {submitResult?.passed_count || totalTestCases}/
                               {submitResult?.total_count || totalTestCases}{" "}
                               testcases passed
                             </span>
-                            <span className={cn('text-muted-foreground/40', 'text-[10px]')}>
+                            <span className={cn('text-zinc-500 dark:text-muted-foreground/40', 'text-[10px]')}>
                               •
                             </span>
-                            <span className={cn('text-muted-foreground/75', 'text-[11px]', 'font-medium')}>
+                            <span className={cn('text-zinc-600 dark:text-muted-foreground/75', 'text-[11px]', 'font-medium')}>
                               Time taken:{" "}
                               <span className={cn('text-foreground', 'font-semibold')}>
                                 {elapsedStr}
@@ -1782,7 +1736,7 @@ export function ProblemIDEClient({
                             </span>
                           </div>
 
-                          <div className={cn('flex', 'items-center', 'gap-2', 'text-xs', 'text-muted-foreground')}>
+                          <div className={cn('flex', 'items-center', 'gap-2', 'text-xs', 'text-zinc-600 dark:text-muted-foreground')}>
                             <Avatar className={cn('h-5', 'w-5', 'shrink-0', 'border', 'border-border')}>
                               <AvatarImage src={avatarUrl} alt={displayName} />
                               <AvatarFallback className={cn('bg-indigo-500/10', 'text-indigo-400', 'text-[8px]', 'font-extrabold', 'border', 'border-indigo-500/30')}>
@@ -1800,19 +1754,19 @@ export function ProblemIDEClient({
                       {/* Metrics cards row */}
                       <div className={cn('grid', 'grid-cols-2', 'gap-4', 'select-none')}>
                         {/* Runtime Card */}
-                        <div className={cn('bg-muted/30', 'dark:bg-card/40', 'border', 'border-border/80', 'rounded-2xl', 'p-3', 'flex', 'flex-col', 'gap-1', 'hover:border-indigo-500/20', 'transition-all')}>
-                          <span className={cn('text-muted-foreground/60', 'text-[10px]', 'font-bold', 'uppercase', 'tracking-wider', 'flex', 'items-center', 'gap-1')}>
-                            <IconClock className={cn('h-3.5', 'w-3.5', 'text-indigo-400')} />
+                        <div className={cn('bg-zinc-100/70 dark:bg-zinc-900/45', 'border', 'border-border/60', 'rounded-lg', 'p-3.5', 'flex', 'flex-col', 'gap-1', 'hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors shadow-sm')}>
+                          <span className={cn('text-zinc-500 dark:text-muted-foreground/60', 'text-[10px]', 'font-bold', 'uppercase', 'tracking-wider', 'flex', 'items-center', 'gap-1')}>
+                            <IconClock className={cn('h-3.5', 'w-3.5', 'text-zinc-500 dark:text-muted-foreground/80')} />
                             Runtime
                           </span>
                           <div className={cn('flex', 'items-baseline', 'gap-2')}>
                             <span className={cn('text-foreground', 'font-black', 'text-2xl', 'tracking-tight')}>
                               {runtimeMs}{" "}
-                              <span className={cn('text-xs', 'font-semibold', 'text-muted-foreground')}>
+                              <span className={cn('text-xs', 'font-semibold', 'text-zinc-600 dark:text-muted-foreground')}>
                                 ms
                               </span>
                             </span>
-                            <span className={cn('text-[11px]', 'font-bold', 'text-muted-foreground/80', 'pl-2', 'border-l', 'border-border/60', 'flex', 'items-center', 'gap-1')}>
+                            <span className={cn('text-[11px]', 'font-bold', 'text-zinc-600 dark:text-muted-foreground/80', 'pl-2', 'border-l', 'border-border/60', 'flex', 'items-center', 'gap-1')}>
                               Beats{" "}
                               <span className={cn('text-emerald-500', 'dark:text-emerald-400', 'font-extrabold')}>
                                 {runtimeBeats}%
@@ -1822,19 +1776,19 @@ export function ProblemIDEClient({
                         </div>
 
                         {/* Memory Card */}
-                        <div className={cn('bg-muted/30', 'dark:bg-card/40', 'border', 'border-border/80', 'rounded-2xl', 'p-3', 'flex', 'flex-col', 'gap-1', 'hover:border-indigo-500/20', 'transition-all')}>
-                          <span className={cn('text-muted-foreground/60', 'text-[10px]', 'font-bold', 'uppercase', 'tracking-wider', 'flex', 'items-center', 'gap-1')}>
-                            <IconCpu className={cn('h-3.5', 'w-3.5', 'text-emerald-400')} />
+                        <div className={cn('bg-zinc-100/70 dark:bg-zinc-900/45', 'border', 'border-border/60', 'rounded-lg', 'p-3.5', 'flex', 'flex-col', 'gap-1', 'hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors shadow-sm')}>
+                          <span className={cn('text-zinc-500 dark:text-muted-foreground/60', 'text-[10px]', 'font-bold', 'uppercase', 'tracking-wider', 'flex', 'items-center', 'gap-1')}>
+                            <IconCpu className={cn('h-3.5', 'w-3.5', 'text-zinc-500 dark:text-muted-foreground/80')} />
                             Memory
                           </span>
                           <div className={cn('flex', 'items-baseline', 'gap-2')}>
                             <span className={cn('text-foreground', 'font-black', 'text-2xl', 'tracking-tight')}>
                               {memoryMb.toFixed(2)}{" "}
-                              <span className={cn('text-xs', 'font-semibold', 'text-muted-foreground')}>
+                              <span className={cn('text-xs', 'font-semibold', 'text-zinc-600 dark:text-muted-foreground')}>
                                 MB
                               </span>
                             </span>
-                            <span className={cn('text-[11px]', 'font-bold', 'text-muted-foreground/80', 'pl-2', 'border-l', 'border-border/60', 'flex', 'items-center', 'gap-1')}>
+                            <span className={cn('text-[11px]', 'font-bold', 'text-zinc-600 dark:text-muted-foreground/80', 'pl-2', 'border-l', 'border-border/60', 'flex', 'items-center', 'gap-1')}>
                               Beats{" "}
                               <span className={cn('text-emerald-500', 'dark:text-emerald-400', 'font-extrabold')}>
                                 {memoryBeats}%
@@ -1845,8 +1799,8 @@ export function ProblemIDEClient({
                       </div>
 
                       {/* SVG Distribution Histogram */}
-                      <div className={cn('bg-muted/20', 'dark:bg-card/25', 'border', 'border-border/50', 'rounded-2xl', 'p-3.5', 'space-y-2', 'relative', 'overflow-hidden', 'select-none')}>
-                        <p className={cn('text-[9px]', 'text-muted-foreground/60', 'uppercase', 'tracking-widest', 'font-extrabold')}>
+                      <div className={cn('bg-zinc-100/80 dark:bg-zinc-900/20', 'border', 'border-border/50', 'rounded-lg', 'p-4', 'space-y-2.5', 'relative', 'overflow-hidden', 'select-none')}>
+                        <p className={cn('text-[9px]', 'text-zinc-500 dark:text-muted-foreground/60', 'uppercase', 'tracking-widest', 'font-extrabold')}>
                           Runtime Distribution
                         </p>
 
@@ -1856,30 +1810,6 @@ export function ProblemIDEClient({
                             viewBox="0 0 400 90"
                             preserveAspectRatio="none"
                           >
-                            <defs>
-                              <linearGradient
-                                id="barGrad"
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="1"
-                              >
-                                <stop
-                                  offset="0%"
-                                  stopColor="#10b981"
-                                  stopOpacity="0.8"
-                                />
-                                <stop
-                                  offset="100%"
-                                  stopColor="#047857"
-                                  stopOpacity="0.2"
-                                />
-                              </linearGradient>
-                              <clipPath id="circleClip">
-                                <circle cx="0" cy="-10" r="8" />
-                              </clipPath>
-                            </defs>
-
                             {/* Draw bars */}
                             {heights.map((h, i) => {
                               const barWidth = 8;
@@ -1899,10 +1829,9 @@ export function ProblemIDEClient({
                                     height={height}
                                     rx={1.5}
                                     fill={
-                                      isActive ? "#10b981" : "url(#barGrad)"
+                                      isActive ? "#10b981" : "currentColor"
                                     }
-                                    opacity={isActive ? 1 : 0.22}
-                                    className={cn('transition-all', 'hover:opacity-80', 'cursor-pointer')}
+                                    className={cn('transition-all', 'hover:opacity-80', 'cursor-pointer', isActive ? '' : 'text-zinc-200 dark:text-zinc-800')}
                                   />
 
                                   {/* Avatar indicator pin over active bar */}
@@ -1978,7 +1907,7 @@ export function ProblemIDEClient({
                         </div>
 
                         {/* Ticks underneath histogram */}
-                        <div className={cn('flex', 'justify-between', 'text-[8px]', 'font-mono', 'text-muted-foreground/60', 'px-5', 'select-none', 'pt-0.5', 'border-t', 'border-border/20')}>
+                        <div className={cn('flex', 'justify-between', 'text-[8px]', 'font-mono', 'text-zinc-500 dark:text-muted-foreground/60', 'px-5', 'select-none', 'pt-0.5', 'border-t', 'border-border/20')}>
                           <span>2ms</span>
                           <span>21ms</span>
                           <span>40ms</span>
@@ -1991,32 +1920,47 @@ export function ProblemIDEClient({
                       </div>
 
                       {/* Submitted Code Editor */}
-                      <div className={cn('space-y-2', 'mt-5', 'pt-4', 'border-t', 'border-border/60')}>
-                        <p className={cn('text-[10px]', 'text-muted-foreground/60', 'uppercase', 'tracking-widest', 'font-extrabold', 'select-none')}>
-                          Submitted Code |{" "}
-                          {submitResult?.submitted_language?.name ||
-                            selectedLang.name}
-                        </p>
-                        <div className={cn('h-[240px]', 'border', 'border-border/80', 'rounded-none', 'overflow-hidden', 'bg-background')}>
-                          <Editor
-                            height="100%"
-                            language={
-                              submitResult?.submitted_language?.value ||
-                              selectedLang.value
-                            }
-                            value={submitResult?.submitted_code || code}
-                            theme={monacoTheme}
-                            options={{
-                              readOnly: true,
-                              fontSize: 12,
-                              minimap: { enabled: false },
-                              scrollBeyondLastLine: false,
-                              wordWrap: "on",
-                              automaticLayout: true,
-                              padding: { top: 10, bottom: 10 },
-                              lineNumbersMinChars: 3,
-                            }}
-                          />
+                      <div className={cn('mt-5', 'pt-4', 'border-t', 'border-border/60')}>
+                        <div className={cn('rounded-xl', 'border', 'border-border/60', 'overflow-hidden', 'shadow-sm', 'bg-card')}>
+                          {/* Card Header */}
+                          <div className={cn('flex', 'items-center', 'justify-between', 'px-3', 'py-2', 'bg-muted/40', 'border-b', 'border-border/50', 'select-none')}>
+                            <div className={cn('flex', 'items-center', 'gap-2')}>
+                              <IconCode className={cn('h-3.5', 'w-3.5', 'text-zinc-500 dark:text-muted-foreground/70')} />
+                              <span className={cn('text-[10px]', 'font-extrabold', 'uppercase', 'tracking-widest', 'text-zinc-600 dark:text-muted-foreground/80')}>Submitted Code</span>
+                              <span className={cn('px-2', 'py-0.5', 'rounded-full', 'bg-emerald-500/10', 'border', 'border-emerald-500/20', 'text-emerald-600', 'dark:text-emerald-400', 'text-[10px]', 'font-bold')}>
+                                {submitResult?.submitted_language?.name || selectedLang.name}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => { navigator.clipboard.writeText(submitResult?.submitted_code || code); toast.success('Copied!'); }}
+                              className={cn('flex', 'items-center', 'gap-1', 'px-2', 'py-1', 'rounded-md', 'text-[10px]', 'font-bold', 'text-zinc-500 dark:text-muted-foreground/70', 'hover:text-foreground', 'hover:bg-muted', 'transition-colors')}
+                            >
+                              <IconCopy className={cn('h-3', 'w-3')} />
+                              Copy
+                            </button>
+                          </div>
+                          {/* Editor */}
+                          <div className={cn('h-[240px]', 'overflow-hidden', 'bg-background')}>
+                            <Editor
+                              height="100%"
+                              language={
+                                submitResult?.submitted_language?.value ||
+                                selectedLang.value
+                              }
+                              value={submitResult?.submitted_code || code}
+                              theme={monacoTheme}
+                              options={{
+                                readOnly: true,
+                                fontSize: 12,
+                                minimap: { enabled: false },
+                                scrollBeyondLastLine: false,
+                                wordWrap: "on",
+                                automaticLayout: true,
+                                padding: { top: 10, bottom: 10 },
+                                lineNumbersMinChars: 3,
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2028,7 +1972,7 @@ export function ProblemIDEClient({
                     <h2 className={cn('text-rose-500', 'font-extrabold', 'text-2xl', 'tracking-tight', 'mb-1')}>
                       {submitResult.status}
                     </h2>
-                    <p className={cn('text-muted-foreground/80', 'text-sm', 'font-semibold')}>
+                    <p className={cn('text-zinc-650 dark:text-muted-foreground/80', 'text-sm', 'font-semibold')}>
                       {submitResult.passed_count || 0}/
                       {submitResult.total_count || totalTestCases} test cases
                       passed
@@ -2041,88 +1985,107 @@ export function ProblemIDEClient({
                     submitResult.status === "Runtime Error" ||
                     submitResult.status === "Time Limit Exceeded" ||
                     submitResult.status === "Memory Limit Exceeded") && (
-                    <div className={cn('p-4', 'bg-rose-500/5', 'border', 'border-rose-500/20', 'rounded-xl', 'space-y-2', 'select-text')}>
-                      <p className={cn('text-xs', 'font-bold', 'text-rose-600', 'dark:text-rose-400', 'uppercase', 'tracking-wider', 'flex', 'items-center', 'gap-1.5')}>
-                        <IconAlertTriangle className={cn('h-4', 'w-4')} /> Diagnostics
-                      </p>
-                      <pre className={cn('p-3', 'bg-black/40', 'border', 'border-border/80', 'rounded-lg', 'text-rose-400', 'text-xs', 'font-mono', 'whitespace-pre-wrap', 'max-h-[300px]', 'overflow-y-auto', 'leading-relaxed')}>
-                        {truncateText(
-                          submitResult.failed_test_case_info?.actual ||
+                      <div className={cn('p-4', 'bg-rose-500/5', 'border', 'border-rose-500/20', 'rounded-xl', 'space-y-2', 'select-text')}>
+                        <p className={cn('text-xs', 'font-bold', 'text-rose-600', 'dark:text-rose-400', 'uppercase', 'tracking-wider', 'flex', 'items-center', 'gap-1.5')}>
+                          <IconAlertTriangle className={cn('h-4', 'w-4')} /> Diagnostics
+                        </p>
+                        <pre className={cn('p-3', 'bg-black/40', 'border', 'border-border/80', 'rounded-lg', 'text-rose-400', 'text-xs', 'font-mono', 'whitespace-pre-wrap', 'max-h-[300px]', 'overflow-y-auto', 'leading-relaxed')}>
+                          {truncateText(
+                            submitResult.failed_test_case_info?.actual ||
                             submitResult.compile_output ||
                             submitResult.stderr ||
                             submitResult.status,
-                        )}
-                      </pre>
-                    </div>
-                  )}
+                          )}
+                        </pre>
+                      </div>
+                    )}
 
                   {/* Failed Test Case details if it's Wrong Answer */}
                   {submitResult.status === "Wrong Answer" &&
                     submitResult.failed_test_case_info && (
-                      <div className="space-y-3">
-                        <p className={cn('text-xs', 'font-bold', 'text-foreground', 'uppercase', 'tracking-wider')}>
-                          Failed Test Case
-                        </p>
-                        <div className={cn('p-4', 'border', 'border-border/60', 'rounded-xl', 'bg-card/30', 'space-y-4', 'font-mono', 'text-xs', 'select-text')}>
-                          <div>
-                            <span className={cn('text-[10px]', 'text-muted-foreground/60', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1')}>
-                              Input
-                            </span>
-                            <pre className={cn('p-2', 'bg-muted/40', 'rounded', 'border', 'border-border/30', 'whitespace-pre-wrap', 'text-foreground/90')}>
-                              {submitResult.failed_test_case_info.input}
-                            </pre>
+                      <div className={cn('space-y-2', 'font-mono', 'text-xs', 'select-text')}>
+                        {/* Input */}
+                        <div className={cn('rounded-lg', 'border', 'border-border/50', 'overflow-hidden')}>
+                          <div className={cn('px-3', 'py-1.5', 'bg-muted/40', 'border-b', 'border-border/40', 'select-none')}>
+                            <span className={cn('text-[10px]', 'font-extrabold', 'uppercase', 'tracking-widest', 'text-zinc-500 dark:text-muted-foreground/70')}>Input</span>
                           </div>
-                          <div>
-                            <span className={cn('text-[10px]', 'text-muted-foreground/60', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1')}>
-                              Output
-                            </span>
-                            <pre className={cn('p-2', 'bg-rose-500/10', 'rounded', 'border', 'border-rose-500/20', 'text-rose-400', 'whitespace-pre-wrap', 'font-semibold')}>
-                              {truncateText(
-                                submitResult.failed_test_case_info.actual ||
-                                  "(empty)",
-                              )}
-                            </pre>
+                          <pre className={cn('p-3', 'bg-muted/20', 'dark:bg-zinc-900/30', 'whitespace-pre-wrap', 'text-foreground/90', 'leading-relaxed')}>
+                            {submitResult.failed_test_case_info.input}
+                          </pre>
+                        </div>
+                        {/* Output */}
+                        <div className={cn('rounded-lg', 'border', 'border-rose-500/25', 'overflow-hidden')}>
+                          <div className={cn('px-3', 'py-1.5', 'bg-rose-500/5', 'border-b', 'border-rose-500/20', 'flex', 'items-center', 'gap-1.5', 'select-none')}>
+                            <IconCircleX className={cn('h-3', 'w-3', 'text-rose-500')} />
+                            <span className={cn('text-[10px]', 'font-extrabold', 'uppercase', 'tracking-widest', 'text-rose-600', 'dark:text-rose-400')}>Output</span>
                           </div>
-                          <div>
-                            <span className={cn('text-[10px]', 'text-muted-foreground/60', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1')}>
-                              Expected
-                            </span>
-                            <pre className={cn('p-2', 'bg-emerald-500/10', 'rounded', 'border', 'border-emerald-500/20', 'text-emerald-400', 'whitespace-pre-wrap')}>
-                              {truncateText(
-                                submitResult.failed_test_case_info.expected ||
-                                  "(none)",
-                              )}
-                            </pre>
+                          <pre className={cn('p-3', 'bg-rose-500/5', 'text-rose-600', 'dark:text-rose-400', 'font-semibold', 'whitespace-pre-wrap', 'leading-relaxed')}>
+                            {truncateText(
+                              submitResult.failed_test_case_info.actual ||
+                              "(empty)",
+                            )}
+                          </pre>
+                        </div>
+                        {/* Expected */}
+                        <div className={cn('rounded-lg', 'border', 'border-emerald-500/25', 'overflow-hidden')}>
+                          <div className={cn('px-3', 'py-1.5', 'bg-emerald-500/5', 'border-b', 'border-emerald-500/20', 'flex', 'items-center', 'gap-1.5', 'select-none')}>
+                            <IconCircleCheck className={cn('h-3', 'w-3', 'text-emerald-500')} />
+                            <span className={cn('text-[10px]', 'font-extrabold', 'uppercase', 'tracking-widest', 'text-emerald-600', 'dark:text-emerald-400')}>Expected</span>
                           </div>
+                          <pre className={cn('p-3', 'bg-emerald-500/5', 'text-emerald-700', 'dark:text-emerald-400', 'whitespace-pre-wrap', 'leading-relaxed')}>
+                            {truncateText(
+                              submitResult.failed_test_case_info.expected ||
+                              "(none)",
+                            )}
+                          </pre>
                         </div>
                       </div>
                     )}
 
+
+
                   {/* Submitted Code Editor for reference */}
-                  <div className={cn('space-y-2', 'mt-5', 'pt-4', 'border-t', 'border-border/60')}>
-                    <p className={cn('text-[10px]', 'text-muted-foreground/60', 'uppercase', 'tracking-widest', 'font-extrabold', 'select-none')}>
-                      Submitted Code
-                    </p>
-                    <div className={cn('h-[240px]', 'border', 'border-border/80', 'rounded-none', 'overflow-hidden', 'bg-background')}>
-                      <Editor
-                        height="100%"
-                        language={
-                          submitResult?.submitted_language?.value ||
-                          selectedLang.value
-                        }
-                        value={submitResult?.submitted_code || code}
-                        theme={monacoTheme}
-                        options={{
-                          readOnly: true,
-                          fontSize: 12,
-                          minimap: { enabled: false },
-                          scrollBeyondLastLine: false,
-                          wordWrap: "on",
-                          automaticLayout: true,
-                          padding: { top: 10, bottom: 10 },
-                          lineNumbersMinChars: 3,
-                        }}
-                      />
+                  <div className={cn('mt-5', 'pt-4', 'border-t', 'border-border/60')}>
+                    <div className={cn('rounded-xl', 'border', 'border-border/60', 'overflow-hidden', 'shadow-sm', 'bg-card')}>
+                      {/* Card Header */}
+                      <div className={cn('flex', 'items-center', 'justify-between', 'px-3', 'py-2', 'bg-muted/40', 'border-b', 'border-border/50', 'select-none')}>
+                        <div className={cn('flex', 'items-center', 'gap-2')}>
+                          <IconCode className={cn('h-3.5', 'w-3.5', 'text-zinc-500 dark:text-muted-foreground/70')} />
+                          <span className={cn('text-[10px]', 'font-extrabold', 'uppercase', 'tracking-widest', 'text-zinc-600 dark:text-muted-foreground/80')}>Submitted Code</span>
+                          <span className={cn('px-2', 'py-0.5', 'rounded-full', 'bg-zinc-200/60 dark:bg-zinc-800/60', 'border', 'border-border/50', 'text-zinc-600 dark:text-muted-foreground', 'text-[10px]', 'font-bold')}>
+                            {submitResult?.submitted_language?.name || selectedLang.name}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(submitResult?.submitted_code || code); toast.success('Copied!'); }}
+                          className={cn('flex', 'items-center', 'gap-1', 'px-2', 'py-1', 'rounded-md', 'text-[10px]', 'font-bold', 'text-zinc-500 dark:text-muted-foreground/70', 'hover:text-foreground', 'hover:bg-muted', 'transition-colors')}
+                        >
+                          <IconCopy className={cn('h-3', 'w-3')} />
+                          Copy
+                        </button>
+                      </div>
+                      {/* Editor */}
+                      <div className={cn('h-[240px]', 'overflow-hidden', 'bg-background')}>
+                        <Editor
+                          height="100%"
+                          language={
+                            submitResult?.submitted_language?.value ||
+                            selectedLang.value
+                          }
+                          value={submitResult?.submitted_code || code}
+                          theme={monacoTheme}
+                          options={{
+                            readOnly: true,
+                            fontSize: 12,
+                            minimap: { enabled: false },
+                            scrollBeyondLastLine: false,
+                            wordWrap: "on",
+                            automaticLayout: true,
+                            padding: { top: 10, bottom: 10 },
+                            lineNumbersMinChars: 3,
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2135,35 +2098,89 @@ export function ProblemIDEClient({
   );
   const editorContent = (
     <div className={cn('flex', 'flex-col', 'h-full', 'bg-card', 'overflow-hidden', 'relative')}>
-      <div className={cn('flex', 'items-center', 'bg-card', 'shrink-0', 'select-none', 'h-[40px]')}>
-        <div className={cn('flex', 'h-full')}>
-          <div className={cn('flex', 'items-center', 'h-full', 'gap-1.5', 'px-3', 'text-[11px]', 'font-bold', 'text-foreground', 'relative')}>
-            <IconCode className={cn('h-3.5', 'w-3.5', 'text-emerald-500')} />
-            <span>Code</span>
-            <span className={cn('text-muted-foreground/30', 'mx-0.5')}>|</span>
-            <Select value={selectedLang.value} onValueChange={handleLangChange}>
-              <SelectTrigger className={cn('h-auto', 'p-0', 'm-0', 'border-none', 'shadow-none', 'bg-transparent', 'hover:bg-transparent', 'dark:bg-transparent', 'dark:hover:bg-transparent', 'focus:ring-0', 'focus-visible:ring-0', 'focus-visible:outline-none', 'text-emerald-600', 'dark:text-emerald-400', 'hover:text-emerald-500', 'flex', 'items-center', 'gap-1', 'w-auto', 'text-[11px]')}>
-                <SelectValue placeholder="Language" />
-              </SelectTrigger>
-              <SelectContent
-                position="popper"
-                sideOffset={4}
-                align="start"
-                className={cn('z-[9999]', 'min-w-[120px]')}
-              >
-                {LANGUAGES.map((l) => (
-                  <SelectItem
-                    key={l.id}
-                    value={l.value}
-                    className="font-medium"
-                  >
-                    {l.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <div className={cn('flex', 'items-center', 'justify-between', 'bg-card', 'shrink-0', 'select-none', 'h-[40px]', 'border-b', 'border-border/50', 'px-1')}>
+        <div className={cn('flex', 'items-center', 'h-full', 'gap-1.5', 'px-2', 'text-[11px]', 'font-bold', 'text-foreground')}>
+          <IconCode className={cn('h-3.5', 'w-3.5', 'text-zinc-500 dark:text-muted-foreground/80')} />
+          <span>Code</span>
+          <span className={cn('text-muted-foreground/30', 'mx-0.5')}>|</span>
+          <Select value={selectedLang.value} onValueChange={handleLangChange}>
+            <SelectTrigger className={cn('h-auto', 'p-0', 'm-0', 'border-none', 'shadow-none', 'bg-transparent', 'hover:bg-transparent', 'dark:bg-transparent', 'dark:hover:bg-transparent', 'focus:ring-0', 'focus-visible:ring-0', 'focus-visible:outline-none', 'text-foreground', 'hover:text-foreground/70', 'flex', 'items-center', 'gap-1', 'w-auto', 'text-[11px]', 'font-semibold')}>
+              <SelectValue placeholder="Language" />
+            </SelectTrigger>
+            <SelectContent
+              position="popper"
+              sideOffset={4}
+              align="start"
+              className={cn('z-[9999]', 'min-w-[120px]')}
+            >
+              {LANGUAGES.map((l) => (
+                <SelectItem
+                  key={l.id}
+                  value={l.value}
+                  className="font-medium"
+                >
+                  {l.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+        {/* Reset Code Button */}
+        <Popover open={isResetOpen} onOpenChange={setIsResetOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={running || submitting}
+              title="Reset code to boilerplate"
+              className={cn('h-7', 'px-2', 'text-xs', 'font-semibold', 'text-zinc-600 dark:text-muted-foreground', 'hover:text-foreground', 'bg-background', 'flex', 'items-center', 'gap-1.5', 'shrink-0')}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => e.currentTarget.blur()}
+            >
+              <IconRefresh className={cn('h-3.5', 'w-3.5')} />
+              Reset
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className={cn('w-64', 'p-3', 'z-[9999]')}
+            side="bottom"
+            align="end"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onCloseAutoFocus={(e) => e.preventDefault()}
+          >
+            <div className={cn('flex', 'flex-col', 'gap-3')}>
+              <span className={cn('text-sm', 'font-medium')}>Reset code?</span>
+              <span className={cn('text-xs', 'text-zinc-600 dark:text-muted-foreground')}>
+                This will delete your current code and restore the default boilerplate.
+              </span>
+              <div className={cn('flex', 'gap-2', 'justify-end', 'mt-1')}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn('h-7', 'text-xs')}
+                  onClick={() => setIsResetOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className={cn('h-7', 'text-xs')}
+                  onClick={() => {
+                    const boilerplate =
+                      parsedBoilerplates[String(selectedLang.id)] ||
+                      `// Write your ${selectedLang.name} solution here\n`;
+                    setCode(boilerplate);
+                    toast.success("Code reset to boilerplate");
+                    setIsResetOpen(false);
+                  }}
+                >
+                  Reset
+                </Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
       <div className={cn('flex-1', 'min-h-0', 'relative')}>
         {isTransitioning ? (
@@ -2251,21 +2268,19 @@ export function ProblemIDEClient({
         onValueChange={(val: any) => setActiveOutputTab(val)}
         className={cn('flex', 'flex-col', 'h-full', 'w-full')}
       >
-        <div className={cn('flex', 'items-center', 'justify-between', 'bg-card', 'px-3', 'shrink-0', 'select-none', 'h-[40px]', 'overflow-x-auto', 'scrollbar-hide')}>
+        <div className={cn('flex', 'items-center', 'justify-between', 'bg-card', 'pl-0', 'pr-3', 'shrink-0', 'select-none', 'h-[40px]', 'border-b', 'border-border/50', 'overflow-x-auto', 'scrollbar-hide')}>
           <TabsList className={cn('flex', 'bg-transparent', 'h-full', 'p-0', 'rounded-none', 'justify-start', 'min-w-0')}>
             <TabsTrigger
               value="testcases"
-              className={cn('flex', 'items-center', 'gap-1.5', 'px-4', 'h-full', 'text-[11px]', 'font-semibold', 'transition-all', 'cursor-pointer', 'border-b-2', 'data-[state=active]:text-foreground', 'data-[state=active]:border-emerald-500', 'data-[state=active]:!bg-transparent', 'dark:data-[state=active]:!bg-transparent', 'data-[state=active]:!border-t-transparent', 'data-[state=active]:!border-x-transparent', 'dark:data-[state=active]:!border-t-transparent', 'dark:data-[state=active]:!border-x-transparent', 'data-[state=active]:shadow-none', 'data-[state=active]:font-bold', 'text-muted-foreground', 'border-transparent', 'hover:text-foreground/80', '!rounded-none', 'focus-visible:ring-0', 'focus-visible:outline-none')}
+              className={cn('flex', 'items-center', 'px-4', 'h-full', 'text-[11px]', 'font-bold', 'uppercase', 'tracking-widest', 'transition-colors', 'cursor-pointer', 'data-[state=active]:text-foreground', 'data-[state=active]:border-b-2', 'data-[state=active]:border-foreground', 'data-[state=active]:!bg-transparent', 'dark:data-[state=active]:!bg-transparent', 'data-[state=active]:!border-t-transparent', 'data-[state=active]:!border-x-transparent', 'dark:data-[state=active]:!border-t-transparent', 'dark:data-[state=active]:!border-x-transparent', 'data-[state=active]:shadow-none', 'text-zinc-600 dark:text-muted-foreground/80', 'hover:text-foreground/80', '!rounded-none', 'border-b-2', 'border-transparent', 'focus-visible:ring-0', 'focus-visible:outline-none')}
             >
-              <IconCircleCheck className={cn('h-3.5', 'w-3.5', 'text-emerald-500')} />
-              <span>Testcase</span>
+              <IconCircleCheck className={cn('h-3.5', 'w-3.5', 'mr-1.5', 'text-emerald-500')} /> Testcase
             </TabsTrigger>
             <TabsTrigger
               value="result"
-              className={cn('flex', 'items-center', 'gap-1.5', 'px-4', 'h-full', 'text-[11px]', 'font-semibold', 'transition-all', 'cursor-pointer', 'border-b-2', 'data-[state=active]:text-foreground', 'data-[state=active]:border-emerald-500', 'data-[state=active]:!bg-transparent', 'dark:data-[state=active]:!bg-transparent', 'data-[state=active]:!border-t-transparent', 'data-[state=active]:!border-x-transparent', 'dark:data-[state=active]:!border-t-transparent', 'dark:data-[state=active]:!border-x-transparent', 'data-[state=active]:shadow-none', 'data-[state=active]:font-bold', 'text-muted-foreground', 'border-transparent', 'hover:text-foreground/80', '!rounded-none', 'focus-visible:ring-0', 'focus-visible:outline-none')}
+              className={cn('flex', 'items-center', 'px-4', 'h-full', 'text-[11px]', 'font-bold', 'uppercase', 'tracking-widest', 'transition-colors', 'cursor-pointer', 'data-[state=active]:text-foreground', 'data-[state=active]:border-b-2', 'data-[state=active]:border-foreground', 'data-[state=active]:!bg-transparent', 'dark:data-[state=active]:!bg-transparent', 'data-[state=active]:!border-t-transparent', 'data-[state=active]:!border-x-transparent', 'dark:data-[state=active]:!border-t-transparent', 'dark:data-[state=active]:!border-x-transparent', 'data-[state=active]:shadow-none', 'text-zinc-600 dark:text-muted-foreground/80', 'hover:text-foreground/80', '!rounded-none', 'border-b-2', 'border-transparent', 'focus-visible:ring-0', 'focus-visible:outline-none')}
             >
-              <IconTerminal2 className={cn('h-3.5', 'w-3.5', 'text-muted-foreground')} />
-              <span>Test Result</span>
+              <IconTerminal2 className={cn('h-3.5', 'w-3.5', 'mr-1.5', 'text-zinc-600 dark:text-muted-foreground')} /> Test Result
             </TabsTrigger>
           </TabsList>
           {runResult && (
@@ -2273,7 +2288,7 @@ export function ProblemIDEClient({
               variant="ghost"
               size="icon"
               onClick={handleCopyOutput}
-              className={cn('h-7', 'w-7', 'text-muted-foreground/80', 'hover:text-foreground', 'shrink-0', 'ml-2')}
+              className={cn('h-7', 'w-7', 'text-zinc-650 dark:text-muted-foreground/80', 'hover:text-foreground', 'shrink-0', 'ml-2')}
             >
               {copied ? (
                 <IconCheck className={cn('h-3.5', 'w-3.5', 'text-emerald-400')} />
@@ -2331,7 +2346,7 @@ export function ProblemIDEClient({
                           setActiveTestcaseIndex(customInputs.length);
                         }}
                         title="Add new testcase"
-                        className={cn('h-6', 'w-6', 'text-muted-foreground', 'hover:text-foreground')}
+                        className={cn('h-6', 'w-6', 'text-zinc-550 dark:text-muted-foreground', 'hover:text-foreground')}
                       >
                         <IconPlus className={cn('h-4', 'w-4')} />
                       </Button>
@@ -2365,7 +2380,7 @@ export function ProblemIDEClient({
                         </Button>
                       </div>
                     )}
-                    {renderLeetCodeInput(
+                    {renderInputParams(
                       customInputs[activeTestcaseIndex] || "",
                       getParamNames(),
                       true,
@@ -2384,7 +2399,7 @@ export function ProblemIDEClient({
 
                     {activeTestcaseIndex >= sampleTestCases.length && (
                       <div className={cn('mt-4', 'pt-4', 'border-t', 'border-border/10', 'space-y-1.5', 'text-xs', 'font-mono')}>
-                        <span className={cn('text-[10px]', 'text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'select-none')}>
+                        <span className={cn('text-[10px]', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'select-none')}>
                           Expected Output (Optional) =
                         </span>
                         <input
@@ -2400,14 +2415,14 @@ export function ProblemIDEClient({
                             });
                           }}
                           placeholder="Expected Output (e.g. 2)"
-                          className={cn('w-full', 'p-2.5', 'bg-muted/40', 'hover:bg-muted/65', 'focus:bg-muted/80', 'border', 'border-zinc-200', 'dark:border-border/60', 'rounded-xl', 'text-foreground', 'text-sm', 'font-mono', 'outline-none', 'transition-colors', 'shadow-sm')}
+                          className={cn('w-full', 'px-3', 'py-2', 'bg-zinc-100/80 dark:bg-zinc-900/50', 'border', 'border-border/60', 'rounded-md', 'text-foreground', 'text-sm', 'font-mono', 'outline-none', 'transition-colors', 'focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 shadow-sm')}
                         />
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
-                <p className={cn('text-muted-foreground/40', 'text-[10px]')}>
+                <p className={cn('text-zinc-500 dark:text-muted-foreground/40', 'text-[10px]')}>
                   No sample test cases available.
                 </p>
               )}
@@ -2426,7 +2441,7 @@ export function ProblemIDEClient({
                       <p className={cn('text-xs', 'font-bold', 'text-foreground', 'uppercase', 'tracking-wider')}>
                         Compiling & Running...
                       </p>
-                      <p className={cn('text-[10px]', 'text-muted-foreground/80')}>
+                      <p className={cn('text-[10px]', 'text-zinc-600 dark:text-muted-foreground/80')}>
                         Executing solution against the logiclab sandbox...
                       </p>
                     </div>
@@ -2494,7 +2509,7 @@ export function ProblemIDEClient({
                               </span>
                             </div>
                             {result.time && (
-                              <span className={cn('text-[10px]', 'text-muted-foreground', 'font-mono')}>
+                              <span className={cn('text-[10px]', 'text-zinc-600 dark:text-muted-foreground', 'font-mono')}>
                                 {result.time}s
                               </span>
                             )}
@@ -2512,7 +2527,7 @@ export function ProblemIDEClient({
                       );
                     }
 
-                    // Interactive Case outcome visualizer (Standard LeetCode Accepted/Wrong Answer view)
+                    // Interactive Case outcome visualizer (Standard Accepted/Wrong Answer view)
                     const activeCase =
                       result.cases[selectedCaseIndex] || result.cases[0];
                     if (!activeCase) return null;
@@ -2541,14 +2556,14 @@ export function ProblemIDEClient({
                             >
                               {isAllPassed ? "Accepted" : "Wrong Answer"}
                             </span>
-                            <span className={cn('text-muted-foreground/80', 'text-[11px]', 'font-semibold')}>
+                            <span className={cn('text-zinc-600 dark:text-muted-foreground/80', 'text-[11px]', 'font-semibold')}>
                               {passedCount}/{totalCount} testcases passed
                             </span>
-                            <span className={cn('text-muted-foreground/60', 'text-[10px]', 'font-medium', 'border-l', 'border-border/40', 'pl-2', 'ml-1')}>
+                            <span className={cn('text-zinc-500 dark:text-muted-foreground/60', 'text-[10px]', 'font-medium', 'border-l', 'border-border/40', 'pl-2', 'ml-1')}>
                               Runtime: {runtimeDisplay}
                             </span>
                           </div>
-                          <div className={cn('text-[10px]', 'text-muted-foreground', 'font-medium', 'flex', 'items-center', 'gap-1.5')}>
+                          <div className={cn('text-[10px]', 'text-zinc-600 dark:text-muted-foreground', 'font-medium', 'flex', 'items-center', 'gap-1.5')}>
                             <IconCpu className={cn('h-3.5', 'w-3.5', 'text-emerald-400')} />
                             {memoryDisplay}
                           </div>
@@ -2563,15 +2578,14 @@ export function ProblemIDEClient({
                               <button
                                 key={index}
                                 onClick={() => setSelectedCaseIndex(index)}
-                                className={`flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${
-                                  isSelected
-                                    ? isPassed
-                                      ? "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
-                                      : "bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border-rose-500/30"
-                                    : isPassed
-                                      ? "bg-transparent text-emerald-600/80 dark:text-emerald-400/80 border-transparent hover:bg-emerald-500/5"
-                                      : "bg-transparent text-rose-600/80 dark:text-rose-400/80 border-transparent hover:bg-rose-500/5"
-                                }`}
+                                className={`flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${isSelected
+                                  ? isPassed
+                                    ? "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+                                    : "bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border-rose-500/30"
+                                  : isPassed
+                                    ? "bg-transparent text-emerald-600/80 dark:text-emerald-400/80 border-transparent hover:bg-emerald-500/5"
+                                    : "bg-transparent text-rose-600/80 dark:text-rose-400/80 border-transparent hover:bg-rose-500/5"
+                                  }`}
                               >
                                 {isPassed ? (
                                   <IconCheck className={cn('h-3.5', 'w-3.5', 'text-emerald-600', 'dark:text-emerald-400', 'shrink-0', 'stroke-[3]')} />
@@ -2587,17 +2601,17 @@ export function ProblemIDEClient({
                         {/* Case Details (Input, Output, Expected) */}
                         <div className={cn('space-y-4', 'select-text', 'font-mono', 'mt-2')}>
                           <div>
-                            <span className={cn('text-xs', 'text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
+                            <span className={cn('text-xs', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
                               Input
                             </span>
-                            {renderLeetCodeInput(
+                            {renderInputParams(
                               activeCase.input || "",
                               getParamNames(),
                             )}
                           </div>
                           <div className={cn('grid', 'grid-cols-1', 'sm:grid-cols-2', 'gap-4')}>
                             <div>
-                              <span className={cn('text-xs', 'text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
+                              <span className={cn('text-xs', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
                                 Output
                               </span>
                               <pre
@@ -2607,7 +2621,7 @@ export function ProblemIDEClient({
                               </pre>
                             </div>
                             <div>
-                              <span className={cn('text-xs', 'text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
+                              <span className={cn('text-xs', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
                                 Expected
                               </span>
                               <pre className={cn('p-2.5', 'bg-muted/40', 'dark:bg-black/40', 'border', 'border-zinc-200', 'dark:border-border/50', 'rounded-xl', 'text-emerald-700', 'dark:text-emerald-400', 'text-sm', 'font-medium', 'whitespace-pre-wrap', 'max-h-32', 'overflow-y-auto', 'leading-relaxed')}>
@@ -2622,7 +2636,7 @@ export function ProblemIDEClient({
                 ) : (
                   <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'h-full', 'gap-1.5', 'select-none', 'my-auto')}>
                     <IconTerminal2 className={cn('h-6', 'w-6', 'text-muted-foreground/20')} />
-                    <p className={cn('text-[10px]', 'text-muted-foreground/40', 'uppercase', 'font-bold', 'tracking-widest')}>
+                    <p className={cn('text-[10px]', 'text-zinc-550 dark:text-muted-foreground/40', 'uppercase', 'font-bold', 'tracking-widest')}>
                       Run your code to see results
                     </p>
                   </div>
@@ -2645,167 +2659,185 @@ export function ProblemIDEClient({
           : "h-[100dvh] relative",
       )}
     >
-      {topNavbarContent}
-      <div className={cn('flex-1', 'pt-0', 'px-2', 'pb-2', 'min-h-0', 'overflow-hidden')}>
-        {!isMounted ? (
-          <div className={cn('w-full', 'h-full', 'bg-card', 'rounded-md', 'border', 'border-border/40', 'animate-pulse')} />
-        ) : (
-          <>
-            {ideLayout === "standard" && (
-              <PanelGroup
-            id="standard-layout"
-            orientation="horizontal"
-          >
-            {/* LEFT PANEL: Description/Submissions */}
-            <Panel
-              id="sidebar-standard"
-              defaultSize={45}
-              minSize={25}
-              className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/40', 'overflow-hidden', 'shadow-sm')}
-            >
-              {leftPanelContent}
-            </Panel>
+      {/* Mobile/Tablet Screen Warning Panel */}
+      <div className="flex md:hidden flex-1 items-center justify-center p-6 bg-zinc-100 dark:bg-zinc-950">
+        <Empty className="border-0 max-w-sm">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <IconDeviceLaptop />
+            </EmptyMedia>
+            <EmptyTitle>Desktop Only Feature</EmptyTitle>
+            <EmptyDescription>
+              This functionality is available only on large screen devices like a laptop. We are working on our Android app, and mobile functionality will be coming soon!
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </div>
 
-            <PanelResizeHandle
-              id="resize-1"
-              className={cn('w-1', 'rounded-full', 'transition-colors', 'bg-transparent', 'hover:bg-emerald-500', 'cursor-col-resize')}
-            />
-
-            {/* RIGHT PANEL: Editor + Output */}
-            <Panel
-              id="editor-container-standard"
-              defaultSize={55}
-              minSize={30}
-              className={cn('flex', 'flex-col', 'min-h-0')}
-            >
-              <PanelGroup
-                id="right-group-standard"
-                orientation="vertical"
-
-              >
-                <Panel
-                  id="editor-standard"
-                  defaultSize={55}
-                  minSize={20}
-                  className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/40', 'overflow-hidden', 'shadow-sm')}
+      {/* Large Screen Desktop IDE */}
+      <div className="hidden md:flex flex-col flex-1 min-h-0 overflow-hidden">
+        {topNavbarContent}
+        <div className={cn('flex-1', 'pt-0', 'px-2', 'pb-2', 'min-h-0', 'overflow-hidden')}>
+          {!isMounted ? (
+            <div className={cn('w-full', 'h-full', 'bg-card', 'rounded-md', 'border', 'border-border/40', 'animate-pulse')} />
+          ) : (
+            <>
+              {ideLayout === "standard" && (
+                <PanelGroup
+                  id="standard-layout"
+                  orientation="horizontal"
                 >
-                  {editorContent}
-                </Panel>
+                  {/* LEFT PANEL: Description/Submissions */}
+                  <Panel
+                    id="sidebar-standard"
+                    defaultSize={45}
+                    minSize={25}
+                    className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/50', 'overflow-hidden', 'shadow-sm')}
+                  >
+                    {leftPanelContent}
+                  </Panel>
 
-                <PanelResizeHandle
-                  id="resize-2"
-                  className={cn('h-1', 'rounded-full', 'transition-colors', 'bg-transparent', 'hover:bg-emerald-500', 'cursor-row-resize')}
-                />
+                  <PanelResizeHandle
+                    id="resize-1"
+                    className={cn('w-1', 'rounded-full', 'transition-colors', 'bg-transparent', 'hover:bg-zinc-300 dark:hover:bg-zinc-700', 'cursor-col-resize')}
+                  />
 
-                <Panel
-                  id="output-standard"
-                  defaultSize={45}
-                  minSize={10}
-                  className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/40', 'overflow-hidden', 'shadow-sm')}
+                  {/* RIGHT PANEL: Editor + Output */}
+                  <Panel
+                    id="editor-container-standard"
+                    defaultSize={55}
+                    minSize={30}
+                    className={cn('flex', 'flex-col', 'min-h-0')}
+                  >
+                    <PanelGroup
+                      id="right-group-standard"
+                      orientation="vertical"
+
+                    >
+                      <Panel
+                        id="editor-standard"
+                        defaultSize={55}
+                        minSize={20}
+                        className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/50', 'overflow-hidden', 'shadow-sm')}
+                      >
+                        {editorContent}
+                      </Panel>
+
+                      <PanelResizeHandle
+                        id="resize-2"
+                        className={cn('h-1', 'rounded-full', 'transition-colors', 'bg-transparent', 'hover:bg-zinc-300 dark:hover:bg-zinc-700', 'cursor-row-resize')}
+                      />
+
+                      <Panel
+                        id="output-standard"
+                        defaultSize={45}
+                        minSize={10}
+                        className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/50', 'overflow-hidden', 'shadow-sm')}
+                      >
+                        {outputContent}
+                      </Panel>
+                    </PanelGroup>
+                  </Panel>
+                </PanelGroup>
+              )}
+
+              {ideLayout === "split" && (
+                <PanelGroup
+                  id="split-layout"
+                  orientation="horizontal"
+
                 >
-                  {outputContent}
-                </Panel>
-              </PanelGroup>
-            </Panel>
-          </PanelGroup>
-        )}
+                  <Panel
+                    id="sidebar-split"
+                    defaultSize={30}
+                    minSize={20}
+                    className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/50', 'overflow-hidden', 'shadow-sm')}
+                  >
+                    {leftPanelContent}
+                  </Panel>
+                  <PanelResizeHandle
+                    id="resize-3"
+                    className={cn('w-1', 'rounded-full', 'transition-colors', 'bg-transparent', 'hover:bg-zinc-300 dark:hover:bg-zinc-700', 'cursor-col-resize')}
+                  />
 
-        {ideLayout === "split" && (
-          <PanelGroup
-            id="split-layout"
-            orientation="horizontal"
+                  <Panel
+                    id="editor-split"
+                    defaultSize={40}
+                    minSize={20}
+                    className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/50', 'overflow-hidden', 'shadow-sm')}
+                  >
+                    {editorContent}
+                  </Panel>
+                  <PanelResizeHandle
+                    id="resize-4"
+                    className={cn('w-1', 'rounded-full', 'transition-colors', 'bg-transparent', 'hover:bg-zinc-300 dark:hover:bg-zinc-700', 'cursor-col-resize')}
+                  />
 
-          >
-            <Panel
-              id="sidebar-split"
-              defaultSize={30}
-              minSize={20}
-              className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/40', 'overflow-hidden', 'shadow-sm')}
-            >
-              {leftPanelContent}
-            </Panel>
-            <PanelResizeHandle
-              id="resize-3"
-              className={cn('w-1', 'rounded-full', 'transition-colors', 'bg-transparent', 'hover:bg-emerald-500', 'cursor-col-resize')}
-            />
+                  <Panel
+                    id="output-split"
+                    defaultSize={30}
+                    minSize={20}
+                    className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/50', 'overflow-hidden', 'shadow-sm')}
+                  >
+                    {outputContent}
+                  </Panel>
+                </PanelGroup>
+              )}
 
-            <Panel
-              id="editor-split"
-              defaultSize={40}
-              minSize={20}
-              className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/40', 'overflow-hidden', 'shadow-sm')}
-            >
-              {editorContent}
-            </Panel>
-            <PanelResizeHandle
-              id="resize-4"
-              className={cn('w-1', 'rounded-full', 'transition-colors', 'bg-transparent', 'hover:bg-emerald-500', 'cursor-col-resize')}
-            />
-
-            <Panel
-              id="output-split"
-              defaultSize={30}
-              minSize={20}
-              className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/40', 'overflow-hidden', 'shadow-sm')}
-            >
-              {outputContent}
-            </Panel>
-          </PanelGroup>
-        )}
-
-        {ideLayout === "vertical" && (
-          <PanelGroup
-            id="vertical-layout"
-            orientation="vertical"
-          >
-            <Panel
-              id="sidebar-vertical"
-              defaultSize={40}
-              minSize={20}
-              className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/40', 'overflow-hidden', 'shadow-sm')}
-            >
-              {leftPanelContent}
-            </Panel>
-            <PanelResizeHandle
-              id="resize-5"
-              className={cn('h-1', 'rounded-full', 'transition-colors', 'bg-transparent', 'hover:bg-emerald-500', 'cursor-row-resize')}
-            />
-            <Panel
-              id="bottom-container-vertical"
-              defaultSize={60}
-              minSize={30}
-              className={cn('flex', 'flex-col', 'min-h-0')}
-            >
-              <PanelGroup
-                id="bottom-group-vertical"
-                orientation="horizontal"
-              >
-                <Panel
-                  id="editor-vertical"
-                  defaultSize={50}
-                  minSize={20}
-                  className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/40', 'overflow-hidden', 'shadow-sm')}
+              {ideLayout === "vertical" && (
+                <PanelGroup
+                  id="vertical-layout"
+                  orientation="vertical"
                 >
-                  {editorContent}
-                </Panel>
-                <PanelResizeHandle
-                  id="resize-6"
-                  className={cn('w-1', 'rounded-full', 'transition-colors', 'bg-transparent', 'hover:bg-emerald-500', 'cursor-col-resize')}
-                />
-                <Panel
-                  id="output-vertical"
-                  defaultSize={50}
-                  minSize={20}
-                  className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/40', 'overflow-hidden', 'shadow-sm')}
-                >
-                  {outputContent}
-                </Panel>
-              </PanelGroup>
-            </Panel>
-          </PanelGroup>
-        )}
-          </>
-        )}
+                  <Panel
+                    id="sidebar-vertical"
+                    defaultSize={40}
+                    minSize={20}
+                    className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/50', 'overflow-hidden', 'shadow-sm')}
+                  >
+                    {leftPanelContent}
+                  </Panel>
+                  <PanelResizeHandle
+                    id="resize-5"
+                    className={cn('h-1', 'rounded-full', 'transition-colors', 'bg-transparent', 'hover:bg-zinc-300 dark:hover:bg-zinc-700', 'cursor-row-resize')}
+                  />
+                  <Panel
+                    id="bottom-container-vertical"
+                    defaultSize={60}
+                    minSize={30}
+                    className={cn('flex', 'flex-col', 'min-h-0')}
+                  >
+                    <PanelGroup
+                      id="bottom-group-vertical"
+                      orientation="horizontal"
+                    >
+                      <Panel
+                        id="editor-vertical"
+                        defaultSize={50}
+                        minSize={20}
+                        className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/50', 'overflow-hidden', 'shadow-sm')}
+                      >
+                        {editorContent}
+                      </Panel>
+                      <PanelResizeHandle
+                        id="resize-6"
+                        className={cn('w-1', 'rounded-full', 'transition-colors', 'bg-transparent', 'hover:bg-zinc-300 dark:hover:bg-zinc-700', 'cursor-col-resize')}
+                      />
+                      <Panel
+                        id="output-vertical"
+                        defaultSize={50}
+                        minSize={20}
+                        className={cn('flex', 'flex-col', 'min-h-0', 'rounded-md', 'border', 'border-border/50', 'overflow-hidden', 'shadow-sm')}
+                      >
+                        {outputContent}
+                      </Panel>
+                    </PanelGroup>
+                  </Panel>
+                </PanelGroup>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* PROBLEM LIST DRAWER */}
@@ -2829,14 +2861,14 @@ export function ProblemIDEClient({
             <IconList className={cn('h-5', 'w-5')} /> Problem List
           </div>
           <div className={cn('flex', 'items-center', 'gap-3')}>
-            <span className={cn('text-xs', 'font-semibold', 'text-muted-foreground', 'tracking-wide', 'font-normal')}>
+            <span className={cn('text-xs', 'font-semibold', 'text-zinc-600 dark:text-muted-foreground', 'tracking-wide', 'font-normal')}>
               {problemList.filter((p) => p.isSolved).length}/
               {problemList.length} Solved
             </span>
             <Button
               variant="ghost"
               size="icon"
-              className={cn('h-6', 'w-6', 'rounded-full', 'text-muted-foreground', 'hover:text-foreground')}
+              className={cn('h-6', 'w-6', 'rounded-full', 'text-zinc-600 dark:text-muted-foreground', 'hover:text-foreground')}
               onClick={() => setIsProblemListOpen(false)}
             >
               <IconX className={cn('h-4', 'w-4')} />
@@ -2846,7 +2878,7 @@ export function ProblemIDEClient({
 
         <div className={cn('p-3', 'border-b', 'border-border/60', 'shrink-0', 'bg-muted/20', 'flex', 'flex-col', 'gap-2')}>
           <div className={cn('relative', 'w-full')}>
-            <IconSearch className={cn('absolute', 'left-2.5', 'top-1/2', '-translate-y-1/2', 'h-4', 'w-4', 'text-muted-foreground')} />
+            <IconSearch className={cn('absolute', 'left-2.5', 'top-1/2', '-translate-y-1/2', 'h-4', 'w-4', 'text-zinc-500 dark:text-muted-foreground')} />
             <input
               type="text"
               placeholder="Search by title or ID..."
@@ -2902,7 +2934,7 @@ export function ProblemIDEClient({
             {isLoadingProblems ? (
               <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-20', 'gap-3')}>
                 <div className={cn('h-6', 'w-6', 'border-2', 'border-emerald-500/20', 'border-t-emerald-500', 'rounded-full', 'animate-spin')} />
-                <span className={cn('text-xs', 'text-muted-foreground', 'font-semibold', 'uppercase', 'tracking-wider')}>
+                <span className={cn('text-xs', 'text-zinc-550 dark:text-muted-foreground', 'font-semibold', 'uppercase', 'tracking-wider')}>
                   Loading...
                 </span>
               </div>
@@ -2932,15 +2964,42 @@ export function ProblemIDEClient({
                     {p.difficulty === "Medium" ? "Med." : p.difficulty}
                   </span>
                 </div>
-              ))        
+              ))
             ) : (
-              <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-20', 'text-muted-foreground', 'text-sm')}>
+              <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-20', 'text-zinc-550 dark:text-muted-foreground', 'text-sm')}>
                 No problems found.
               </div>
             )}
           </div>
         </ScrollArea>
       </div>
+      {/* Submit Confirmation Dialog */}
+      <AlertDialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {hasRun ? "Ready to submit?" : "Haven't run your code yet"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                {!hasRun ? (
+                  <>
+                    <p>You haven't used <span className="font-semibold">Run</span> to test your code against the sample cases.</p>
+                    <p>It's strongly recommended to run and verify your solution before submitting — submissions count toward your attempt history.</p>
+                  </>
+                ) : (
+                  <p>Your code will be judged against all test cases. Make sure you're happy with your solution before submitting.</p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSubmitCode}>Submit</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
   );
 }

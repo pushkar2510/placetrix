@@ -361,7 +361,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                                 className={cn(
                                   "transition-all duration-200",
                                   isSubActive &&
-                                    "border-l-2 border-primary rounded-l-none pl-1.5 bg-sidebar-accent/50 text-sidebar-accent-foreground font-semibold"
+                                  "border-l-2 border-primary rounded-l-none pl-1.5 bg-sidebar-accent/50 text-sidebar-accent-foreground font-semibold"
                                 )}
                               >
                                 <Link href={subItem.url} onClick={() => setOpenMobile(false)}>
@@ -391,7 +391,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                   className={cn(
                     "transition-all duration-200",
                     isActive &&
-                      "group-data-[state=expanded]/sidebar-wrapper:border-l-2 group-data-[state=expanded]/sidebar-wrapper:border-primary group-data-[state=expanded]/sidebar-wrapper:rounded-l-none group-data-[state=expanded]/sidebar-wrapper:pl-1.5 bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold"
+                    "group-data-[state=expanded]/sidebar-wrapper:border-l-2 group-data-[state=expanded]/sidebar-wrapper:border-primary group-data-[state=expanded]/sidebar-wrapper:rounded-l-none group-data-[state=expanded]/sidebar-wrapper:pl-1.5 bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold"
                   )}
                 >
                   <Link href={item.url} onClick={() => setOpenMobile(false)}>
@@ -436,7 +436,7 @@ export function NavSecondary({
                   className={cn(
                     "transition-all duration-200",
                     isActive &&
-                      "group-data-[state=expanded]/sidebar-wrapper:border-l-2 group-data-[state=expanded]/sidebar-wrapper:border-primary group-data-[state=expanded]/sidebar-wrapper:rounded-l-none group-data-[state=expanded]/sidebar-wrapper:pl-1.5 bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold"
+                    "group-data-[state=expanded]/sidebar-wrapper:border-l-2 group-data-[state=expanded]/sidebar-wrapper:border-primary group-data-[state=expanded]/sidebar-wrapper:rounded-l-none group-data-[state=expanded]/sidebar-wrapper:pl-1.5 bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold"
                   )}
                 >
                   <Link
@@ -499,7 +499,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       {...props}
     >
       {/* ── Header ───────────────────────────────────────── */}
-      <SidebarHeader className="border-b border-sidebar-border/50 pb-3">
+      <SidebarHeader className="border-b border-sidebar-border/50">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -523,7 +523,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       </SidebarHeader>
 
       {/* ── Content ──────────────────────────────────────── */}
-      <SidebarContent className="pt-2">
+      <SidebarContent>
         {mainNav ? (
           <NavMain items={mainNav} />
         ) : (
