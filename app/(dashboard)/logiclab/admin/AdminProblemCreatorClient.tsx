@@ -869,7 +869,10 @@ export function AdminProblemCreatorClient({
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs text-muted-foreground/80 font-mono">#{idx + 1}</span>
-                            <h4 className="text-sm font-semibold text-foreground">{prob.title || <span className="text-rose-500 italic">No Title</span>}</h4>
+                            <h4 className="text-sm font-semibold text-foreground">
+                              {prob.number ? `${prob.number}. ` : ""}
+                              {prob.title || <span className="text-rose-500 italic">No Title</span>}
+                            </h4>
                             <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 border rounded ${
                               prob.difficulty === "Easy" ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/15 dark:border-emerald-500/20" :
                               prob.difficulty === "Medium" ? "text-amber-600 dark:text-amber-400 bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/15 dark:border-amber-500/20" :

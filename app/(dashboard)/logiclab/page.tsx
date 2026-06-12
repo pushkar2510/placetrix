@@ -50,8 +50,8 @@ const getCachedGlobalProblems = unstable_cache(
     
     const { data: problems } = await adminSupabase
       .from("coding_problems")
-      .select("id, title, difficulty, tags, created_at")
-      .order("created_at", { ascending: true })
+      .select("id, number, title, difficulty, tags, created_at")
+      .order("number", { ascending: true })
 
     const { data: stats } = await adminSupabase
       .from("problem_global_stats")
@@ -59,7 +59,7 @@ const getCachedGlobalProblems = unstable_cache(
 
     return { problems: problems || [], stats: stats || [] }
   },
-  ["global-problems-stats-cache-v1"],
+  ["global-problems-stats-cache-v2"],
   { revalidate: 3600 } // Cache for 1 hour
 )
 
@@ -109,6 +109,7 @@ export default async function LogicLabPage(props: {
 
   const enrichedProblems = (problems ?? []).map((p: any) => ({
     id: p.id,
+    number: p.number,
     title: p.title,
     difficulty: p.difficulty as "Easy" | "Medium" | "Hard",
     tags: (p.tags || []) as string[],

@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils"
 
 interface Problem {
   id: string
+  number?: number | null
   title: string
   difficulty: "Easy" | "Medium" | "Hard"
   tags: string[]
@@ -1027,6 +1028,7 @@ export function AdminDashboardClient({
                               {idx + 1}.
                             </TableCell>
                             <TableCell className="px-4 py-3 font-semibold text-foreground/90">
+                              {problem.number ? `${problem.number}. ` : ""}
                               {problem.title}
                             </TableCell>
                             <TableCell className="px-4 py-3 text-center">

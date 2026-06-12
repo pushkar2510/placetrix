@@ -20,8 +20,8 @@ export default async function AdminPage() {
   // ── 1. Fetch all coding problems ──
   const { data: rawProblems } = await (supabase as any)
     .from("coding_problems" as any)
-    .select("id, title, difficulty, tags, created_at")
-    .order("created_at", { ascending: false })
+    .select("id, number, title, difficulty, tags, created_at")
+    .order("number", { ascending: true })
 
   const rawProblemsList: any[] = rawProblems || []
 

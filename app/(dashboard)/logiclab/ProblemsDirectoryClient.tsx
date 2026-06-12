@@ -65,6 +65,7 @@ import { cn } from "@/lib/utils"
 
 interface Problem {
   id: string
+  number?: number | null
   title: string
   difficulty: "Easy" | "Medium" | "Hard"
   tags: string[]

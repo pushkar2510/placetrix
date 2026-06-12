@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { redirect, notFound } from "next/navigation"
 import { ProblemIDEClient } from "./ProblemIDEClient"
+import { getCachedGlobalProblemsList } from "./actions"
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -63,26 +64,19 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
     .order("created_at", { ascending: false })
     .limit(20)
 
-  // Fetch the previous problem
-  const { data: prevData } = await (supabase as any)
-    .from("coding_problems")
-    .select("id")
-    .lt("created_at", problem.created_at)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single()
-
-  // Fetch the next problem
-  const { data: nextData } = await (supabase as any)
-    .from("coding_problems")
-    .select("id")
-    .gt("created_at", problem.created_at)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .single()
-
-  const prevProblemId = prevData?.id || null
-  const nextProblemId = nextData?.id || null
+  // Use cached global problem list to find exact previous and next problems
+  const allProblems = await getCachedGlobalProblemsList()
+  const currentIndex = allProblems.findIndex((p: any) => p.id === id)
+  
+  let prevProblemId = null
+  let nextProblemId = null
+  
+  if (currentIndex > 0) {
+    prevProblemId = allProblems[currentIndex - 1].id
+  }
+  if (currentIndex >= 0 && currentIndex < allProblems.length - 1) {
+    nextProblemId = allProblems[currentIndex + 1].id
+  }
 
   return (
     <ProblemIDEClient
