@@ -54,6 +54,7 @@ interface TestCase {
 }
 
 interface ParsedProblem {
+  number?: number
   title: string
   description: string
   difficulty: "Easy" | "Medium" | "Hard"
