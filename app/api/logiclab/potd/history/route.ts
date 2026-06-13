@@ -16,8 +16,8 @@ export async function GET() {
     const todayStr = todayIst.toISOString().split("T")[0]
     
     const { data: historyData, error } = await supabase
-      .from("daily_challenges")
-      .select("date, problem_id, coding_problems ( id, title, difficulty )")
+      .from("logiclab_daily_challenges")
+      .select("date, problem_id, logiclab_problems ( id, title, difficulty )")
       .lt("date", todayStr)
       .order("date", { ascending: false })
       .limit(30)
@@ -34,7 +34,7 @@ export async function GET() {
     const problemIds = historyData.map((h: any) => h.problem_id)
 
     const { data: submissions } = await supabase
-      .from("coding_submissions")
+      .from("logiclab_problem_submissions")
       .select("problem_id, status")
       .eq("user_id", profile.id)
       .in("problem_id", problemIds)

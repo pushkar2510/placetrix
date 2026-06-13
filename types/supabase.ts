@@ -296,109 +296,6 @@ export type Database = {
           },
         ]
       }
-      coding_problems: {
-        Row: {
-          boilerplates: Json
-          created_at: string
-          created_by: string | null
-          description: string
-          difficulty: string
-          driver_codes: Json
-          id: string
-          memory_limit: number | null
-          number: number
-          tags: string[] | null
-          test_cases: Json
-          time_limit: number | null
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          boilerplates?: Json
-          created_at?: string
-          created_by?: string | null
-          description: string
-          difficulty: string
-          driver_codes?: Json
-          id?: string
-          memory_limit?: number | null
-          number?: number
-          tags?: string[] | null
-          test_cases?: Json
-          time_limit?: number | null
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          boilerplates?: Json
-          created_at?: string
-          created_by?: string | null
-          description?: string
-          difficulty?: string
-          driver_codes?: Json
-          id?: string
-          memory_limit?: number | null
-          number?: number
-          tags?: string[] | null
-          test_cases?: Json
-          time_limit?: number | null
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      coding_submissions: {
-        Row: {
-          code: string
-          created_at: string
-          failed_test_case_info: Json | null
-          id: string
-          language_id: number
-          memory: number | null
-          passed_count: number | null
-          problem_id: string
-          runtime: number | null
-          status: string
-          total_count: number | null
-          user_id: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          failed_test_case_info?: Json | null
-          id?: string
-          language_id: number
-          memory?: number | null
-          passed_count?: number | null
-          problem_id: string
-          runtime?: number | null
-          status: string
-          total_count?: number | null
-          user_id: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          failed_test_case_info?: Json | null
-          id?: string
-          language_id?: number
-          memory?: number | null
-          passed_count?: number | null
-          problem_id?: string
-          runtime?: number | null
-          status?: string
-          total_count?: number | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "coding_submissions_problem_id_fkey"
-            columns: ["problem_id"]
-            referencedRelation: "coding_problems"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       course_certificates: {
         Row: {
           course_id: string
@@ -613,31 +510,6 @@ export type Database = {
             foreignKeyName: "courses_instructor_id_fkey"
             columns: ["instructor_id"]
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      daily_challenges: {
-        Row: {
-          created_at: string
-          date: string
-          problem_id: string
-        }
-        Insert: {
-          created_at?: string
-          date: string
-          problem_id: string
-        }
-        Update: {
-          created_at?: string
-          date?: string
-          problem_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "daily_challenges_problem_id_fkey"
-            columns: ["problem_id"]
-            referencedRelation: "coding_problems"
             referencedColumns: ["id"]
           },
         ]
@@ -864,6 +736,171 @@ export type Database = {
           },
         ]
       }
+      logiclab_daily_challenge_submissions: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          problem_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          problem_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          problem_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "potd_completions_problem_id_fkey"
+            columns: ["problem_id"]
+            referencedRelation: "logiclab_problems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "potd_completions_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logiclab_daily_challenges: {
+        Row: {
+          created_at: string
+          date: string
+          problem_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          problem_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          problem_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_challenges_problem_id_fkey"
+            columns: ["problem_id"]
+            referencedRelation: "logiclab_problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logiclab_problem_submissions: {
+        Row: {
+          code: string
+          created_at: string
+          failed_test_case_info: Json | null
+          id: string
+          language_id: number
+          memory: number | null
+          passed_count: number | null
+          problem_id: string
+          runtime: number | null
+          status: string
+          total_count: number | null
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          failed_test_case_info?: Json | null
+          id?: string
+          language_id: number
+          memory?: number | null
+          passed_count?: number | null
+          problem_id: string
+          runtime?: number | null
+          status: string
+          total_count?: number | null
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          failed_test_case_info?: Json | null
+          id?: string
+          language_id?: number
+          memory?: number | null
+          passed_count?: number | null
+          problem_id?: string
+          runtime?: number | null
+          status?: string
+          total_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coding_submissions_problem_id_fkey"
+            columns: ["problem_id"]
+            referencedRelation: "logiclab_problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logiclab_problems: {
+        Row: {
+          boilerplates: Json
+          created_at: string
+          created_by: string | null
+          description: string
+          difficulty: string
+          driver_codes: Json
+          id: string
+          memory_limit: number | null
+          number: number
+          tags: string[] | null
+          test_cases: Json
+          time_limit: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          boilerplates?: Json
+          created_at?: string
+          created_by?: string | null
+          description: string
+          difficulty: string
+          driver_codes?: Json
+          id?: string
+          memory_limit?: number | null
+          number?: number
+          tags?: string[] | null
+          test_cases?: Json
+          time_limit?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          boilerplates?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          difficulty?: string
+          driver_codes?: Json
+          id?: string
+          memory_limit?: number | null
+          number?: number
+          tags?: string[] | null
+          test_cases?: Json
+          time_limit?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       options: {
         Row: {
           id: string
@@ -959,55 +996,16 @@ export type Database = {
           },
         ]
       }
-      potd_completions: {
-        Row: {
-          created_at: string
-          date: string
-          id: string
-          problem_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          date: string
-          id?: string
-          problem_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          date?: string
-          id?: string
-          problem_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "potd_completions_problem_id_fkey"
-            columns: ["problem_id"]
-            referencedRelation: "coding_problems"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "potd_completions_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           account_subtype: string | null
           account_type: string
           avatar_path: string | null
           created_at: string
-          current_potd_streak: number | null
           display_name: string | null
           email: string
           id: string
           is_active: boolean
-          max_potd_streak: number | null
           signature_path: string | null
           updated_at: string
           username: string | null
@@ -1017,12 +1015,10 @@ export type Database = {
           account_type?: string
           avatar_path?: string | null
           created_at?: string
-          current_potd_streak?: number | null
           display_name?: string | null
           email: string
           id: string
           is_active?: boolean
-          max_potd_streak?: number | null
           signature_path?: string | null
           updated_at?: string
           username?: string | null
@@ -1032,12 +1028,10 @@ export type Database = {
           account_type?: string
           avatar_path?: string | null
           created_at?: string
-          current_potd_streak?: number | null
           display_name?: string | null
           email?: string
           id?: string
           is_active?: boolean
-          max_potd_streak?: number | null
           signature_path?: string | null
           updated_at?: string
           username?: string | null
@@ -1708,6 +1702,30 @@ export type Database = {
           },
         ]
       }
+      logiclab_daily_challenge_user_activity: {
+        Row: {
+          activity_date: string | null
+          solved: boolean | null
+          submission_count: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      logiclab_problem_stats: {
+        Row: {
+          accepted_submissions: number | null
+          problem_id: string | null
+          total_submissions: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coding_submissions_problem_id_fkey"
+            columns: ["problem_id"]
+            referencedRelation: "logiclab_problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       placement_management_view: {
         Row: {
           company_name: string | null
@@ -1729,21 +1747,6 @@ export type Database = {
             foreignKeyName: "candidate_profiles_profile_id_fkey"
             columns: ["profile_id"]
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      problem_global_stats: {
-        Row: {
-          accepted_submissions: number | null
-          problem_id: string | null
-          total_submissions: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "coding_submissions_problem_id_fkey"
-            columns: ["problem_id"]
-            referencedRelation: "coding_problems"
             referencedColumns: ["id"]
           },
         ]

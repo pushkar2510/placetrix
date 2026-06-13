@@ -24,7 +24,7 @@ export default async function EditProblemPage({ params }: PageProps) {
 
   const supabase = (await createClient()) as any
   const { data: problem, error } = await (supabase as any)
-    .from("coding_problems")
+    .from("logiclab_problems")
     .select("*")
     .eq("id", id)
     .single()

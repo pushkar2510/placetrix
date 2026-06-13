@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     // Check existing to avoid duplicates
     const { data: existing } = await (supabase as any)
-      .from("coding_problems")
+      .from("logiclab_problems")
       .select("title")
 
     const existingTitles = new Set(
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { data: inserted, error } = await (supabase as any)
-      .from("coding_problems")
+      .from("logiclab_problems")
       .insert(toInsert)
       .select("id, title")
 

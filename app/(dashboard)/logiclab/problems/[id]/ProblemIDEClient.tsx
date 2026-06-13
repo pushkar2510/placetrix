@@ -873,7 +873,7 @@ export function ProblemIDEClient({
     try {
       const supabase = createClient();
       const { data, error } = (await (supabase as any)
-        .from("coding_submissions" as any)
+        .from("logiclab_problem_submissions" as any)
         .select("code, language_id")
         .eq("id", sub.id)
         .single()) as any;

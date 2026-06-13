@@ -232,10 +232,10 @@ export function ProblemsDirectoryClient({
     const now = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000;
     const istTime = new Date(now.getTime() + istOffset);
-    
+
     const nextMidnightIST = new Date(istTime);
     nextMidnightIST.setUTCHours(24, 0, 0, 0);
-    
+
     const diff = nextMidnightIST.getTime() - istTime.getTime();
 
     if (diff <= 0) return "00h 00m 00s";
@@ -448,7 +448,7 @@ export function ProblemsDirectoryClient({
 
       // 1. Cascade delete associated submissions to prevent foreign key errors
       const { error: subError } = await (supabase as any)
-        .from("coding_submissions" as any)
+        .from("logiclab_problem_submissions" as any)
         .delete()
         .eq("problem_id", deletingProblemId)
 
@@ -456,7 +456,7 @@ export function ProblemsDirectoryClient({
 
       // 2. Delete the problem itself
       const { error: probError } = await (supabase as any)
-        .from("coding_problems" as any)
+        .from("logiclab_problems" as any)
         .delete()
         .eq("id", deletingProblemId)
 
@@ -492,7 +492,7 @@ export function ProblemsDirectoryClient({
             variant="ghost"
             size="sm"
             onClick={() => setShowDashboardCards(!showDashboardCards)}
-            className="text-muted-foreground hover:text-foreground gap-1.5 shrink-0 px-2.5 bg-muted/30 hover:bg-muted/60"
+            className="gap-1.5 shrink-0 px-2.5"
             title={showDashboardCards ? "Collapse Dashboard" : "Expand Dashboard"}
           >
             {showDashboardCards ? <ChevronsUp className="size-4" /> : <ChevronsDown className="size-4" />}
@@ -519,389 +519,389 @@ export function ProblemsDirectoryClient({
       {/* Metrics Row */}
       {showDashboardCards && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-top-2 duration-300 min-w-0">
-        {/* Card 1: Progress & Difficulty */}
-        <Card className="min-w-0 flex flex-col relative transition-all hover:border-border/80 py-0">
-          <CardHeader className="flex flex-row items-center justify-between pt-4 pb-1">
-            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Overall Progress
-            </CardTitle>
-            <CardAction className="text-xs text-muted-foreground/80 font-medium select-none">
-              {globalStats.total > 0 ? Math.round((globalStats.solved / globalStats.total) * 100) : 0}% Solved
-            </CardAction>
-          </CardHeader>
+          {/* Card 1: Progress & Difficulty */}
+          <Card className="min-w-0 flex flex-col relative transition-all hover:border-border/80 py-0">
+            <CardHeader className="flex flex-row items-center justify-between pt-4 pb-1">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Overall Progress
+              </CardTitle>
+              <CardAction className="text-xs text-muted-foreground/80 font-medium select-none">
+                {globalStats.total > 0 ? Math.round((globalStats.solved / globalStats.total) * 100) : 0}% Solved
+              </CardAction>
+            </CardHeader>
 
-          <CardContent className="flex flex-col flex-1 justify-between gap-5 pb-4">
-            {/* Main Content: Stats and Chart */}
-            <div className="flex items-center justify-between gap-6 min-w-0 w-full">
-              {/* Stat rows */}
-              <div className="flex flex-col gap-1 flex-1 min-w-0">
-                {/* Easy */}
-                <div
-                  className={cn(
-                    "flex items-center justify-between text-sm cursor-pointer transition-all duration-200 px-2 py-1 rounded-md",
-                    activeDifficulty === "Easy" ? "bg-emerald-500/10 dark:bg-emerald-500/20" : "hover:bg-muted/40"
-                  )}
-                  onMouseEnter={() => setActiveDifficulty("Easy")}
-                  onMouseLeave={() => setActiveDifficulty(null)}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="size-2 rounded-full bg-emerald-500 shrink-0" />
-                    <span className="text-muted-foreground font-medium truncate">Easy</span>
-                  </div>
-                  <div className="flex items-baseline gap-1 shrink-0 font-semibold">
-                    <span className="text-emerald-600 dark:text-emerald-400">{globalStats.easy.solved}</span>
-                    <span className="text-xs text-muted-foreground/50">/ {globalStats.easy.total}</span>
-                  </div>
-                </div>
-
-                {/* Medium */}
-                <div
-                  className={cn(
-                    "flex items-center justify-between text-sm cursor-pointer transition-all duration-200 px-2 py-1 rounded-md",
-                    activeDifficulty === "Medium" ? "bg-amber-500/10 dark:bg-amber-500/20" : "hover:bg-muted/40"
-                  )}
-                  onMouseEnter={() => setActiveDifficulty("Medium")}
-                  onMouseLeave={() => setActiveDifficulty(null)}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="size-2 rounded-full bg-amber-500 shrink-0" />
-                    <span className="text-muted-foreground font-medium truncate">Medium</span>
-                  </div>
-                  <div className="flex items-baseline gap-1 shrink-0 font-semibold">
-                    <span className="text-amber-600 dark:text-amber-400">{globalStats.medium.solved}</span>
-                    <span className="text-xs text-muted-foreground/50">/ {globalStats.medium.total}</span>
-                  </div>
-                </div>
-
-                {/* Hard */}
-                <div
-                  className={cn(
-                    "flex items-center justify-between text-sm cursor-pointer transition-all duration-200 px-2 py-1 rounded-md",
-                    activeDifficulty === "Hard" ? "bg-rose-500/10 dark:bg-rose-500/20" : "hover:bg-muted/40"
-                  )}
-                  onMouseEnter={() => setActiveDifficulty("Hard")}
-                  onMouseLeave={() => setActiveDifficulty(null)}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="size-2 rounded-full bg-rose-500 shrink-0" />
-                    <span className="text-muted-foreground font-medium truncate">Hard</span>
-                  </div>
-                  <div className="flex items-baseline gap-1 shrink-0 font-semibold">
-                    <span className="text-rose-600 dark:text-rose-400">{globalStats.hard.solved}</span>
-                    <span className="text-xs text-muted-foreground/50">/ {globalStats.hard.total}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Concentric ring chart */}
-              <div className="relative size-24 sm:size-28 shrink-0">
-                <svg className="w-full h-full drop-shadow-md" viewBox="0 0 100 100" preserveAspectRatio="xMaxYMid meet">
-                  <defs>
-                    <linearGradient id="easyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#34d399" />
-                      <stop offset="100%" stopColor="#059669" />
-                    </linearGradient>
-                    <linearGradient id="medGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#fbbf24" />
-                      <stop offset="100%" stopColor="#d97706" />
-                    </linearGradient>
-                    <linearGradient id="hardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#fb7185" />
-                      <stop offset="100%" stopColor="#be123c" />
-                    </linearGradient>
-                  </defs>
-                  <ConcentricRing
-                    radius={44}
-                    value={globalStats.easy.solved}
-                    max={globalStats.easy.total}
-                    color="url(#easyGrad)"
-                    trackColor="rgba(16, 185, 129, 0.15)"
-                    isActive={activeDifficulty === "Easy"}
-                    isDimmed={activeDifficulty !== null && activeDifficulty !== "Easy"}
+            <CardContent className="flex flex-col flex-1 justify-between gap-5 pb-4">
+              {/* Main Content: Stats and Chart */}
+              <div className="flex items-center justify-between gap-6 min-w-0 w-full">
+                {/* Stat rows */}
+                <div className="flex flex-col gap-1 flex-1 min-w-0">
+                  {/* Easy */}
+                  <div
+                    className={cn(
+                      "flex items-center justify-between text-sm cursor-pointer transition-all duration-200 px-2 py-1 rounded-md",
+                      activeDifficulty === "Easy" ? "bg-emerald-500/10 dark:bg-emerald-500/20" : "hover:bg-muted/40"
+                    )}
                     onMouseEnter={() => setActiveDifficulty("Easy")}
                     onMouseLeave={() => setActiveDifficulty(null)}
-                  />
-                  <ConcentricRing
-                    radius={31}
-                    value={globalStats.medium.solved}
-                    max={globalStats.medium.total}
-                    color="url(#medGrad)"
-                    trackColor="rgba(245, 158, 11, 0.15)"
-                    isActive={activeDifficulty === "Medium"}
-                    isDimmed={activeDifficulty !== null && activeDifficulty !== "Medium"}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="size-2 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="text-muted-foreground font-medium truncate">Easy</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 shrink-0 font-semibold">
+                      <span className="text-emerald-600 dark:text-emerald-400">{globalStats.easy.solved}</span>
+                      <span className="text-xs text-muted-foreground/50">/ {globalStats.easy.total}</span>
+                    </div>
+                  </div>
+
+                  {/* Medium */}
+                  <div
+                    className={cn(
+                      "flex items-center justify-between text-sm cursor-pointer transition-all duration-200 px-2 py-1 rounded-md",
+                      activeDifficulty === "Medium" ? "bg-amber-500/10 dark:bg-amber-500/20" : "hover:bg-muted/40"
+                    )}
                     onMouseEnter={() => setActiveDifficulty("Medium")}
                     onMouseLeave={() => setActiveDifficulty(null)}
-                  />
-                  <ConcentricRing
-                    radius={18}
-                    value={globalStats.hard.solved}
-                    max={globalStats.hard.total}
-                    color="url(#hardGrad)"
-                    trackColor="rgba(244, 63, 94, 0.15)"
-                    isActive={activeDifficulty === "Hard"}
-                    isDimmed={activeDifficulty !== null && activeDifficulty !== "Hard"}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="size-2 rounded-full bg-amber-500 shrink-0" />
+                      <span className="text-muted-foreground font-medium truncate">Medium</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 shrink-0 font-semibold">
+                      <span className="text-amber-600 dark:text-amber-400">{globalStats.medium.solved}</span>
+                      <span className="text-xs text-muted-foreground/50">/ {globalStats.medium.total}</span>
+                    </div>
+                  </div>
+
+                  {/* Hard */}
+                  <div
+                    className={cn(
+                      "flex items-center justify-between text-sm cursor-pointer transition-all duration-200 px-2 py-1 rounded-md",
+                      activeDifficulty === "Hard" ? "bg-rose-500/10 dark:bg-rose-500/20" : "hover:bg-muted/40"
+                    )}
                     onMouseEnter={() => setActiveDifficulty("Hard")}
                     onMouseLeave={() => setActiveDifficulty(null)}
-                  />
-                </svg>
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="size-2 rounded-full bg-rose-500 shrink-0" />
+                      <span className="text-muted-foreground font-medium truncate">Hard</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 shrink-0 font-semibold">
+                      <span className="text-rose-600 dark:text-rose-400">{globalStats.hard.solved}</span>
+                      <span className="text-xs text-muted-foreground/50">/ {globalStats.hard.total}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Concentric ring chart */}
+                <div className="relative size-24 sm:size-28 shrink-0">
+                  <svg className="w-full h-full drop-shadow-md" viewBox="0 0 100 100" preserveAspectRatio="xMaxYMid meet">
+                    <defs>
+                      <linearGradient id="easyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#34d399" />
+                        <stop offset="100%" stopColor="#059669" />
+                      </linearGradient>
+                      <linearGradient id="medGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#fbbf24" />
+                        <stop offset="100%" stopColor="#d97706" />
+                      </linearGradient>
+                      <linearGradient id="hardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#fb7185" />
+                        <stop offset="100%" stopColor="#be123c" />
+                      </linearGradient>
+                    </defs>
+                    <ConcentricRing
+                      radius={44}
+                      value={globalStats.easy.solved}
+                      max={globalStats.easy.total}
+                      color="url(#easyGrad)"
+                      trackColor="rgba(16, 185, 129, 0.15)"
+                      isActive={activeDifficulty === "Easy"}
+                      isDimmed={activeDifficulty !== null && activeDifficulty !== "Easy"}
+                      onMouseEnter={() => setActiveDifficulty("Easy")}
+                      onMouseLeave={() => setActiveDifficulty(null)}
+                    />
+                    <ConcentricRing
+                      radius={31}
+                      value={globalStats.medium.solved}
+                      max={globalStats.medium.total}
+                      color="url(#medGrad)"
+                      trackColor="rgba(245, 158, 11, 0.15)"
+                      isActive={activeDifficulty === "Medium"}
+                      isDimmed={activeDifficulty !== null && activeDifficulty !== "Medium"}
+                      onMouseEnter={() => setActiveDifficulty("Medium")}
+                      onMouseLeave={() => setActiveDifficulty(null)}
+                    />
+                    <ConcentricRing
+                      radius={18}
+                      value={globalStats.hard.solved}
+                      max={globalStats.hard.total}
+                      color="url(#hardGrad)"
+                      trackColor="rgba(244, 63, 94, 0.15)"
+                      isActive={activeDifficulty === "Hard"}
+                      isDimmed={activeDifficulty !== null && activeDifficulty !== "Hard"}
+                      onMouseEnter={() => setActiveDifficulty("Hard")}
+                      onMouseLeave={() => setActiveDifficulty(null)}
+                    />
+                  </svg>
+                </div>
               </div>
-            </div>
 
-            {/* Clean Horizontal Progress Bar for Total Progress */}
-            <div className="mt-auto select-none flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">Total Solved</span>
-                <span className="font-bold text-foreground">
-                  {globalStats.solved} <span className="text-xs font-normal text-muted-foreground/60">/ {globalStats.total}</span>
-                </span>
+              {/* Clean Horizontal Progress Bar for Total Progress */}
+              <div className="mt-auto select-none flex flex-col gap-2">
+                <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">Total Solved</span>
+                  <span className="font-bold text-foreground">
+                    {globalStats.solved} <span className="text-xs font-normal text-muted-foreground/60">/ {globalStats.total}</span>
+                  </span>
+                </div>
+                <Progress
+                  value={globalStats.total > 0 ? (globalStats.solved / globalStats.total) * 100 : 0}
+                  className="h-1.5 bg-muted/60 [&>div]:bg-blue-500 dark:[&>div]:bg-blue-400"
+                />
               </div>
-              <Progress
-                value={globalStats.total > 0 ? (globalStats.solved / globalStats.total) * 100 : 0}
-                className="h-1.5 bg-muted/60 [&>div]:bg-blue-500 dark:[&>div]:bg-blue-400"
-              />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Card 2: Activity Heat Map */}
-        <Card className="min-w-0 flex flex-col relative transition-all hover:border-border/80 py-0">
-          <CardHeader className="pt-4 pb-1">
-            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Activity Graph
-            </CardTitle>
-          </CardHeader>
+          {/* Card 2: Activity Heat Map */}
+          <Card className="min-w-0 flex flex-col relative transition-all hover:border-border/80 py-0">
+            <CardHeader className="pt-4 pb-1">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Activity Graph
+              </CardTitle>
+            </CardHeader>
 
-          <CardContent className="flex flex-col flex-1 justify-between gap-5 pb-4">
-            {/* Heatmap Grid Container */}
-            <div className="w-full">
-              <div
-                className="grid gap-x-[2px] gap-y-[2px] sm:gap-x-[3px] sm:gap-y-[3px] w-full"
-                style={{
-                  gridTemplateColumns: `auto ${displayColumns.map(c => c === "GAP" ? "minmax(4px, 8px)" : "minmax(0, 1fr)").join(" ")}`
-                }}
-              >
-                {/* Month Labels Row */}
-                <div className=""></div>
-                {(() => {
-                  const blocks: { label: string; span: number }[] = [];
-                  let currentLabel: string | null = null;
-                  let currentSpan = 0;
+            <CardContent className="flex flex-col flex-1 justify-between gap-5 pb-4">
+              {/* Heatmap Grid Container */}
+              <div className="w-full">
+                <div
+                  className="grid gap-x-[2px] gap-y-[2px] sm:gap-x-[3px] sm:gap-y-[3px] w-full"
+                  style={{
+                    gridTemplateColumns: `auto ${displayColumns.map(c => c === "GAP" ? "minmax(4px, 8px)" : "minmax(0, 1fr)").join(" ")}`
+                  }}
+                >
+                  {/* Month Labels Row */}
+                  <div className=""></div>
+                  {(() => {
+                    const blocks: { label: string; span: number }[] = [];
+                    let currentLabel: string | null = null;
+                    let currentSpan = 0;
 
-                  displayColumns.forEach((col, wIdx) => {
-                    const m = visibleMonthLabels[wIdx];
-                    if (m) {
-                      if (currentSpan > 0) {
-                        blocks.push({ label: currentLabel || "", span: currentSpan });
+                    displayColumns.forEach((col, wIdx) => {
+                      const m = visibleMonthLabels[wIdx];
+                      if (m) {
+                        if (currentSpan > 0) {
+                          blocks.push({ label: currentLabel || "", span: currentSpan });
+                        }
+                        currentLabel = m;
+                        currentSpan = 1;
+                      } else {
+                        if (currentLabel === null) {
+                          currentLabel = "";
+                        }
+                        currentSpan += 1;
                       }
-                      currentLabel = m;
-                      currentSpan = 1;
-                    } else {
-                      if (currentLabel === null) {
-                        currentLabel = "";
-                      }
-                      currentSpan += 1;
+                    });
+                    if (currentSpan > 0) {
+                      blocks.push({ label: currentLabel || "", span: currentSpan });
                     }
-                  });
-                  if (currentSpan > 0) {
-                    blocks.push({ label: currentLabel || "", span: currentSpan });
-                  }
 
-                  return blocks.map((block, i) => (
-                    <div key={`month-block-${i}`} className="relative h-5 flex items-end justify-center pb-1" style={{ gridColumn: `span ${block.span}` }}>
-                      {block.label && (
-                        <span className="text-[10px] font-semibold text-muted-foreground/70 whitespace-nowrap">
-                          {block.label}
+                    return blocks.map((block, i) => (
+                      <div key={`month-block-${i}`} className="relative h-5 flex items-end justify-center pb-1" style={{ gridColumn: `span ${block.span}` }}>
+                        {block.label && (
+                          <span className="text-[10px] font-semibold text-muted-foreground/70 whitespace-nowrap">
+                            {block.label}
+                          </span>
+                        )}
+                      </div>
+                    ));
+                  })()}
+
+                  {/* Day Rows */}
+                  {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => (
+                    <React.Fragment key={dayIndex}>
+                      {/* Y-Axis Label */}
+                      <div className="relative w-6 sm:w-7">
+                        <span className="absolute inset-y-0 right-2 flex items-center text-[10px] font-medium text-muted-foreground/50 leading-none">
+                          {dayIndex === 1 ? "Mon" : dayIndex === 3 ? "Wed" : dayIndex === 5 ? "Fri" : ""}
                         </span>
-                      )}
-                    </div>
-                  ));
-                })()}
+                      </div>
+                      {/* Week Cells for this Day */}
+                      {displayColumns.map((col, wIdx) => {
+                        if (col === "GAP") return <div key={`gap-cell-${dayIndex}-${wIdx}`} className="" />;
 
-                {/* Day Rows */}
-                {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => (
-                  <React.Fragment key={dayIndex}>
-                    {/* Y-Axis Label */}
-                    <div className="relative w-6 sm:w-7">
-                      <span className="absolute inset-y-0 right-2 flex items-center text-[10px] font-medium text-muted-foreground/50 leading-none">
-                        {dayIndex === 1 ? "Mon" : dayIndex === 3 ? "Wed" : dayIndex === 5 ? "Fri" : ""}
-                      </span>
-                    </div>
-                    {/* Week Cells for this Day */}
-                    {displayColumns.map((col, wIdx) => {
-                      if (col === "GAP") return <div key={`gap-cell-${dayIndex}-${wIdx}`} className="" />;
+                        const cell = col[dayIndex];
 
-                      const cell = col[dayIndex];
+                        if (!cell || !cell.date) {
+                          return (
+                            <div
+                              key={`cell-${dayIndex}-${wIdx}`}
+                              className={cn("w-full aspect-square bg-transparent pointer-events-none", cellRadiusClass)}
+                            />
+                          );
+                        }
 
-                      if (!cell || !cell.date) {
+                        let cellColor = "bg-muted";
+                        if (cell.status === "attempted") {
+                          cellColor = "bg-rose-400/80 dark:bg-rose-500/60";
+                        } else if (cell.status === "solved") {
+                          if (cell.count === 1) cellColor = "bg-sky-300 dark:bg-sky-800";
+                          else if (cell.count <= 3) cellColor = "bg-sky-400 dark:bg-sky-600";
+                          else if (cell.count <= 6) cellColor = "bg-sky-500 dark:bg-sky-500";
+                          else cellColor = "bg-sky-600 dark:bg-sky-400";
+                        }
+
                         return (
                           <div
                             key={`cell-${dayIndex}-${wIdx}`}
-                            className={cn("w-full aspect-square bg-transparent pointer-events-none", cellRadiusClass)}
+                            className={cn(
+                              "w-full aspect-square cursor-pointer transition-all hover:ring-2 hover:ring-offset-1 hover:ring-foreground/20 dark:hover:ring-offset-background",
+                              cellRadiusClass,
+                              cellColor
+                            )}
+                            title={`${cell.date}: ${cell.count} submissions`}
                           />
                         );
-                      }
-
-                      let cellColor = "bg-muted";
-                      if (cell.status === "attempted") {
-                        cellColor = "bg-rose-400/80 dark:bg-rose-500/60";
-                      } else if (cell.status === "solved") {
-                        if (cell.count === 1) cellColor = "bg-sky-300 dark:bg-sky-800";
-                        else if (cell.count <= 3) cellColor = "bg-sky-400 dark:bg-sky-600";
-                        else if (cell.count <= 6) cellColor = "bg-sky-500 dark:bg-sky-500";
-                        else cellColor = "bg-sky-600 dark:bg-sky-400";
-                      }
-
-                      return (
-                        <div
-                          key={`cell-${dayIndex}-${wIdx}`}
-                          className={cn(
-                            "w-full aspect-square cursor-pointer transition-all hover:ring-2 hover:ring-offset-1 hover:ring-foreground/20 dark:hover:ring-offset-background",
-                            cellRadiusClass,
-                            cellColor
-                          )}
-                          title={`${cell.date}: ${cell.count} submissions`}
-                        />
-                      );
-                    })}
-                  </React.Fragment>
-                ))}
-              </div>
-            </div>
-
-            {/* Footer: Streak and Legend */}
-            <div className="mt-auto flex items-end justify-between gap-4 flex-wrap min-w-0 w-full">
-              {/* Legend */}
-              <div className="flex items-center gap-2 text-[10px] font-medium text-muted-foreground/70 pb-0.5">
-                <span>Less</span>
-                <div className="flex gap-[3px] items-center">
-                  <div className={cn("size-[10px] bg-muted", cellRadiusClass)} title="0 submissions" />
-                  <div className={cn("size-[10px] bg-rose-400/80 dark:bg-rose-500/60", cellRadiusClass)} title="Attempted" />
-                  <div className={cn("size-[10px] bg-sky-300 dark:bg-sky-800", cellRadiusClass)} title="1 submission" />
-                  <div className={cn("size-[10px] bg-sky-400 dark:bg-sky-600", cellRadiusClass)} title="2-3 submissions" />
-                  <div className={cn("size-[10px] bg-sky-500 dark:bg-sky-500", cellRadiusClass)} title="4-6 submissions" />
-                  <div className={cn("size-[10px] bg-sky-600 dark:bg-sky-400", cellRadiusClass)} title="7+ submissions" />
+                      })}
+                    </React.Fragment>
+                  ))}
                 </div>
-                <span>More</span>
               </div>
 
-              {/* Streak */}
-              <div className="flex items-center gap-2.5 shrink-0 text-sm font-semibold cursor-pointer group/streak">
-                <div className="flex items-center gap-1.5 text-foreground">
-                  <Flame className="size-4 text-orange-500 fill-orange-500/10 shrink-0 transition-all duration-300 group-hover/streak:scale-125 group-hover/streak:text-orange-600 dark:group-hover/streak:text-orange-400 group-hover/streak:rotate-12 group-hover/streak:filter group-hover/streak:drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
-                  <span className="transition-colors group-hover/streak:text-orange-500">{streakStats.currentStreak} day streak</span>
+              {/* Footer: Streak and Legend */}
+              <div className="mt-auto flex items-end justify-between gap-4 flex-wrap min-w-0 w-full">
+                {/* Legend */}
+                <div className="flex items-center gap-2 text-[10px] font-medium text-muted-foreground/70 pb-0.5">
+                  <span>Less</span>
+                  <div className="flex gap-[3px] items-center">
+                    <div className={cn("size-[10px] bg-muted", cellRadiusClass)} title="0 submissions" />
+                    <div className={cn("size-[10px] bg-rose-400/80 dark:bg-rose-500/60", cellRadiusClass)} title="Attempted" />
+                    <div className={cn("size-[10px] bg-sky-300 dark:bg-sky-800", cellRadiusClass)} title="1 submission" />
+                    <div className={cn("size-[10px] bg-sky-400 dark:bg-sky-600", cellRadiusClass)} title="2-3 submissions" />
+                    <div className={cn("size-[10px] bg-sky-500 dark:bg-sky-500", cellRadiusClass)} title="4-6 submissions" />
+                    <div className={cn("size-[10px] bg-sky-600 dark:bg-sky-400", cellRadiusClass)} title="7+ submissions" />
+                  </div>
+                  <span>More</span>
                 </div>
-                <span className="text-muted-foreground/30">|</span>
-                <span className="text-xs text-muted-foreground font-medium">
-                  Max: <span className="text-foreground font-semibold transition-colors group-hover/streak:text-foreground/80">{streakStats.maxStreak}</span>
-                </span>
+
+                {/* Streak */}
+                <div className="flex items-center gap-2.5 shrink-0 text-sm font-semibold cursor-pointer group/streak">
+                  <div className="flex items-center gap-1.5 text-foreground">
+                    <Flame className="size-4 text-orange-500 fill-orange-500/10 shrink-0 transition-all duration-300 group-hover/streak:scale-125 group-hover/streak:text-orange-600 dark:group-hover/streak:text-orange-400 group-hover/streak:rotate-12 group-hover/streak:filter group-hover/streak:drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
+                    <span className="transition-colors group-hover/streak:text-orange-500">{streakStats.currentStreak} day streak</span>
+                  </div>
+                  <span className="text-muted-foreground/30">|</span>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Max: <span className="text-foreground font-semibold transition-colors group-hover/streak:text-foreground/80">{streakStats.maxStreak}</span>
+                  </span>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Card 3: POTD Card */}
-        <Card className="group/potd transition-all hover:border-border/80 min-w-0 flex flex-col relative py-0">
-          <CardHeader className="flex flex-row items-center justify-between pt-4 pb-1">
-            <Link href="/problem-of-the-day" className="hover:opacity-80 transition-opacity cursor-pointer">
-              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1 hover:text-orange-500 transition-colors">
-                Problem of the Day <ChevronRight className="size-3" />
-              </CardTitle>
-            </Link>
-            {timeLeft && (
-              <CardAction className="text-xs text-muted-foreground/80 flex items-center gap-1 font-medium select-none">
-                <Clock className="size-3.5" />
-                {timeLeft}
-              </CardAction>
-            )}
-          </CardHeader>
+          {/* Card 3: POTD Card */}
+          <Card className="group/potd transition-all hover:border-border/80 min-w-0 flex flex-col relative py-0">
+            <CardHeader className="flex flex-row items-center justify-between pt-4 pb-1">
+              <Link href="/problem-of-the-day" className="hover:opacity-80 transition-opacity cursor-pointer">
+                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1 hover:text-orange-500 transition-colors">
+                  Problem of the Day <ChevronRight className="size-3" />
+                </CardTitle>
+              </Link>
+              {timeLeft && (
+                <CardAction className="text-xs text-muted-foreground/80 flex items-center gap-1 font-medium select-none">
+                  <Clock className="size-3.5" />
+                  {timeLeft}
+                </CardAction>
+              )}
+            </CardHeader>
 
-          <CardContent className="flex flex-col flex-1 justify-between gap-5 pb-4">
-            <div className="flex flex-col gap-4 min-w-0">
-              {activeChallenge ? (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-bold text-lg sm:text-xl text-foreground leading-snug group-hover/potd:text-primary transition-colors">
-                      {activeChallenge.title}
-                    </h3>
-                    {activeChallenge.solved_status === "Accepted" && (
-                      <CircleCheck className="size-6 text-emerald-500 shrink-0 mt-0.5" />
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground">
-                    {/* Difficulty (clean inline text) */}
-                    {activeChallenge.difficulty && (
-                      <span className={cn(
-                        "font-semibold",
-                        activeChallenge.difficulty === "Easy" ? "text-emerald-600 dark:text-emerald-400" :
-                          activeChallenge.difficulty === "Medium" ? "text-amber-600 dark:text-amber-400" :
-                            "text-rose-600 dark:text-rose-400"
-                      )}>
-                        {activeChallenge.difficulty}
-                      </span>
-                    )}
-
-                    <span>•</span>
-
-                    {/* Acceptance rate */}
-                    {activeChallenge.acceptance_rate !== undefined && activeChallenge.acceptance_rate !== null && (
-                      <>
-                        <span>{activeChallenge.acceptance_rate}% acceptance</span>
-                        <span>•</span>
-                      </>
-                    )}
-
-                    {/* Submissions count */}
-                    <span>{activeChallenge.total_submissions?.toLocaleString() || 0} submissions</span>
-                  </div>
-
-                  {/* Clean Tags Row */}
-                  {activeChallenge.tags && activeChallenge.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-0.5">
-                      {activeChallenge.tags.slice(0, 2).map((t: string) => (
-                        <span key={t} className="text-[11px] bg-muted px-2.5 py-1 rounded-md text-muted-foreground font-medium">
-                          {t}
-                        </span>
-                      ))}
+            <CardContent className="flex flex-col flex-1 justify-between gap-5 pb-4">
+              <div className="flex flex-col gap-4 min-w-0">
+                {activeChallenge ? (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-bold text-lg sm:text-xl text-foreground leading-snug group-hover/potd:text-primary transition-colors">
+                        {activeChallenge.title}
+                      </h3>
+                      {activeChallenge.solved_status === "Accepted" && (
+                        <CircleCheck className="size-6 text-emerald-500 shrink-0 mt-0.5" />
+                      )}
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center text-center gap-2 py-4 text-muted-foreground">
-                  <span className="text-sm font-semibold">No Challenge Available</span>
-                  <span className="text-xs">Check back later for today's puzzle.</span>
-                </div>
-              )}
-            </div>
 
-            {/* Action Button: Minimal Outline Button */}
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full gap-2 py-5 font-semibold text-sm sm:text-base border transition-colors mt-auto",
-                !activeChallenge && "opacity-50 pointer-events-none",
-                activeChallenge?.solved_status === "Accepted"
-                  ? "border-emerald-500/20 text-emerald-600 dark:border-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300"
-                  : "border-orange-500/20 text-orange-600 dark:border-orange-500/10 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 hover:text-orange-700 dark:hover:text-orange-300"
-              )}
-              onClick={() => potd && router.push(`/logiclab/problems/${potd.problem_id}`)}
-              disabled={!potd}
-            >
-              {activeChallenge?.solved_status === "Accepted" ? (
-                <>
-                  Review Challenge
-                  <CircleCheck className="size-[18px] transition-transform duration-300 group-hover/potd:scale-110" />
-                </>
-              ) : (
-                <>
-                  Solve Challenge
-                  <ChevronRight className="size-[18px] transition-transform duration-300 group-hover/potd:translate-x-1" />
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground">
+                      {/* Difficulty (clean inline text) */}
+                      {activeChallenge.difficulty && (
+                        <span className={cn(
+                          "font-semibold",
+                          activeChallenge.difficulty === "Easy" ? "text-emerald-600 dark:text-emerald-400" :
+                            activeChallenge.difficulty === "Medium" ? "text-amber-600 dark:text-amber-400" :
+                              "text-rose-600 dark:text-rose-400"
+                        )}>
+                          {activeChallenge.difficulty}
+                        </span>
+                      )}
+
+                      <span>•</span>
+
+                      {/* Acceptance rate */}
+                      {activeChallenge.acceptance_rate !== undefined && activeChallenge.acceptance_rate !== null && (
+                        <>
+                          <span>{activeChallenge.acceptance_rate}% acceptance</span>
+                          <span>•</span>
+                        </>
+                      )}
+
+                      {/* Submissions count */}
+                      <span>{activeChallenge.total_submissions?.toLocaleString() || 0} submissions</span>
+                    </div>
+
+                    {/* Clean Tags Row */}
+                    {activeChallenge.tags && activeChallenge.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {activeChallenge.tags.slice(0, 2).map((t: string) => (
+                          <span key={t} className="text-[11px] bg-muted px-2.5 py-1 rounded-md text-muted-foreground font-medium">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center gap-2 py-4 text-muted-foreground">
+                    <span className="text-sm font-semibold">No Challenge Available</span>
+                    <span className="text-xs">Check back later for today's puzzle.</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Button: Minimal Outline Button */}
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full gap-2 py-5 font-semibold text-sm sm:text-base border transition-colors mt-auto",
+                  !activeChallenge && "opacity-50 pointer-events-none",
+                  activeChallenge?.solved_status === "Accepted"
+                    ? "border-emerald-500/20 text-emerald-600 dark:border-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300"
+                    : "border-orange-500/20 text-orange-600 dark:border-orange-500/10 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 hover:text-orange-700 dark:hover:text-orange-300"
+                )}
+                onClick={() => potd && router.push(`/logiclab/problems/${potd.problem_id}`)}
+                disabled={!potd}
+              >
+                {activeChallenge?.solved_status === "Accepted" ? (
+                  <>
+                    Review Challenge
+                    <CircleCheck className="size-[18px] transition-transform duration-300 group-hover/potd:scale-110" />
+                  </>
+                ) : (
+                  <>
+                    Solve Challenge
+                    <ChevronRight className="size-[18px] transition-transform duration-300 group-hover/potd:translate-x-1" />
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Main Directory Layout */}
@@ -981,217 +981,217 @@ export function ProblemsDirectoryClient({
           </div>
         )}
 
-              {/* Table */}
-      <div className="rounded-xl border border-border/60 overflow-hidden">
-        <div className="relative">
-          {isPending && (
-            <div className="absolute inset-0 z-50 bg-background/50 backdrop-blur-[1px] flex items-center justify-center min-h-[200px]">
-              <div className="flex flex-col items-center gap-3 rounded-xl border bg-card px-6 py-5 shadow-lg">
-                <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                <span className="text-sm font-medium text-muted-foreground">Loading problems...</span>
-              </div>
-            </div>
-          )}
-
-          <div className={cn("transition-opacity duration-200", isPending && "opacity-40 pointer-events-none")}>
-            {totalCount === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
-                <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center">
-                  <BookOpen className="h-8 w-8 text-muted-foreground/60" />
+        {/* Table */}
+        <div className="rounded-xl border border-border/60 overflow-hidden">
+          <div className="relative">
+            {isPending && (
+              <div className="absolute inset-0 z-50 bg-background/50 backdrop-blur-[1px] flex items-center justify-center min-h-[200px]">
+                <div className="flex flex-col items-center gap-3 rounded-xl border bg-card px-6 py-5 shadow-lg">
+                  <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                  <span className="text-sm font-medium text-muted-foreground">Loading problems...</span>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-lg font-semibold text-foreground">No problems found</p>
-                  <p className="text-sm text-muted-foreground max-w-sm">
-                    We couldn't find any problems matching your current filters. Try adjusting your search or removing some tags.
-                  </p>
-                </div>
-                <Button variant="outline" onClick={() => updateParams({ search: "All", tag: "All", difficulty: "All", tab: "all", page: 1 })} className="mt-2">
-                  Clear all filters
-                </Button>
               </div>
-            ) : (
-              <div className="w-full overflow-x-auto">
-                <Table className="min-w-[800px]">
-                  <TableHeader className="bg-muted/10 h-10">
-                    <TableRow className="hover:bg-transparent border-b-border/60">
-                      <TableHead className="w-[80px] pl-6 text-sm font-medium">Status</TableHead>
-                      <TableHead className="text-sm font-medium">Title</TableHead>
-                      <TableHead className="w-[140px] text-sm font-medium">Difficulty</TableHead>
-                      <TableHead className="w-[180px] text-sm font-medium">Acceptance</TableHead>
-                      <TableHead className="w-[200px] text-sm font-medium">Tags</TableHead>
-                      {isAdmin && <TableHead className="text-right pr-6 w-[120px] text-sm font-medium">Actions</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {problems.map((problem, idx) => (
-                      <TableRow
-                        key={problem.id}
-                        onClick={() => router.push(`/logiclab/problems/${problem.id}`)}
-                        className="group cursor-pointer hover:bg-muted/40 transition-colors h-12 border-b-border/60"
-                      >
-                        {/* Status */}
-                        <TableCell className="pl-6">
-                          {problem.solved_status === "Accepted" ? (
-                            <CircleCheck className="h-5 w-5 text-emerald-500 fill-emerald-50 dark:fill-emerald-950/20" />
-                          ) : problem.solved_status ? (
-                            <CircleDot className="h-5 w-5 text-amber-500 fill-amber-50 dark:fill-amber-950/20" />
-                          ) : (
-                            <div className="h-4 w-4 ml-0.5 rounded-full border-2 border-muted-foreground/30" />
-                          )}
-                        </TableCell>
+            )}
 
-                        {/* Title */}
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm text-muted-foreground/60 font-mono w-6 shrink-0">
-                              {idx + 1 + (activePage - 1) * initialPageSize}.
-                            </span>
-                            <span className="text-base font-medium text-foreground/90 group-hover:text-foreground transition-colors">
-                              {problem.title}
-                            </span>
-                          </div>
-                        </TableCell>
+            <div className={cn("transition-opacity duration-200", isPending && "opacity-40 pointer-events-none")}>
+              {totalCount === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+                  <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center">
+                    <BookOpen className="h-8 w-8 text-muted-foreground/60" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-lg font-semibold text-foreground">No problems found</p>
+                    <p className="text-sm text-muted-foreground max-w-sm">
+                      We couldn't find any problems matching your current filters. Try adjusting your search or removing some tags.
+                    </p>
+                  </div>
+                  <Button variant="outline" onClick={() => updateParams({ search: "All", tag: "All", difficulty: "All", tab: "all", page: 1 })} className="mt-2">
+                    Clear all filters
+                  </Button>
+                </div>
+              ) : (
+                <div className="w-full overflow-x-auto">
+                  <Table className="min-w-[800px]">
+                    <TableHeader className="bg-muted/10 h-10">
+                      <TableRow className="hover:bg-transparent border-b-border/60">
+                        <TableHead className="w-[80px] pl-6 text-sm font-medium">Status</TableHead>
+                        <TableHead className="text-sm font-medium">Title</TableHead>
+                        <TableHead className="w-[140px] text-sm font-medium">Difficulty</TableHead>
+                        <TableHead className="w-[180px] text-sm font-medium">Acceptance</TableHead>
+                        <TableHead className="w-[200px] text-sm font-medium">Tags</TableHead>
+                        {isAdmin && <TableHead className="text-right pr-6 w-[120px] text-sm font-medium">Actions</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {problems.map((problem, idx) => (
+                        <TableRow
+                          key={problem.id}
+                          onClick={() => router.push(`/logiclab/problems/${problem.id}`)}
+                          className="group cursor-pointer hover:bg-muted/40 transition-colors h-12 border-b-border/60"
+                        >
+                          {/* Status */}
+                          <TableCell className="pl-6">
+                            {problem.solved_status === "Accepted" ? (
+                              <CircleCheck className="h-5 w-5 text-emerald-500 fill-emerald-50 dark:fill-emerald-950/20" />
+                            ) : problem.solved_status ? (
+                              <CircleDot className="h-5 w-5 text-amber-500 fill-amber-50 dark:fill-amber-950/20" />
+                            ) : (
+                              <div className="h-4 w-4 ml-0.5 rounded-full border-2 border-muted-foreground/30" />
+                            )}
+                          </TableCell>
 
-                        {/* Difficulty */}
-                        <TableCell>
-                          <Badge
-                            variant="secondary"
-                            className={cn("text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md", DIFFICULTY_COLORS[problem.difficulty])}
-                          >
-                            {problem.difficulty}
-                          </Badge>
-                        </TableCell>
-
-                        {/* Acceptance Rate */}
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-foreground/80">
-                              {problem.acceptance_rate !== null ? `${problem.acceptance_rate}%` : "—"}
-                            </span>
-                            {problem.total_submissions > 0 && (
-                              <span className="text-xs text-muted-foreground/60">
-                                ({problem.total_submissions})
+                          {/* Title */}
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm text-muted-foreground/60 font-mono w-6 shrink-0">
+                                {idx + 1 + (activePage - 1) * initialPageSize}.
                               </span>
-                            )}
-                          </div>
-                        </TableCell>
-
-                        {/* Tags */}
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1.5">
-                            {(problem.tags || []).slice(0, 2).map((tag) => (
-                              <Badge
-                                key={tag}
-                                variant="secondary"
-                                className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted/80 text-muted-foreground/80 hover:bg-muted border-transparent"
-                              >
-                                {tag}
-                              </Badge>
-                            ))}
-                            {(problem.tags || []).length > 2 && (
-                              <Badge
-                                variant="secondary"
-                                className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted/40 text-muted-foreground/60 hover:bg-muted/50 border-transparent"
-                              >
-                                +{(problem.tags || []).length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-
-                        {/* Admin actions */}
-                        {isAdmin && (
-                          <TableCell className="text-right pr-6" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Link
-                                href={`/logiclab/admin/edit/${problem.id}`}
-                                className="p-2 hover:bg-background rounded-md text-muted-foreground hover:text-emerald-500 transition-all cursor-pointer shadow-sm border border-transparent hover:border-border/60"
-                                title="Edit Problem"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Link>
-                              <button
-                                onClick={() => setDeletingProblemId(problem.id)}
-                                className="p-2 hover:bg-background rounded-md text-muted-foreground/70 hover:text-rose-500 transition-all cursor-pointer shadow-sm border border-transparent hover:border-border/60"
-                                title="Delete Problem"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              <span className="text-base font-medium text-foreground/90 group-hover:text-foreground transition-colors">
+                                {problem.title}
+                              </span>
                             </div>
                           </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
 
-            {/* Pagination Footer */}
-            {totalCount > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border/60 bg-muted/5">
-                <div className="text-sm text-muted-foreground">
-                  Showing{" "}
-                  <span className="font-medium text-foreground">
-                    {totalCount === 0 ? 0 : Math.min(totalCount, (activePage - 1) * initialPageSize + 1)}
-                  </span>
-                  {" "}to{" "}
-                  <span className="font-medium text-foreground">{Math.min(totalCount, activePage * initialPageSize)}</span>
-                  {" "}of{" "}
-                  <span className="font-medium text-foreground">{totalCount}</span> problems
+                          {/* Difficulty */}
+                          <TableCell>
+                            <Badge
+                              variant="secondary"
+                              className={cn("text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md", DIFFICULTY_COLORS[problem.difficulty])}
+                            >
+                              {problem.difficulty}
+                            </Badge>
+                          </TableCell>
+
+                          {/* Acceptance Rate */}
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-foreground/80">
+                                {problem.acceptance_rate !== null ? `${problem.acceptance_rate}%` : "—"}
+                              </span>
+                              {problem.total_submissions > 0 && (
+                                <span className="text-xs text-muted-foreground/60">
+                                  ({problem.total_submissions})
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+
+                          {/* Tags */}
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1.5">
+                              {(problem.tags || []).slice(0, 2).map((tag) => (
+                                <Badge
+                                  key={tag}
+                                  variant="secondary"
+                                  className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted/80 text-muted-foreground/80 hover:bg-muted border-transparent"
+                                >
+                                  {tag}
+                                </Badge>
+                              ))}
+                              {(problem.tags || []).length > 2 && (
+                                <Badge
+                                  variant="secondary"
+                                  className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted/40 text-muted-foreground/60 hover:bg-muted/50 border-transparent"
+                                >
+                                  +{(problem.tags || []).length - 2}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+
+                          {/* Admin actions */}
+                          {isAdmin && (
+                            <TableCell className="text-right pr-6" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Link
+                                  href={`/logiclab/admin/edit/${problem.id}`}
+                                  className="p-2 hover:bg-background rounded-md text-muted-foreground hover:text-emerald-500 transition-all cursor-pointer shadow-sm border border-transparent hover:border-border/60"
+                                  title="Edit Problem"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Link>
+                                <button
+                                  onClick={() => setDeletingProblemId(problem.id)}
+                                  className="p-2 hover:bg-background rounded-md text-muted-foreground/70 hover:text-rose-500 transition-all cursor-pointer shadow-sm border border-transparent hover:border-border/60"
+                                  title="Delete Problem"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
+              )}
 
-                <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground whitespace-nowrap">Rows per page</span>
-                    <Select
-                      value={initialPageSize.toString()}
-                      onValueChange={(val) => updateParams({ size: val, page: 1 })}
-                    >
-                      <SelectTrigger className="h-9 w-[80px] bg-background text-sm">
-                        <SelectValue placeholder={initialPageSize.toString()} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[20, 50, 100].map((s) => (
-                          <SelectItem key={s} value={s.toString()} className="text-sm">{s}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              {/* Pagination Footer */}
+              {totalCount > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border/60 bg-muted/5">
+                  <div className="text-sm text-muted-foreground">
+                    Showing{" "}
+                    <span className="font-medium text-foreground">
+                      {totalCount === 0 ? 0 : Math.min(totalCount, (activePage - 1) * initialPageSize + 1)}
+                    </span>
+                    {" "}to{" "}
+                    <span className="font-medium text-foreground">{Math.min(totalCount, activePage * initialPageSize)}</span>
+                    {" "}of{" "}
+                    <span className="font-medium text-foreground">{totalCount}</span> problems
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    <Button variant="outline" size="icon" className="bg-background"
-                      onClick={() => updateParams({ page: 1 })} disabled={activePage === 1}>
-                      <ChevronsLeft />
-                      <span className="sr-only">First page</span>
-                    </Button>
-                    <Button variant="outline" size="icon" className="bg-background"
-                      onClick={() => updateParams({ page: Math.max(1, activePage - 1) })} disabled={activePage === 1}>
-                      <ChevronLeft />
-                      <span className="sr-only">Previous page</span>
-                    </Button>
-                    <div className="flex items-center justify-center text-sm font-medium min-w-[100px] text-muted-foreground">
-                      Page <span className="text-foreground mx-1">{activePage}</span> of {totalPages}
+                  <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">Rows per page</span>
+                      <Select
+                        value={initialPageSize.toString()}
+                        onValueChange={(val) => updateParams({ size: val, page: 1 })}
+                      >
+                        <SelectTrigger className="h-9 w-[80px] bg-background text-sm">
+                          <SelectValue placeholder={initialPageSize.toString()} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[20, 50, 100].map((s) => (
+                            <SelectItem key={s} value={s.toString()} className="text-sm">{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <Button variant="outline" size="icon" className="bg-background"
-                      onClick={() => updateParams({ page: Math.min(totalPages, activePage + 1) })}
-                      disabled={activePage === totalPages || totalPages === 0}>
-                      <ChevronRight />
-                      <span className="sr-only">Next page</span>
-                    </Button>
-                    <Button variant="outline" size="icon" className="bg-background"
-                      onClick={() => updateParams({ page: totalPages })}
-                      disabled={activePage === totalPages || totalPages === 0}>
-                      <ChevronsRight />
-                      <span className="sr-only">Last page</span>
-                    </Button>
+
+                    <div className="flex items-center gap-1">
+                      <Button variant="outline" size="icon" className="bg-background"
+                        onClick={() => updateParams({ page: 1 })} disabled={activePage === 1}>
+                        <ChevronsLeft />
+                        <span className="sr-only">First page</span>
+                      </Button>
+                      <Button variant="outline" size="icon" className="bg-background"
+                        onClick={() => updateParams({ page: Math.max(1, activePage - 1) })} disabled={activePage === 1}>
+                        <ChevronLeft />
+                        <span className="sr-only">Previous page</span>
+                      </Button>
+                      <div className="flex items-center justify-center text-sm font-medium min-w-[100px] text-muted-foreground">
+                        Page <span className="text-foreground mx-1">{activePage}</span> of {totalPages}
+                      </div>
+                      <Button variant="outline" size="icon" className="bg-background"
+                        onClick={() => updateParams({ page: Math.min(totalPages, activePage + 1) })}
+                        disabled={activePage === totalPages || totalPages === 0}>
+                        <ChevronRight />
+                        <span className="sr-only">Next page</span>
+                      </Button>
+                      <Button variant="outline" size="icon" className="bg-background"
+                        onClick={() => updateParams({ page: totalPages })}
+                        disabled={activePage === totalPages || totalPages === 0}>
+                        <ChevronsRight />
+                        <span className="sr-only">Last page</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
       </div>
 

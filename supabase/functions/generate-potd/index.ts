@@ -34,7 +34,7 @@ serve(async (req: any) => {
     const todayStr = today.toISOString().split("T")[0]
 
     const { data: existingPotd } = await supabaseClient
-      .from('daily_challenges')
+      .from('logiclab_daily_challenges')
       .select('problem_id')
       .eq('date', todayStr)
       .single()
@@ -53,14 +53,14 @@ serve(async (req: any) => {
     thirtyDaysAgo.setUTCDate(today.getUTCDate() - 30)
     
     const { data: recentPotds } = await supabaseClient
-      .from('daily_challenges')
+      .from('logiclab_daily_challenges')
       .select('problem_id')
       .gte('date', thirtyDaysAgo.toISOString().split("T")[0])
 
     const recentProblemIds = recentPotds?.map(p => p.problem_id) || []
 
     const { data: allProblems, error: fetchErr } = await supabaseClient
-      .from('coding_problems')
+      .from('logiclab_problems')
       .select('id')
 
     if (fetchErr || !allProblems || allProblems.length === 0) {
@@ -72,7 +72,7 @@ serve(async (req: any) => {
     const selectedProblemId = poolToPickFrom[Math.floor(Math.random() * poolToPickFrom.length)].id
 
     const { error: insertErr } = await supabaseClient
-      .from('daily_challenges')
+      .from('logiclab_daily_challenges')
       .insert({
         date: todayStr,
         problem_id: selectedProblemId

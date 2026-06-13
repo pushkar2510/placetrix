@@ -31,8 +31,8 @@ const getCachedPotd = unstable_cache(
   async (todayStr: string) => {
     const adminSupabase = createAdminClient()
     const { data } = await (adminSupabase as any)
-      .from("daily_challenges")
-      .select("problem_id, coding_problems ( id, title, difficulty )")
+      .from("logiclab_daily_challenges")
+      .select("problem_id, logiclab_problems ( id, title, difficulty )")
       .eq("date", todayStr)
       .single()
     return data
@@ -46,12 +46,12 @@ const getCachedGlobalProblems = unstable_cache(
     const adminSupabase = createAdminClient()
     
     const { data: problems } = await adminSupabase
-      .from("coding_problems")
+      .from("logiclab_problems")
       .select("id, number, title, difficulty, tags, created_at")
       .order("number", { ascending: true })
 
     const { data: stats } = await adminSupabase
-      .from("problem_global_stats")
+      .from("logiclab_problem_stats")
       .select("problem_id, total_submissions, accepted_submissions")
 
     return { problems: problems || [], stats: stats || [] }
@@ -83,7 +83,7 @@ export default async function LogicLabPage(props: {
   // 2. Fetch live user data (Lightning fast, filtered by user_id)
   const supabase = (await createServerClient()) as any
   const { data: submissions } = await supabase
-    .from("coding_submissions")
+    .from("logiclab_problem_submissions")
     .select("problem_id, status")
     .eq("user_id", profile.id)
 
@@ -129,9 +129,9 @@ export default async function LogicLabPage(props: {
   const cutOffDate = new Date(istDate.getTime() - (365 * 24 * 60 * 60 * 1000))
   const cutOffStr = cutOffDate.toISOString().split("T")[0]
 
-  // Fetch aggregated daily activity from user_daily_coding_activity view (Aggregated and grouped by IST Date)
+  // Fetch aggregated daily activity from logiclab_daily_challenge_user_activity view (Aggregated and grouped by IST Date)
   const { data: activityRows } = await (supabase as any)
-    .from("user_daily_coding_activity")
+    .from("logiclab_daily_challenge_user_activity")
     .select("activity_date, submission_count, solved")
     .eq("user_id", profile.id)
     .gte("activity_date", cutOffStr)

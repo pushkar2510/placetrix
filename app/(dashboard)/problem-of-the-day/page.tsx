@@ -16,8 +16,8 @@ export default async function PotdHistoryPage() {
 
   // Fetch all POTDs
   const { data: historyData, error } = await supabase
-    .from("daily_challenges")
-    .select("date, problem_id, coding_problems ( id, number, title, difficulty, tags )")
+    .from("logiclab_daily_challenges")
+    .select("date, problem_id, logiclab_problems ( id, number, title, difficulty, tags )")
     .order("date", { ascending: false })
 
   if (error || !historyData) {
@@ -27,14 +27,14 @@ export default async function PotdHistoryPage() {
   // Fetch all submissions for these problems by the user
   const problemIds = historyData.map((h: any) => h.problem_id)
   const { data: submissions } = await supabase
-    .from("coding_submissions")
+    .from("logiclab_problem_submissions")
     .select("problem_id, status")
     .eq("user_id", profile.id)
     .in("problem_id", problemIds)
 
-  // Fetch acceptance rates using problem_global_stats view (Massively reduces DB reads)
+  // Fetch acceptance rates using logiclab_problem_stats view (Massively reduces DB reads)
   const { data: allStats } = await supabase
-    .from("problem_global_stats")
+    .from("logiclab_problem_stats")
     .select("problem_id, total_submissions, accepted_submissions")
     .in("problem_id", problemIds)
 
@@ -63,10 +63,10 @@ export default async function PotdHistoryPage() {
     return {
       date: h.date,
       problem_id: pId,
-      number: h.coding_problems?.number,
-      title: h.coding_problems?.title || "Unknown Problem",
-      difficulty: h.coding_problems?.difficulty || "Medium",
-      tags: h.coding_problems?.tags || [],
+      number: h.logiclab_problems?.number,
+      title: h.logiclab_problems?.title || "Unknown Problem",
+      difficulty: h.logiclab_problems?.difficulty || "Medium",
+      tags: h.logiclab_problems?.tags || [],
       solved_status: solvedMap[pId] || null,
       total_submissions: stats?.total || 0,
       acceptance_rate: accRate,

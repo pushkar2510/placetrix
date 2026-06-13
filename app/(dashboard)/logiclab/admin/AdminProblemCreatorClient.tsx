@@ -450,12 +450,12 @@ export function AdminProblemCreatorClient({
         })
         result = { data, error }
       } else {
-        const { data, error } = await (supabase as any)
-          .from("coding_problems")
+        const { data: resultData, error: resultError } = await (supabase as any)
+          .from("logiclab_problems")
           .insert(payload)
           .select("id")
           .single()
-        result = { data, error }
+        result = { data: resultData, error: resultError }
       }
 
       if (result.error || !result.data) {
@@ -497,7 +497,7 @@ export function AdminProblemCreatorClient({
       }))
 
       const { data: insertedProblems, error: problemsError } = await (supabase as any)
-        .from("coding_problems")
+        .from("logiclab_problems")
         .insert(problemInserts)
         .select("id, title")
 

@@ -8,7 +8,7 @@ const supabase = createAdminClient()
 export async function GET() {
   try {
     const { data: allProblems, error: allErr } = await supabase
-      .from("coding_problems")
+      .from("logiclab_problems")
       .select("id")
 
     if (allErr || !allProblems || allProblems.length === 0) {

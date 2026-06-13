@@ -8,7 +8,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params
   const supabase = (await createClient()) as any
   const { data } = await (supabase as any)
-    .from("coding_problems")
+    .from("logiclab_problems")
     .select("title")
     .eq("id", id)
     .single()
@@ -28,7 +28,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
 
   // Fetch problem
   const { data: problem, error } = await (supabase as any)
-    .from("coding_problems")
+    .from("logiclab_problems")
     .select("*")
     .eq("id", id)
     .single()
@@ -57,7 +57,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
 
   // Fetch user's past submissions for this problem
   const { data: submissions } = await (supabase as any)
-    .from("coding_submissions")
+    .from("logiclab_problem_submissions")
     .select("id, status, language_id, runtime, memory, passed_count, total_count, created_at")
     .eq("problem_id", id)
     .eq("user_id", profile.id)

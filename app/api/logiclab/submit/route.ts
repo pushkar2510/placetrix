@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Fetch problem data (driver code + time/memory limits + test cases)
     const { data: problems, error: problemError } = await (supabase as any)
-      .from("coding_problems")
+      .from("logiclab_problems")
       .select("driver_codes, time_limit, memory_limit, test_cases")
       .eq("id", problem_id)
 
@@ -307,7 +307,7 @@ export async function POST(req: NextRequest) {
 
         // Check if this problem is today's POTD (IST Date)
         const { data: potd } = await adminSupabase
-          .from("daily_challenges")
+          .from("logiclab_daily_challenges")
           .select("date")
           .eq("date", todayStr)
           .eq("problem_id", problem_id)
@@ -315,39 +315,9 @@ export async function POST(req: NextRequest) {
 
         if (potd) {
           // Attempt to insert completion. If it fails, they already got credit today.
-          const { error: completionError } = await adminSupabase
-            .from("potd_completions")
+          await adminSupabase
+            .from("logiclab_daily_challenge_submissions")
             .insert({ user_id, problem_id, date: todayStr });
-
-          if (!completionError) {
-            // First time solving today's POTD! Update streak.
-            const { data: profile } = await adminSupabase
-              .from("profiles")
-              .select("current_potd_streak, max_potd_streak")
-              .eq("id", user_id)
-              .single();
-
-            if (profile) {
-              const yesterdayIst = new Date(todayIst.getTime() - 24 * 60 * 60 * 1000);
-              const yesterdayStr = yesterdayIst.toISOString().split("T")[0];
-
-              // Check if they solved yesterday's POTD
-              const { data: yesterdaySolve } = await adminSupabase
-                .from("potd_completions")
-                .select("id")
-                .eq("user_id", user_id)
-                .eq("date", yesterdayStr)
-                .single();
-
-              let newCurrent = yesterdaySolve ? (profile.current_potd_streak || 0) + 1 : 1;
-              let newMax = Math.max(profile.max_potd_streak || 0, newCurrent);
-
-              await adminSupabase
-                .from("profiles")
-                .update({ current_potd_streak: newCurrent, max_potd_streak: newMax })
-                .eq("id", user_id);
-            }
-          }
         }
       } catch (err) {
         console.error("POTD Streak update failed:", err);
@@ -372,12 +342,12 @@ export async function POST(req: NextRequest) {
 
     // Workaround for RLS UPDATE policies: Try to delete the old submission first
     await (supabase as any)
-      .from("coding_submissions")
+      .from("logiclab_problem_submissions")
       .delete()
       .match({ user_id, problem_id, language_id })
 
     const { data: saved, error: saveError } = await (supabase as any)
-      .from("coding_submissions")
+      .from("logiclab_problem_submissions")
       .insert(submission)
       .select("id")
       .single()

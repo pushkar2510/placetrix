@@ -9,7 +9,7 @@ export const getCachedGlobalProblemsList = unstable_cache(
     const adminSupabase = createAdminClient()
     
     const { data: problems } = await adminSupabase
-      .from("coding_problems")
+      .from("logiclab_problems")
       .select("id, title, difficulty, created_at")
       .order("created_at", { ascending: true })
 
@@ -26,7 +26,7 @@ export async function getIdeProblemList(userId: string) {
   // 2. Fetch live user solved status
   const supabase = (await createServerClient()) as any
   const { data: solvedData } = await supabase
-    .from("coding_submissions")
+    .from("logiclab_problem_submissions")
     .select("problem_id")
     .eq("user_id", userId)
     .eq("status", "Accepted")
@@ -48,7 +48,7 @@ export async function getProblemDataSPA(problemId: string, userId: string) {
 
   // Fetch problem
   const { data: problem, error } = await supabase
-    .from("coding_problems")
+    .from("logiclab_problems")
     .select("*")
     .eq("id", problemId)
     .single()
@@ -78,7 +78,7 @@ export async function getProblemDataSPA(problemId: string, userId: string) {
 
   // Fetch submissions
   const { data: submissions } = await supabase
-    .from("coding_submissions")
+    .from("logiclab_problem_submissions")
     .select("id, status, language_id, runtime, memory, passed_count, total_count, created_at")
     .eq("problem_id", problemId)
     .eq("user_id", userId)

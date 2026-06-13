@@ -401,13 +401,13 @@ export function AdminDashboardClient({
     try {
       const supabase = createClient()
       const { error: subError } = await (supabase as any)
-        .from("coding_submissions" as any)
+        .from("logiclab_problem_submissions" as any)
         .delete()
         .eq("problem_id", deletingProblemId)
       if (subError) throw new Error(subError.message)
 
       const { error: probError } = await (supabase as any)
-        .from("coding_problems" as any)
+        .from("logiclab_problems" as any)
         .delete()
         .eq("id", deletingProblemId)
       if (probError) throw new Error(probError.message)

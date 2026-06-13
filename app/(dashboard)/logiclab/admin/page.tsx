@@ -19,7 +19,7 @@ export default async function AdminPage() {
 
   // ── 1. Fetch all coding problems ──
   const { data: rawProblems } = await (supabase as any)
-    .from("coding_problems" as any)
+    .from("logiclab_problems" as any)
     .select("id, number, title, difficulty, tags, created_at")
     .order("number", { ascending: true })
 
@@ -27,7 +27,7 @@ export default async function AdminPage() {
 
   // ── 2. Fetch lightweight submissions for analytics (Limit to 2000 to prevent memory exhaustion) ──
   const { data: rawSubmissions } = await (supabase as any)
-    .from("coding_submissions" as any)
+    .from("logiclab_problem_submissions" as any)
     .select("id, status, language_id, problem_id, user_id, passed_count, total_count, created_at")
     .order("created_at", { ascending: false })
     .limit(2000)
@@ -187,7 +187,7 @@ export default async function AdminPage() {
 
   // ── 5. Recent submissions for Live Feed (Fetch detailed logs securely) ──
   const { data: recentDetailedSubmissions } = await (supabase as any)
-    .from("coding_submissions" as any)
+    .from("logiclab_problem_submissions" as any)
     .select("id, status, language_id, problem_id, user_id, passed_count, total_count, failed_test_case_info, runtime, memory, created_at")
     .order("created_at", { ascending: false })
     .limit(15)
