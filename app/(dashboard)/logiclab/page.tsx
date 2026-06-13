@@ -3,7 +3,7 @@ import { getUserProfile } from "@/lib/supabase/profile"
 import { redirect } from "next/navigation"
 import { ProblemsDirectoryClient } from "./ProblemsDirectoryClient"
 import { unstable_cache } from "next/cache"
-import { createClient as createSupabaseClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export const metadata = {
   title: "LogicLab — Coding Problems",
@@ -26,10 +26,7 @@ function toLocalYYYYMMDD(date: Date) {
 
 const getCachedPotd = unstable_cache(
   async (todayStr: string) => {
-    const adminSupabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const adminSupabase = createAdminClient()
     const { data } = await adminSupabase
       .from("daily_challenges")
       .select("problem_id, coding_problems ( id, title, difficulty )")
@@ -43,10 +40,7 @@ const getCachedPotd = unstable_cache(
 
 const getCachedGlobalProblems = unstable_cache(
   async () => {
-    const adminSupabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const adminSupabase = createAdminClient()
     
     const { data: problems } = await adminSupabase
       .from("coding_problems")

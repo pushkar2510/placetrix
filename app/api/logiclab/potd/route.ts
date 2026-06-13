@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { unstable_noStore as noStore } from "next/cache"
 
 export const dynamic = "force-dynamic"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+const supabase = createAdminClient()
 
 export async function GET() {
   noStore();
   try {
-    const today = new Date().toISOString().split("T")[0]
+    const now = new Date()
+    const istOffset = 5.5 * 60 * 60 * 1000
+    const istDate = new Date(now.getTime() + istOffset)
+    const today = istDate.toISOString().split("T")[0]
 
     // 1. Try to fetch today's POTD directly (O(1) lookup)
-    const { data: existingPotd } = await supabase
+    const { data: existingPotd } = await (supabase as any)
       .from("daily_challenges")
       .select("problem_id, coding_problems ( id, title, difficulty )")
       .eq("date", today)

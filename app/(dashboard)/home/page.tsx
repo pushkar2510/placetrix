@@ -415,6 +415,9 @@ export default async function HomePage() {
       </div>
     );
   }
-
-  redirect("/home");
+  return (
+    <div className="p-8 text-center text-muted-foreground">
+      <p>Invalid or missing account type.</p>
+    </div>
+  );
 }

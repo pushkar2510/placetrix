@@ -1,15 +1,12 @@
 "use server"
 
 import { createClient as createServerClient } from "@/lib/supabase/server"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { unstable_cache } from "next/cache"
 
 export const getCachedGlobalProblemsList = unstable_cache(
   async () => {
-    const adminSupabase = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const adminSupabase = createAdminClient()
     
     const { data: problems } = await adminSupabase
       .from("coding_problems")
