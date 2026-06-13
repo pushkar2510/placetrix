@@ -33,7 +33,7 @@ async function fetchResultData(
         question_tags (tags (id, name))
       ),
       test_attempts!inner (
-        id, student_id, status, submitted_at, score, total_marks, percentage, 
+        id, candidate_id, status, submitted_at, score, total_marks, percentage, 
         time_spent_seconds, tab_switch_count,
         student:profiles(display_name),
         attempt_answers (
@@ -51,7 +51,7 @@ async function fetchResultData(
   if (accountType === "candidate") {
     // Candidates can only see their own attempts
     // 1. Candidates can only see their own attempts
-    if (raw.test_attempts[0].student_id !== userId) {
+    if (raw.test_attempts[0].candidate_id !== userId) {
       notFound()
     }
     // 2. Candidates can only see results for PUBLISHED tests
@@ -157,10 +157,15 @@ export default async function TestResultPage({
 
   if (!profile) redirect("/auth/login")
 
+  const userIdToCheck =
+    profile.account_type === "institute" && profile.account_subtype === "staff"
+      ? (profile.associated_institute_id ?? profile.id)
+      : profile.id;
+
   const { test, attempt } = await fetchResultData(
     testId,
     attemptId,
-    profile.id,
+    userIdToCheck,
     profile.account_type as "candidate" | "institute" | "recruiter"
   )
 

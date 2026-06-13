@@ -208,36 +208,45 @@ export default async function HomePage() {
 
   // ── Institute ──────────────────────────────────────────────────────────────
   if (profile.account_type === "institute") {
+    // Staff and TPO users resolve their parent institute's ID
+    const instituteId = profile.associated_institute_id ?? profile.id
+
     const { data } = await (supabase as any).rpc("get_institute_home_stats" as any, {
-      p_profile_id: profile.id,
-    });
+      p_profile_id: instituteId,
+    })
 
-    const instituteData = data as unknown as InstituteStatsResponse;
-    const ip = instituteData?.profile;
-    const stats = instituteData?.stats;
+    const instituteData = data as unknown as InstituteStatsResponse
+    const ip = instituteData?.profile
+    const stats = instituteData?.stats
 
-    const isComplete = ip?.profile_complete === true;
-    const hasBeenSaved = ip?.profile_updated === true;
-    const profileReady = isComplete && hasBeenSaved;
+    const isComplete = ip?.profile_complete === true
+    const hasBeenSaved = ip?.profile_updated === true
+    const profileReady = isComplete && hasBeenSaved
 
     const profileSubtitle = !ip
       ? "You haven't set up your institution profile yet. Add your details to get started."
       : !hasBeenSaved
         ? "Your profile has been started but not saved yet."
-        : "A few required fields are still missing.";
+        : "A few required fields are still missing."
+
+    const subtypeLabel = profile.account_subtype === "staff"
+      ? "Staff"
+      : profile.account_subtype === "tpo"
+        ? "TPO"
+        : "Institute"
 
     return (
       <div className="flex flex-col gap-6 px-4 py-8 md:px-8">
         <div className="flex flex-col gap-1.5">
           <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Home</h1>
           <p className="text-sm text-muted-foreground">
-            Welcome back{profile.username ? `, @${profile.username}` : ""}
+            Welcome back{profile.username ? `, @${profile.username}` : ""} · {subtypeLabel}
           </p>
         </div>
 
         <div className="space-y-6">
-          {/* ── Profile banner ───────────────────────────────────────────── */}
-          {!profileReady && (
+          {/* ── Profile banner (only for primary) ─────────────────────────── */}
+          {profile.account_subtype === "primary" && !profileReady && (
             <div className="rounded-lg border bg-card p-4 flex items-start justify-between gap-4">
               <div className="space-y-0.5">
                 <p className="text-sm font-medium">Your institution profile isn't complete yet</p>
@@ -252,8 +261,8 @@ export default async function HomePage() {
             </div>
           )}
 
-          {/* ── Test Stats ───────────────────────────────────────────────── */}
-          {stats && (
+          {/* ── Test Stats (visible to staff and primary) ─────────────────── */}
+          {stats && (profile.account_subtype === "staff" || profile.account_subtype === "primary") && (
             <div className="space-y-3">
               <SectionHeader title="Tests Overview" href="/tests" />
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -295,7 +304,7 @@ export default async function HomePage() {
           )}
         </div>
       </div>
-    );
+    )
   }
 
   // ── Admin ──────────────────────────────────────────────────────────────────

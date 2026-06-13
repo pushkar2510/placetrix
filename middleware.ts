@@ -36,6 +36,11 @@ let statusCache: StatusCache | null = null;
 const CACHE_TTL_MS = 30_000; // 30 seconds
 
 async function getSystemStatus(): Promise<SystemStatus> {
+  // Bypass maintenance mode in local development environment
+  if (process.env.NODE_ENV === "development") {
+    return "online";
+  }
+
   const now = Date.now();
 
   // Return cached value if still fresh

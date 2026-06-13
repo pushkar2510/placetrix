@@ -32,9 +32,13 @@ export interface ExportFilters {
 
 export async function upsertPlacementInfo(input: UpsertPlacementInfoInput) {
   const profile = await getUser()
-  if (!profile || profile.account_type !== "institute") {
+  if (!profile || profile.account_type !== "institute" || (profile.account_subtype !== "tpo" && profile.account_subtype !== "primary")) {
     throw new Error("Unauthorized")
   }
+
+  const instituteId = profile.account_subtype === "tpo"
+    ? (profile.associated_institute_id ?? profile.id)
+    : profile.id
 
   const supabase = await createClient()
 
@@ -43,7 +47,7 @@ export async function upsertPlacementInfo(input: UpsertPlacementInfoInput) {
     .from("candidate_profiles")
     .select("profile_id")
     .eq("profile_id", input.candidateUuid)
-    .eq("institute_id", profile.id)
+    .eq("institute_id", instituteId)
     .single()
 
   if (checkErr || !student) {
@@ -83,9 +87,13 @@ export async function bulkSetPlacementStatus(
   if (candidateUuids.length === 0) return
 
   const profile = await getUser()
-  if (!profile || profile.account_type !== "institute") {
+  if (!profile || profile.account_type !== "institute" || (profile.account_subtype !== "tpo" && profile.account_subtype !== "primary")) {
     throw new Error("Unauthorized")
   }
+
+  const instituteId = profile.account_subtype === "tpo"
+    ? (profile.associated_institute_id ?? profile.id)
+    : profile.id
 
   const supabase = await createClient()
 
@@ -93,7 +101,7 @@ export async function bulkSetPlacementStatus(
   const { data: students, error: checkErr } = await (supabase as any)
     .from("candidate_profiles")
     .select("profile_id")
-    .eq("institute_id", profile.id)
+    .eq("institute_id", instituteId)
     .in("profile_id", candidateUuids)
 
   if (checkErr) throw new Error(checkErr.message)
@@ -129,9 +137,13 @@ export async function bulkSetPlacementStatus(
 
 export async function exportPlacementData(filters: ExportFilters): Promise<Record<string, any>[]> {
   const profile = await getUser()
-  if (!profile || profile.account_type !== "institute") {
+  if (!profile || profile.account_type !== "institute" || (profile.account_subtype !== "tpo" && profile.account_subtype !== "primary")) {
     throw new Error("Unauthorized")
   }
+
+  const instituteId = profile.account_subtype === "tpo"
+    ? (profile.associated_institute_id ?? profile.id)
+    : profile.id
 
   const supabase = await createClient()
 
@@ -150,7 +162,7 @@ export async function exportPlacementData(filters: ExportFilters): Promise<Recor
       )
     `
     )
-    .eq("institute_id", profile.id)
+    .eq("institute_id", instituteId)
 
   // ── Placed filter ──
   if (filters.placedFilter === "placed") {

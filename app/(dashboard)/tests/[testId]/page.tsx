@@ -37,7 +37,7 @@ async function fetchCandidateView(
   const [profileRes, testRes] = await Promise.all([
     (supabase as any)
       .from("candidate_profiles")
-      .select("institute_id, profile_complete, profile_updated")
+      .select("institute_id")
       .eq("profile_id", userId)
       .maybeSingle(),
     (supabase as any)
@@ -62,7 +62,7 @@ async function fetchCandidateView(
       `)
       .eq("id", testId)
       // We filter attempts for THIS student only
-      .eq("test_attempts.student_id", userId)
+      .eq("test_attempts.candidate_id", userId)
       .order("created_at", { foreignTable: "test_attempts", ascending: false })
       .limit(1, { foreignTable: "test_attempts" })
       .maybeSingle()
@@ -313,8 +313,9 @@ export default async function TestDetailPage({
     return <CandidateTestDetailClient test={test} attempt={attempt} serverNow={serverNow} />
   }
 
-  if (profile.account_type === "institute") {
-    const test = await fetchInstituteView(testId, profile.id)
+  if (profile.account_type === "institute" && profile.account_subtype === "staff") {
+    const instituteId = profile.associated_institute_id ?? profile.id
+    const test = await fetchInstituteView(testId, instituteId)
     return (
       <InstituteTestDetailClient
         testId={testId}

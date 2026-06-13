@@ -17,7 +17,7 @@ export async function GET() {
 
     const randomProblem = allProblems[Math.floor(Math.random() * allProblems.length)]
 
-    return NextResponse.json({ success: true, id: randomProblem.id })
+    return NextResponse.json({ success: true, id: (randomProblem as any).id })
   } catch (error: any) {
     console.error("Random Problem Error:", error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })

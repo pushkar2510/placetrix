@@ -24,11 +24,11 @@ export default async function TestEditorPage({ params }: Props) {
   // ── Account-type guard (must resolve before parallel fetches) ───────────────
   const { data: profile } = await (supabase as any)
     .from("profiles")
-    .select("account_type")
+    .select("account_type, account_subtype")
     .eq("id", user.sub)
     .single()
 
-  if (profile?.account_type !== "institute") redirect("/tests")
+  if (profile?.account_type !== "institute" || profile?.account_subtype !== "staff") redirect("/tests")
 
   // ── Parallel fetches: tags + test data are independent of each other ─────────
   const isNew = testId === "new"

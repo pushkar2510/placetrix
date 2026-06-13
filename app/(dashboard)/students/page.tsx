@@ -21,7 +21,7 @@ export default async function StudentsPage(props: {
   searchParams: Promise<SearchParams>
 }) {
   const profile = await getUserProfile()
-  if (!profile || profile.account_type !== "institute") {
+  if (!profile || profile.account_type !== "institute" || profile.account_subtype !== "primary") {
     redirect("/home")
   }
 

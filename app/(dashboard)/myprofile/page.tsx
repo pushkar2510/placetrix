@@ -6,7 +6,8 @@ import { CandidateProfileClient } from "./CandidateProfileClient"
 import { InstituteProfileClient } from "./InstituteProfileClient"
 import { RecruiterProfileClient } from "./RecruiterProfileClient"
 import { AdminProfileClient } from "./AdminProfileClient"
-
+import { StaffProfileClient } from "./StaffProfileClient"
+import { TpoProfileClient } from "./TpoProfileClient"
 export default async function MyProfilePage() {
   const profile = await getUserProfile()
   if (!profile) return null
@@ -48,6 +49,24 @@ export default async function MyProfilePage() {
   }
 
   if (profile.account_type === "institute") {
+    if (profile.account_subtype === "staff") {
+      const { data: staffProfile } = await (supabase as any)
+        .from("staff_profiles")
+        .select("*")
+        .eq("profile_id", profile.id)
+        .maybeSingle()
+      return <StaffProfileClient userProfile={profile} initialData={staffProfile ?? null} />
+    }
+
+    if (profile.account_subtype === "tpo") {
+      const { data: tpoProfile } = await (supabase as any)
+        .from("tpo_profiles")
+        .select("*")
+        .eq("profile_id", profile.id)
+        .maybeSingle()
+      return <TpoProfileClient userProfile={profile} initialData={tpoProfile ?? null} />
+    }
+
     const { data: instituteProfile } = await (supabase as any)
       .from("institute_profiles")
       .select("*")

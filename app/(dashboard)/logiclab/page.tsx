@@ -27,7 +27,7 @@ function toLocalYYYYMMDD(date: Date) {
 const getCachedPotd = unstable_cache(
   async (todayStr: string) => {
     const adminSupabase = createAdminClient()
-    const { data } = await adminSupabase
+    const { data } = await (adminSupabase as any)
       .from("daily_challenges")
       .select("problem_id, coding_problems ( id, title, difficulty )")
       .eq("date", todayStr)
@@ -94,7 +94,7 @@ export default async function LogicLabPage(props: {
 
   // Build a map for acceptance rates using the new View
   const statsMap: Record<string, { total: number; accepted: number }> = {}
-  for (const row of globalStatsRaw) {
+  for (const row of globalStatsRaw as any[]) {
     statsMap[row.problem_id] = { 
       total: Number(row.total_submissions), 
       accepted: Number(row.accepted_submissions) 
@@ -270,7 +270,7 @@ export default async function LogicLabPage(props: {
 
   // Fetch initial POTD directly from aggressively cached function
   let initialPotd = await getCachedPotd(todayStr);
-  const fullPotdProblem = initialPotd ? enrichedProblems.find((p: any) => p.id === initialPotd.problem_id) : null;
+  const fullPotdProblem = initialPotd ? enrichedProblems.find((p: any) => p.id === (initialPotd as any).problem_id) : null;
 
   return (
     <ProblemsDirectoryClient

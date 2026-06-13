@@ -59,7 +59,7 @@ export async function startAttemptAction(testId: string): Promise<AttemptInfo> {
       .from("test_attempts")
       .select("id, started_at, expires_at, tab_switch_count, attempt_number")
       .eq("test_id", testId)
-      .eq("student_id", userId)
+      .eq("candidate_id", userId)
       .eq("status", "in_progress")
       .order("created_at", { ascending: false })
       .limit(1)
@@ -68,7 +68,7 @@ export async function startAttemptAction(testId: string): Promise<AttemptInfo> {
       .from("test_attempts")
       .select("*", { count: "exact", head: true })
       .eq("test_id", testId)
-      .eq("student_id", userId)
+      .eq("candidate_id", userId)
       .in("status", ["submitted", "auto_submitted"]),
   ])
 
@@ -131,7 +131,7 @@ export async function startAttemptAction(testId: string): Promise<AttemptInfo> {
     .from("test_attempts")
     .insert({
       test_id: testId,
-      student_id: userId,
+      candidate_id: userId,
       attempt_number: attemptNumber,
       expires_at: expiresAt,
     })
@@ -146,7 +146,7 @@ export async function startAttemptAction(testId: string): Promise<AttemptInfo> {
         .from("test_attempts")
         .select("id, started_at, expires_at, tab_switch_count, attempt_number")
         .eq("test_id", testId)
-        .eq("student_id", userId)
+        .eq("candidate_id", userId)
         .eq("status", "in_progress")
         .order("created_at", { ascending: false })
         .limit(1)
@@ -254,7 +254,7 @@ export async function submitAttemptAction(
     .from("test_attempts")
     .select("id")
     .eq("id", attemptId)
-    .eq("student_id", userId)
+    .eq("candidate_id", userId)
     .eq("status", "in_progress")
     .maybeSingle()
 
@@ -308,7 +308,7 @@ export async function recordViolationAction(
       .from("test_attempts")
       .update({ tab_switch_count: totalCount })
       .eq("id", attemptId)
-      .eq("student_id", userId)   // ownership guard
+      .eq("candidate_id", userId)   // ownership guard
       .eq("status", "in_progress") // don't mutate a completed attempt
 
     if (error) {
@@ -342,7 +342,7 @@ export async function submitFeedbackAction(
 
   const { error } = await (supabase as any).from("test_attempt_feedback").insert({
     attempt_id: attemptId,
-    student_id: userId,
+    candidate_id: userId,
     test_id: testId,
     rating: data.rating,
     overall_comment: data.overallComment ?? null,

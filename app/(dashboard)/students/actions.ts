@@ -6,17 +6,27 @@ import { revalidatePath } from "next/cache"
 
 export async function toggleStudentVerification(studentId: string, verified: boolean) {
   const profile = await getUser()
-  if (!profile || profile.account_type !== "institute") {
+  if (!profile || profile.account_type !== "institute" || profile.account_subtype !== "primary") {
     throw new Error("Unauthorized")
   }
 
   const supabase = await createClient()
 
+  // Verify the student belongs to this institute
+  const { data: candidateProfile } = await (supabase as any)
+    .from("candidate_profiles")
+    .select("institute_id")
+    .eq("profile_id", studentId)
+    .single();
+
+  if (candidateProfile?.institute_id !== profile.id) {
+    throw new Error("Student does not belong to your institute");
+  }
+
   const { data, error } = await (supabase as any)
     .from("candidate_profiles")
     .update({ institute_verified: verified })
     .eq("profile_id", studentId)
-    .eq("institute_id", profile.id)
     .select()
 
   if (error) {

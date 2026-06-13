@@ -9,7 +9,8 @@ export default async function LogicLabLayout({
   const profile = await getUserProfile()
   if (!profile) redirect("/auth/login")
 
-  if (profile.account_type === "institute") {
+  // Block institute primary and TPO from LogicLab; staff can access
+  if (profile.account_type === "institute" && profile.account_subtype !== "staff") {
     redirect("/home")
   }
 

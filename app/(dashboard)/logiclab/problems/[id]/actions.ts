@@ -13,7 +13,7 @@ export const getCachedGlobalProblemsList = unstable_cache(
       .select("id, title, difficulty, created_at")
       .order("created_at", { ascending: true })
 
-    return problems || []
+    return (problems as any[]) || []
   },
   ["global-problems-list-cache-v1"],
   { revalidate: 3600 } // Cache for 1 hour
@@ -93,10 +93,10 @@ export async function getProblemDataSPA(problemId: string, userId: string) {
   let nextProblemId = null
   
   if (currentIndex > 0) {
-    prevProblemId = allProblems[currentIndex - 1].id
+    prevProblemId = (allProblems[currentIndex - 1] as any).id
   }
   if (currentIndex >= 0 && currentIndex < allProblems.length - 1) {
-    nextProblemId = allProblems[currentIndex + 1].id
+    nextProblemId = (allProblems[currentIndex + 1] as any).id
   }
 
   return {

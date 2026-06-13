@@ -60,7 +60,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
 
-import { AccountType, UserProfile } from "@/lib/supabase/profile"
+import { AccountType, InstituteSubtype, UserProfile } from "@/lib/supabase/profile"
 
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -82,6 +82,7 @@ type NavItem = {
 }
 
 const VALID_ACCOUNT_TYPES: AccountType[] = ["candidate", "institute", "admin", "recruiter"]
+const VALID_INSTITUTE_SUBTYPES: InstituteSubtype[] = ["primary", "staff", "tpo"]
 
 
 const NAV_MAIN: Record<AccountType, NavItem[]> = {
@@ -96,13 +97,10 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "Tools", url: "/tools", icon: Wrench },
   ],
   institute: [
+    // fallback — overridden by NAV_INSTITUTE_SUBTYPES when subtype is known
     { title: "Home", url: "/home", icon: Home },
-    { title: "Placement", url: "/placement-management", icon: Trophy },
-    { title: "Drives", url: "/drives", icon: Folder },
     { title: "Students", url: "/students", icon: GraduationCap },
-    { title: "Recruiters", url: "/recruiters", icon: Briefcase },
-    { title: "Tests", url: "/tests", icon: BarChart3 },
-    { title: "Events", url: "/events", icon: Calendar },
+    { title: "Staff", url: "/staff-management", icon: Users },
   ],
   admin: [
     { title: "Home", url: "/home", icon: Home },
@@ -123,6 +121,27 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
 }
 
 
+const NAV_INSTITUTE_SUBTYPES: Record<InstituteSubtype, NavItem[]> = {
+  primary: [
+    { title: "Home", url: "/home", icon: Home },
+    { title: "Students", url: "/students", icon: GraduationCap },
+    { title: "Staff", url: "/staff-management", icon: Users },
+  ],
+  staff: [
+    { title: "Home", url: "/home", icon: Home },
+    { title: "Tests", url: "/tests", icon: BarChart3 },
+    { title: "Courses", url: "/courses", icon: BookOpen },
+    { title: "Events", url: "/events", icon: Calendar },
+  ],
+  tpo: [
+    { title: "Home", url: "/home", icon: Home },
+    { title: "Placement", url: "/placement-management", icon: Trophy },
+    { title: "Drives", url: "/drives", icon: Folder },
+    { title: "Recruiters", url: "/recruiters", icon: Briefcase },
+  ],
+}
+
+
 const NAV_SECONDARY: NavItem[] = [
   { title: "My Profile", url: "/myprofile", icon: CircleUser },
   { title: "Notifications", url: "/notifications", icon: Bell },
@@ -138,12 +157,24 @@ const ROLE_LABELS: Record<AccountType, string> = {
   recruiter: "Recruiter",
 }
 
+const INSTITUTE_SUBTYPE_LABELS: Record<InstituteSubtype, string> = {
+  primary: "Institute",
+  staff: "Staff",
+  tpo: "TPO",
+}
+
 
 const ROLE_COLORS: Record<AccountType, string> = {
   candidate: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   institute: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   admin: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   recruiter: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+}
+
+const INSTITUTE_SUBTYPE_COLORS: Record<InstituteSubtype, string> = {
+  primary: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  staff: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  tpo: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
 }
 
 
@@ -164,6 +195,7 @@ const THEME_OPTIONS: ThemeOption[] = [
 
 
 const VALID_ACCOUNT_TYPE_SET = new Set<string>(VALID_ACCOUNT_TYPES)
+const VALID_INSTITUTE_SUBTYPE_SET = new Set<string>(VALID_INSTITUTE_SUBTYPES)
 
 
 function safeAccountType(type: string | null | undefined): AccountType {
@@ -174,8 +206,16 @@ function safeAccountType(type: string | null | undefined): AccountType {
 
 
 const MAX_PRIMARY_NAV_COUNT = Math.max(
-  ...VALID_ACCOUNT_TYPES.map((t) => NAV_MAIN[t].length)
+  ...VALID_ACCOUNT_TYPES.map((t) => NAV_MAIN[t].length),
+  ...VALID_INSTITUTE_SUBTYPES.map((s) => NAV_INSTITUTE_SUBTYPES[s].length),
 )
+
+
+function safeInstituteSubtype(subtype: string | null | undefined): InstituteSubtype {
+  return VALID_INSTITUTE_SUBTYPE_SET.has(subtype ?? "")
+    ? (subtype as InstituteSubtype)
+    : "primary"
+}
 
 
 // ─── NavUser ──────────────────────────────────────────────────────────────────
@@ -481,7 +521,12 @@ Logo.displayName = "Logo"
 
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const accountType = safeAccountType(user?.account_type)
-  const mainNav = user ? NAV_MAIN[accountType] : null
+  const instituteSubtype = safeInstituteSubtype(user?.account_subtype)
+  const mainNav = user
+    ? (accountType === "institute"
+      ? NAV_INSTITUTE_SUBTYPES[instituteSubtype]
+      : NAV_MAIN[accountType])
+    : null
   const { hoverProps } = useSidebarHoverContext()
 
   const secondaryNav = React.useMemo(() => {

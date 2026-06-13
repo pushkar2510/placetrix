@@ -26,9 +26,14 @@ export default async function PlacementManagementPage(props: {
   searchParams: Promise<SearchParams>
 }) {
   const profile = await getUserProfile()
-  if (!profile || profile.account_type !== "institute") {
+  if (!profile || profile.account_type !== "institute" || (profile.account_subtype !== "tpo" && profile.account_subtype !== "primary")) {
     redirect("/home")
   }
+
+  // TPO users use their parent institute's ID; primary uses their own
+  const instituteId = profile.account_subtype === "tpo"
+    ? (profile.associated_institute_id ?? profile.id)
+    : profile.id
 
   const params = await props.searchParams
   const page = Math.max(1, parseInt(params.page || "1", 10))
@@ -49,7 +54,7 @@ export default async function PlacementManagementPage(props: {
   const { data: filterOptions } = await (supabase as any)
     .from("candidate_profiles")
     .select("passout_year, course_name")
-    .eq("institute_id", profile.id)
+    .eq("institute_id", instituteId)
     .not("passout_year", "is", null)
 
   const availableYears: number[] = Array.from(
@@ -67,7 +72,7 @@ export default async function PlacementManagementPage(props: {
   const { data: candidateIds } = await (supabase as any)
     .from("candidate_profiles")
     .select("profile_id")
-    .eq("institute_id", profile.id)
+    .eq("institute_id", instituteId)
 
   const allCandidateUuids: string[] = (candidateIds || []).map((r: any) => r.profile_id)
 
@@ -101,7 +106,7 @@ export default async function PlacementManagementPage(props: {
     `,
       { count: "exact" }
     )
-    .eq("institute_id", profile.id)
+    .eq("institute_id", instituteId)
 
   // ── Placed filter ──────────────────────────────────────────────────────
   if (placedFilter === "placed") {

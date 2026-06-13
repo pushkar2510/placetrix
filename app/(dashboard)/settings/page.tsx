@@ -5,6 +5,7 @@ import { CandidateSettingsClient } from "./CandidateSettingsClient"
 import { InstituteSettingsClient } from "./InstituteSettingsClient"
 import { RecruiterSettingsClient } from "./RecruiterSettingsClient"
 import { AdminSettingsClient } from "./AdminSettingsClient"
+import { StaffSettingsClient } from "./StaffSettingsClient"
 
 export default async function SettingsPage() {
   const profile = await getUserProfile()
@@ -37,10 +38,16 @@ export default async function SettingsPage() {
   }
 
   if (profile.account_type === "institute") {
+    if (profile.account_subtype === "staff" || profile.account_subtype === "tpo") {
+      return <StaffSettingsClient userProfile={profile} />
+    }
+
+    // Primary institute view
+    const instituteProfileId = profile.associated_institute_id ?? profile.id
     const { data: instituteProfile } = await (supabase as any)
       .from("institute_profiles")
       .select("*")
-      .eq("profile_id", profile.id)
+      .eq("profile_id", instituteProfileId)
       .maybeSingle() // Fix: prevents throwing if 0 rows exist
 
     return (

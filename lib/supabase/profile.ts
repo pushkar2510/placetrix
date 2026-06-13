@@ -10,6 +10,7 @@ import { headers } from "next/headers";
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 export type AccountType = "candidate" | "institute" | "admin" | "recruiter";
+export type InstituteSubtype = "primary" | "staff" | "tpo";
 
 export interface UserProfile {
   id: string;
@@ -18,6 +19,8 @@ export interface UserProfile {
   avatar_path: string | null;
   username: string | null;
   account_type: AccountType;
+  account_subtype: InstituteSubtype | null;
+  associated_institute_id: string | null;
   signature_path?: string | null;
 }
 
@@ -94,6 +97,8 @@ function profileFromClaims(
     avatar_path: (meta.avatar_path as string) ?? (meta.avatar_url as string) ?? (meta.picture as string) ?? null,
     username: (meta.username as string) ?? null,
     account_type: account_type as AccountType,
+    account_subtype: (meta.account_subtype as InstituteSubtype) ?? null,
+    associated_institute_id: (meta.associated_institute_id as string) ?? null,
     signature_path: (meta.signature_path as string) ?? null,
   };
 }
@@ -127,6 +132,8 @@ function profileFromAuthUser(
     avatar_path: (meta.avatar_path as string) ?? (meta.avatar_url as string) ?? (meta.picture as string) ?? null,
     username: (meta.username as string) ?? null,
     account_type: (account_type ?? "candidate") as AccountType,
+    account_subtype: (meta.account_subtype as InstituteSubtype) ?? null,
+    associated_institute_id: (meta.associated_institute_id as string) ?? null,
     signature_path: (meta.signature_path as string) ?? null,
     // Internal flag: if true, caller should resolve account_type from DB.
     _account_type_missing: account_type === null,
@@ -217,17 +224,35 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
     const built = profileFromAuthUser(user as any);
 
     try {
-      const { data: dbProfile } = await (supabase as any)
+      const { data: dbProfile, error: dbError } = await (supabase as any)
         .from("profiles")
-        .select("username, display_name, avatar_path, account_type, signature_path")
+        .select(`
+          username, display_name, avatar_path, account_type, account_subtype, signature_path,
+          candidate_profiles!candidate_profiles_profile_id_fkey (institute_id),
+          staff_profiles!staff_profiles_profile_id_fkey (institute_id),
+          tpo_profiles!tpo_profiles_profile_id_fkey (institute_id)
+        `)
         .eq("id", built.id)
         .maybeSingle();
+
+      if (dbError) {
+        console.error("[getUserProfile] Database query failed:", dbError);
+      }
 
       if (dbProfile) {
         if (dbProfile.username !== undefined) built.username = dbProfile.username;
         if (dbProfile.display_name !== undefined) built.display_name = dbProfile.display_name;
         if (dbProfile.avatar_path !== undefined) built.avatar_path = dbProfile.avatar_path;
         if (dbProfile.account_type !== undefined) built.account_type = dbProfile.account_type as AccountType;
+        if (dbProfile.account_subtype !== undefined) built.account_subtype = dbProfile.account_subtype as InstituteSubtype | null;
+        
+        let fetchedInstituteId = null;
+        if (built.account_type === 'candidate') fetchedInstituteId = dbProfile.candidate_profiles?.[0]?.institute_id;
+        else if (built.account_subtype === 'staff') fetchedInstituteId = dbProfile.staff_profiles?.[0]?.institute_id;
+        else if (built.account_subtype === 'tpo') fetchedInstituteId = dbProfile.tpo_profiles?.[0]?.institute_id;
+        
+        built.associated_institute_id = fetchedInstituteId || null;
+        
         if (dbProfile.signature_path !== undefined) built.signature_path = dbProfile.signature_path;
         built._account_type_missing = false;
       }

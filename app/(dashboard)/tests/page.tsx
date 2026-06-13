@@ -34,13 +34,13 @@ async function fetchCandidateTests(
   const supabase = await createClient()
 
   // 1. Resolve the candidate's institute
-  const { data: candidateProfile } = await (supabase as any)
+  const { data: profile } = await (supabase as any)
     .from("candidate_profiles")
     .select("institute_id")
     .eq("profile_id", userId)
     .maybeSingle()
 
-  if (!candidateProfile?.institute_id) {
+  if (!profile?.institute_id) {
     return { tests: [], count: 0, tabCounts: { all: 0, live: 0, upcoming: 0, past: 0 } }
   }
 
@@ -48,7 +48,7 @@ async function fetchCandidateTests(
   const { data: attempts } = await (supabase as any)
     .from("test_attempts")
     .select("test_id, status")
-    .eq("student_id", userId)
+    .eq("candidate_id", userId)
 
   const submittedTestIds = (attempts ?? [])
     .filter((a: any) => a.status === "submitted")
@@ -68,7 +68,7 @@ async function fetchCandidateTests(
       .from("tests")
       .select("id", { count: "exact", head: true })
       .eq("status", "published")
-      .eq("institute_id", candidateProfile.institute_id)
+      .eq("institute_id", profile.institute_id)
   )
 
   const liveCountQuery = searchFilter(
@@ -76,7 +76,7 @@ async function fetchCandidateTests(
       .from("tests")
       .select("id", { count: "exact", head: true })
       .eq("status", "published")
-      .eq("institute_id", candidateProfile.institute_id)
+      .eq("institute_id", profile.institute_id)
       .lte("available_from", now)
       .or(`available_until.gt.${now},available_until.is.null`)
   )
@@ -89,7 +89,7 @@ async function fetchCandidateTests(
       .from("tests")
       .select("id", { count: "exact", head: true })
       .eq("status", "published")
-      .eq("institute_id", candidateProfile.institute_id)
+      .eq("institute_id", profile.institute_id)
       .gt("available_from", now)
   )
   if (submittedTestIds.length > 0) {
@@ -100,7 +100,7 @@ async function fetchCandidateTests(
     .from("tests")
     .select("id", { count: "exact", head: true })
     .eq("status", "published")
-    .eq("institute_id", candidateProfile.institute_id)
+    .eq("institute_id", profile.institute_id)
 
   if (submittedTestIds.length > 0) {
     pastCountQuery = pastCountQuery.or(`available_until.lt.${now},id.in.(${submittedTestIds.join(",")})`)
@@ -136,8 +136,8 @@ async function fetchCandidateTests(
       { count: "exact" }
     )
     .eq("status", "published")
-    .eq("institute_id", candidateProfile.institute_id)
-    .eq("test_attempts.student_id", userId)
+    .eq("institute_id", profile.institute_id)
+    .eq("test_attempts.candidate_id", userId)
 
   if (activeTab === "live") {
     query = query
@@ -384,9 +384,11 @@ export default async function TestsPage(props: {
     )
   }
 
-  if (profile.account_type === "institute") {
+  if (profile.account_type === "institute" && profile.account_subtype === "staff") {
+    // Staff users query tests by their parent institute's profile id
+    const instituteId = profile.associated_institute_id ?? profile.id
     const { tests, count, tabCounts } = await fetchInstituteTests(
-      profile.id,
+      instituteId,
       nowStr,
       page,
       size,

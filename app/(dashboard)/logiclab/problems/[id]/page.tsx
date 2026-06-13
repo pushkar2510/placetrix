@@ -72,10 +72,10 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
   let nextProblemId = null
   
   if (currentIndex > 0) {
-    prevProblemId = allProblems[currentIndex - 1].id
+    prevProblemId = (allProblems[currentIndex - 1] as any).id
   }
   if (currentIndex >= 0 && currentIndex < allProblems.length - 1) {
-    nextProblemId = allProblems[currentIndex + 1].id
+    nextProblemId = (allProblems[currentIndex + 1] as any).id
   }
 
   return (
