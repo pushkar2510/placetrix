@@ -32,7 +32,7 @@ const getCachedPotd = unstable_cache(
     const adminSupabase = createAdminClient()
     const { data } = await (adminSupabase as any)
       .from("logiclab_daily_challenges")
-      .select("problem_id, logiclab_problems ( id, title, difficulty )")
+      .select("id, problem_id, logiclab_problems ( id, title, difficulty )")
       .eq("date", todayStr)
       .single()
     return data
@@ -272,7 +272,22 @@ export default async function LogicLabPage(props: {
 
   // Fetch initial POTD directly from aggressively cached function
   let initialPotd = await getCachedPotd(todayStr);
-  const fullPotdProblem = initialPotd ? enrichedProblems.find((p: any) => p.id === (initialPotd as any).problem_id) : null;
+  let fullPotdProblem = initialPotd ? enrichedProblems.find((p: any) => p.id === (initialPotd as any).problem_id) : null;
+
+  if (fullPotdProblem && initialPotd) {
+    const { data: potdSub } = await supabase
+      .from("logiclab_daily_challenge_submissions")
+      .select("status")
+      .eq("user_id", profile.id)
+      .eq("problem_id", initialPotd.problem_id)
+      .eq("status", "Accepted")
+      .limit(1)
+    
+    fullPotdProblem = {
+      ...fullPotdProblem,
+      solved_status: (potdSub && potdSub.length > 0) ? "Accepted" : null
+    }
+  }
 
   return (
     <ProblemsDirectoryClient

@@ -802,7 +802,7 @@ export function ProblemsDirectoryClient({
           {/* Card 3: POTD Card */}
           <Card className="group/potd transition-all hover:border-border/80 min-w-0 flex flex-col relative py-0">
             <CardHeader className="flex flex-row items-center justify-between pt-4 pb-1">
-              <Link href="/problem-of-the-day" className="hover:opacity-80 transition-opacity cursor-pointer">
+              <Link href="/logiclab/dailychallenges" className="hover:opacity-80 transition-opacity cursor-pointer">
                 <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1 hover:text-orange-500 transition-colors">
                   Problem of the Day <ChevronRight className="size-3" />
                 </CardTitle>
@@ -884,7 +884,7 @@ export function ProblemsDirectoryClient({
                     ? "border-emerald-500/20 text-emerald-600 dark:border-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300"
                     : "border-orange-500/20 text-orange-600 dark:border-orange-500/10 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 hover:text-orange-700 dark:hover:text-orange-300"
                 )}
-                onClick={() => potd && router.push(`/logiclab/problems/${potd.problem_id}`)}
+                onClick={() => potd && router.push(`/logiclab/dailychallenges/${potd.id}`)}
                 disabled={!potd}
               >
                 {activeChallenge?.solved_status === "Accepted" ? (

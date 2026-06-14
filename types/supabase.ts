@@ -738,27 +738,60 @@ export type Database = {
       }
       logiclab_daily_challenge_submissions: {
         Row: {
+          code: string
           created_at: string
+          daily_challenge_id: string
           date: string
+          failed_test_case_info: Json | null
           id: string
+          language_id: number
+          memory: number | null
+          passed_count: number | null
           problem_id: string
+          runtime: number | null
+          status: string
+          total_count: number | null
           user_id: string
         }
         Insert: {
+          code?: string
           created_at?: string
+          daily_challenge_id: string
           date: string
+          failed_test_case_info?: Json | null
           id?: string
+          language_id: number
+          memory?: number | null
+          passed_count?: number | null
           problem_id: string
+          runtime?: number | null
+          status?: string
+          total_count?: number | null
           user_id: string
         }
         Update: {
+          code?: string
           created_at?: string
+          daily_challenge_id?: string
           date?: string
+          failed_test_case_info?: Json | null
           id?: string
+          language_id?: number
+          memory?: number | null
+          passed_count?: number | null
           problem_id?: string
+          runtime?: number | null
+          status?: string
+          total_count?: number | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "logiclab_daily_challenge_submissions_daily_challenge_id_fkey"
+            columns: ["daily_challenge_id"]
+            referencedRelation: "logiclab_daily_challenges"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "potd_completions_problem_id_fkey"
             columns: ["problem_id"]
@@ -777,16 +810,19 @@ export type Database = {
         Row: {
           created_at: string
           date: string
+          id: string | null
           problem_id: string
         }
         Insert: {
           created_at?: string
           date: string
+          id?: string | null
           problem_id: string
         }
         Update: {
           created_at?: string
           date?: string
+          id?: string | null
           problem_id?: string
         }
         Relationships: [

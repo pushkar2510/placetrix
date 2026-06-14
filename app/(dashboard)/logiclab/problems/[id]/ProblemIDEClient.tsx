@@ -41,7 +41,7 @@ import {
   IconFilter,
   IconFileDescription,
   IconDeviceLaptop,
-  IconAlignLeft,
+  IconBraces,
   IconZoomIn,
   IconZoomOut,
   IconAdjustments,
@@ -343,6 +343,8 @@ export function ProblemIDEClient({
   userProfile,
   prevProblemId: initialPrevProblemId,
   nextProblemId: initialNextProblemId,
+  isDailyChallenge = false,
+  dailyChallengeId,
 }: {
   problem: Problem;
   sampleTestCases: SampleTestCase[];
@@ -352,6 +354,8 @@ export function ProblemIDEClient({
   userProfile?: any;
   prevProblemId: string | null;
   nextProblemId: string | null;
+  isDailyChallenge?: boolean;
+  dailyChallengeId?: string;
 }) {
   const [problem, setProblem] = useState(initialProblem);
   const [sampleTestCases, setSampleTestCases] = useState(
@@ -722,9 +726,10 @@ export function ProblemIDEClient({
 
   // Load code from local storage or fallback to boilerplate
   React.useEffect(() => {
-    const savedCode = localStorage.getItem(
-      `logiclab_problem_${problem.id}_code_${selectedLang.value}`,
-    );
+    const key = isDailyChallenge
+      ? `logiclab_daily_challenge_${dailyChallengeId}_code_${selectedLang.value}`
+      : `logiclab_problem_${problem.id}_code_${selectedLang.value}`;
+    const savedCode = localStorage.getItem(key);
     if (savedCode) {
       setCode(savedCode);
     } else {
@@ -735,6 +740,8 @@ export function ProblemIDEClient({
     }
   }, [
     problem.id,
+    dailyChallengeId,
+    isDailyChallenge,
     selectedLang.id,
     selectedLang.name,
     selectedLang.value,
@@ -744,12 +751,12 @@ export function ProblemIDEClient({
   // Save code to local storage
   React.useEffect(() => {
     if (code) {
-      localStorage.setItem(
-        `logiclab_problem_${problem.id}_code_${selectedLang.value}`,
-        code,
-      );
+      const key = isDailyChallenge
+        ? `logiclab_daily_challenge_${dailyChallengeId}_code_${selectedLang.value}`
+        : `logiclab_problem_${problem.id}_code_${selectedLang.value}`;
+      localStorage.setItem(key, code);
     }
-  }, [code, problem.id, selectedLang.value]);
+  }, [code, problem.id, dailyChallengeId, isDailyChallenge, selectedLang.value]);
 
   // Console resizing state removed (replaced by react-resizable-panels)
 
@@ -873,7 +880,7 @@ export function ProblemIDEClient({
     try {
       const supabase = createClient();
       const { data, error } = (await (supabase as any)
-        .from("logiclab_problem_submissions" as any)
+        .from(isDailyChallenge ? "logiclab_daily_challenge_submissions" : "logiclab_problem_submissions" as any)
         .select("code, language_id")
         .eq("id", sub.id)
         .single()) as any;
@@ -982,6 +989,7 @@ export function ProblemIDEClient({
           code,
           language_id: selectedLang.id,
           user_id: userId,
+          daily_challenge_id: isDailyChallenge ? dailyChallengeId : undefined,
         }),
       });
       const textResponse = await res.text();
@@ -1016,24 +1024,19 @@ export function ProblemIDEClient({
       }
 
       const newSubId = data.submission_id || Date.now();
-      setSubmissions((prev) => {
-        const filtered = prev.filter(
-          (sub) => sub.language_id !== selectedLang.id,
-        );
-        return [
-          {
-            id: newSubId,
-            status: data.status,
-            language_id: selectedLang.id,
-            runtime: data.runtime,
-            memory: data.memory,
-            passed_count: data.passed_count,
-            total_count: data.total_count,
-            created_at: new Date().toISOString(),
-          },
-          ...filtered,
-        ];
-      });
+      setSubmissions((prev) => [
+        {
+          id: newSubId,
+          status: data.status,
+          language_id: selectedLang.id,
+          runtime: data.runtime,
+          memory: data.memory,
+          passed_count: data.passed_count,
+          total_count: data.total_count,
+          created_at: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
     } catch (err: any) {
       setSubmitResult({
         success: false,
@@ -1079,7 +1082,7 @@ export function ProblemIDEClient({
   const langForDisplay = LANGUAGES.find((l) => l.id === selectedLang.id);
 
   const topNavbarContent = (
-    <div className={cn('flex', 'items-center', 'justify-between', 'px-4', 'py-2', 'bg-zinc-100', 'dark:bg-zinc-950', 'shrink-0', 'w-full', 'select-none')}>
+    <div className={cn('relative', 'flex', 'items-center', 'justify-between', 'px-4', 'py-2', 'bg-zinc-100', 'dark:bg-zinc-950', 'shrink-0', 'w-full', 'select-none')}>
       {/* Left section: Navigation & Title */}
       <div className={cn('flex', 'items-center', 'gap-3')}>
         <div className={cn('flex', 'items-center', 'gap-1')}>
@@ -1088,49 +1091,53 @@ export function ProblemIDEClient({
             size="icon"
             asChild
             className={cn('h-8', 'w-8')}
-            title="Back to Problems"
+            title={isDailyChallenge ? "Back to Daily Challenges" : "Back to Problems"}
           >
-            <Link href="/logiclab">
+            <Link href={isDailyChallenge ? "/logiclab/dailychallenges" : "/logiclab"}>
               <IconArrowLeft className={cn('h-4', 'w-4')} />
             </Link>
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setIsProblemListOpen(!isProblemListOpen)}
-            className={cn('h-8', 'w-8', 'text-zinc-600 dark:text-muted-foreground', 'hover:text-foreground')}
-            title="Toggle Problem List"
-          >
-            <IconList className={cn('h-4', 'w-4')} />
-          </Button>
+          {!isDailyChallenge && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsProblemListOpen(!isProblemListOpen)}
+              className={cn('h-8', 'w-8', 'text-zinc-600 dark:text-muted-foreground', 'hover:text-foreground')}
+              title="Toggle Problem List"
+            >
+              <IconList className={cn('h-4', 'w-4')} />
+            </Button>
+          )}
         </div>
 
-        <div className={cn('flex', 'items-center', 'gap-1')}>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => prevProblemId && handleNavigate(prevProblemId)}
-            disabled={!prevProblemId}
-            className={cn('h-8', 'w-8')}
-            title="Previous"
-          >
-            <IconChevronLeft className={cn('h-4', 'w-4')} />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => nextProblemId && handleNavigate(nextProblemId)}
-            disabled={!nextProblemId}
-            className={cn('h-8', 'w-8')}
-            title="Next"
-          >
-            <IconChevronRight className={cn('h-4', 'w-4')} />
-          </Button>
-        </div>
+        {!isDailyChallenge && (
+          <div className={cn('flex', 'items-center', 'gap-1')}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => prevProblemId && handleNavigate(prevProblemId)}
+              disabled={!prevProblemId}
+              className={cn('h-8', 'w-8')}
+              title="Previous"
+            >
+              <IconChevronLeft className={cn('h-4', 'w-4')} />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => nextProblemId && handleNavigate(nextProblemId)}
+              disabled={!nextProblemId}
+              className={cn('h-8', 'w-8')}
+              title="Next"
+            >
+              <IconChevronRight className={cn('h-4', 'w-4')} />
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Center section: Run & Submit (Only if buttonPosition === 'toolbar') */}
-      {ideSettings.buttonPosition === "toolbar" && (
+      {/* Center section: Run & Submit (Only if buttonPosition === 'toolbar' or isDailyChallenge) */}
+      {(ideSettings.buttonPosition === "toolbar" || isDailyChallenge) && (
         <div className={cn('absolute', 'left-1/2', '-translate-x-1/2')}>
           <ButtonGroup>
             <Button
@@ -2253,7 +2260,7 @@ export function ProblemIDEClient({
               handleFormatCode();
             }}
           >
-            <IconAlignLeft className={cn('h-4', 'w-4')} />
+            <IconBraces className={cn('h-4', 'w-4')} />
           </Button>
 
           <Popover open={isResetOpen} onOpenChange={setIsResetOpen}>
@@ -2406,7 +2413,7 @@ export function ProblemIDEClient({
         />
 
         {/* Conditionally rendered bottom bar for Code Editor layout */}
-        {ideSettings.buttonPosition === "bottom" && (
+        {ideSettings.buttonPosition === "bottom" && !isDailyChallenge && (
           <div className={cn('absolute', 'bottom-4', 'right-6', 'z-10')}>
             <ButtonGroup>
               <Button

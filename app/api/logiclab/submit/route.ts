@@ -45,7 +45,7 @@ function getDeterministicMetrics(code: string, languageId: number | string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { problem_id, code, language_id } = await req.json()
+    const { problem_id, code, language_id, daily_challenge_id } = await req.json()
     const supabase = (await createClient()) as any
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -59,6 +59,18 @@ export async function POST(req: NextRequest) {
         { success: false, error: "Missing required fields: problem_id, code, language_id" },
         { status: 400 }
       )
+    }
+
+    let dailyChallengeDate: string | null = null
+    if (daily_challenge_id) {
+      const { data: dc } = await supabase
+        .from("logiclab_daily_challenges")
+        .select("date")
+        .eq("id", daily_challenge_id)
+        .single()
+      if (dc) {
+        dailyChallengeDate = dc.date
+      }
     }
 
     // ── 1. SECURITY: Payload Size Check ──
@@ -290,44 +302,8 @@ export async function POST(req: NextRequest) {
       overallStatus = "Accepted"
     }
 
-    // --- POTD STREAK LOGIC ---
-    if (overallStatus === "Accepted") {
-      try {
-        const now = new Date();
-        const istOffset = 5.5 * 60 * 60 * 1000;
-        const todayIst = new Date(now.getTime() + istOffset);
-        const todayStr = todayIst.toISOString().split("T")[0];
-        
-        // Use service role to bypass RLS for streaks
-        const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
-        const adminSupabase = createSupabaseClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-
-        // Check if this problem is today's POTD (IST Date)
-        const { data: potd } = await adminSupabase
-          .from("logiclab_daily_challenges")
-          .select("date")
-          .eq("date", todayStr)
-          .eq("problem_id", problem_id)
-          .single();
-
-        if (potd) {
-          // Attempt to insert completion. If it fails, they already got credit today.
-          await adminSupabase
-            .from("logiclab_daily_challenge_submissions")
-            .insert({ user_id, problem_id, date: todayStr });
-        }
-      } catch (err) {
-        console.error("POTD Streak update failed:", err);
-      }
-    }
-    // --- END POTD STREAK LOGIC ---
-
-
     // 5. Save submission to database
-    const submission = {
+    const submission: any = {
       problem_id,
       user_id,
       code: overallStatus === "Accepted" ? code : "",
@@ -340,19 +316,32 @@ export async function POST(req: NextRequest) {
       failed_test_case_info: failedInfo,
     }
 
-    // Workaround for RLS UPDATE policies: Try to delete the old submission first
-    await (supabase as any)
-      .from("logiclab_problem_submissions")
-      .delete()
-      .match({ user_id, problem_id, language_id })
+    let savedSubmission = null
+    let saveError = null
 
-    const { data: saved, error: saveError } = await (supabase as any)
-      .from("logiclab_problem_submissions")
-      .insert(submission)
-      .select("id")
-      .single()
+    if (daily_challenge_id) {
+      submission.daily_challenge_id = daily_challenge_id
+      submission.date = dailyChallengeDate || new Date().toISOString().split("T")[0]
 
-    let savedSubmission = saved || null
+      const { data: saved, error: sErr } = await (supabase as any)
+        .from("logiclab_daily_challenge_submissions")
+        .insert(submission)
+        .select("id")
+        .single()
+      
+      savedSubmission = saved || null
+      saveError = sErr
+    } else {
+      const { data: saved, error: sErr } = await (supabase as any)
+        .from("logiclab_problem_submissions")
+        .insert(submission)
+        .select("id")
+        .single()
+      
+      savedSubmission = saved || null
+      saveError = sErr
+    }
+
     if (saveError) {
       console.error("[LogicLab Submit] Failed to save submission:", saveError.message)
     }
@@ -363,6 +352,10 @@ export async function POST(req: NextRequest) {
     if (overallStatus === "Accepted") {
       revalidatePath("/logiclab")
       revalidatePath(`/logiclab/problems/${problem_id}`)
+      if (daily_challenge_id) {
+        revalidatePath(`/logiclab/dailychallenges/${daily_challenge_id}`)
+        revalidatePath("/logiclab/dailychallenges")
+      }
     }
 
     return NextResponse.json({

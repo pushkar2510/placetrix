@@ -17,7 +17,7 @@ export async function GET() {
     // 1. Try to fetch today's POTD directly (O(1) lookup)
     const { data: existingPotd } = await (supabase as any)
       .from("logiclab_daily_challenges")
-      .select("problem_id, logiclab_problems ( id, title, difficulty )")
+      .select("id, problem_id, logiclab_problems ( id, title, difficulty )")
       .eq("date", today)
       .single()
 

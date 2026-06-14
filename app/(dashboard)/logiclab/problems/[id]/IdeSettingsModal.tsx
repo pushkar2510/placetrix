@@ -35,7 +35,7 @@ export type IdeSettings = {
 export const DEFAULT_IDE_SETTINGS: IdeSettings = {
   fontSize: 13,
   wordWrap: "on",
-  buttonPosition: "bottom",
+  buttonPosition: "toolbar",
 };
 
 interface IdeSettingsModalProps {

@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
 interface PotdHistoryItem {
+  id: string
   date: string
   problem_id: string
   number?: number
@@ -20,7 +21,7 @@ interface PotdHistoryItem {
   acceptance_rate: number
 }
 
-interface PotdPageClientProps {
+interface DailychallengesPageClientProps {
   history: PotdHistoryItem[]
   currentPotd: PotdHistoryItem | null
   totalPotds: number
@@ -33,7 +34,7 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   Hard: "text-rose-500",
 }
 
-export function PotdPageClient({ history, currentPotd, totalPotds, solvedPotds }: PotdPageClientProps) {
+export function DailychallengesPageClient({ history, currentPotd, totalPotds, solvedPotds }: DailychallengesPageClientProps) {
   const router = useRouter()
   const calculateTimeLeft = () => {
     const now = new Date()
@@ -88,7 +89,7 @@ export function PotdPageClient({ history, currentPotd, totalPotds, solvedPotds }
       {/* Header Section */}
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1.5">
-          <h1 className="text-4xl font-bold font-cirka tracking-tight text-foreground">Problem of the Day History</h1>
+          <h1 className="text-4xl font-bold font-cirka tracking-tight text-foreground">Daily Challenges History</h1>
           <p className="text-base text-muted-foreground">
             Track your consistency and revisit past daily challenges.
           </p>
@@ -179,7 +180,7 @@ export function PotdPageClient({ history, currentPotd, totalPotds, solvedPotds }
                 </div>
                 
                 <Button 
-                  onClick={() => router.push(`/logiclab/problems/${currentPotd.problem_id}`)}
+                  onClick={() => router.push(`/logiclab/dailychallenges/${currentPotd.id}`)}
                   className="w-full md:w-auto h-12 px-8 text-base font-semibold bg-orange-600 hover:bg-orange-700 text-white gap-2 group shadow-md"
                 >
                   {currentPotd.solved_status === "Accepted" ? "Review Challenge" : "Solve Challenge"}
@@ -212,7 +213,7 @@ export function PotdPageClient({ history, currentPotd, totalPotds, solvedPotds }
           return (
             <Card 
               key={item.date}
-              onClick={() => router.push(`/logiclab/problems/${item.problem_id}`)}
+              onClick={() => router.push(`/logiclab/dailychallenges/${item.id}`)}
               className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:py-4 sm:px-5 border border-border/40 hover:border-orange-500/40 hover:shadow-md hover:shadow-orange-500/5 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer bg-card/50 hover:bg-card gap-4 rounded-xl"
             >
               <div className="flex items-start gap-3">
@@ -268,7 +269,7 @@ export function PotdPageClient({ history, currentPotd, totalPotds, solvedPotds }
                     Solved
                   </Button>
                 ) : (
-                  <Button variant="outline" className="text-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:border-orange-500/50 hover:bg-orange-500/5 gap-1.5 h-9 px-4 rounded-full text-xs font-bold transition-all shadow-sm group-hover:border-orange-500/30 group-hover:bg-orange-500/5">
+                  <Button variant="outline" className="text-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:border-orange-500/50 hover:bg-orange-50/5 gap-1.5 h-9 px-4 rounded-full text-xs font-bold transition-all shadow-sm group-hover:border-orange-500/30 group-hover:bg-orange-500/5">
                     <PlayCircle className="w-4 h-4 group-hover:text-orange-500" />
                     Solve
                   </Button>

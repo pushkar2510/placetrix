@@ -1,14 +1,14 @@
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { redirect } from "next/navigation"
-import { PotdPageClient } from "./PotdPageClient"
+import { DailychallengesPageClient } from "./DailychallengesPageClient"
 
 export const metadata = {
-  title: "Problem of the Day History",
+  title: "Daily Challenges History",
   description: "Track your daily challenge progress.",
 }
 
-export default async function PotdHistoryPage() {
+export default async function DailyChallengesPage() {
   const profile = await getUserProfile()
   if (!profile) redirect("/auth/login")
 
@@ -17,22 +17,22 @@ export default async function PotdHistoryPage() {
   // Fetch all POTDs
   const { data: historyData, error } = await supabase
     .from("logiclab_daily_challenges")
-    .select("date, problem_id, logiclab_problems ( id, number, title, difficulty, tags )")
+    .select("id, date, problem_id, logiclab_problems ( id, number, title, difficulty, tags )")
     .order("date", { ascending: false })
 
   if (error || !historyData) {
     return <div className="p-8 text-center text-rose-500">Failed to load history.</div>
   }
 
-  // Fetch all submissions for these problems by the user
+  // Fetch all submissions for these problems by the user from logiclab_daily_challenge_submissions
   const problemIds = historyData.map((h: any) => h.problem_id)
   const { data: submissions } = await supabase
-    .from("logiclab_problem_submissions")
+    .from("logiclab_daily_challenge_submissions")
     .select("problem_id, status")
     .eq("user_id", profile.id)
     .in("problem_id", problemIds)
 
-  // Fetch acceptance rates using logiclab_problem_stats view (Massively reduces DB reads)
+  // Fetch acceptance rates using logiclab_problem_stats view
   const { data: allStats } = await supabase
     .from("logiclab_problem_stats")
     .select("problem_id, total_submissions, accepted_submissions")
@@ -61,6 +61,7 @@ export default async function PotdHistoryPage() {
     const stats = statsMap[pId]
     const accRate = stats && stats.total > 0 ? (stats.accepted / stats.total) * 100 : 0
     return {
+      id: h.id,
       date: h.date,
       problem_id: pId,
       number: h.logiclab_problems?.number,
@@ -85,7 +86,7 @@ export default async function PotdHistoryPage() {
   const pastHistory = enrichedHistory.filter((h: any) => h.date !== todayStr)
 
   return (
-    <PotdPageClient
+    <DailychallengesPageClient
       history={pastHistory}
       currentPotd={currentPotd}
       totalPotds={totalPotds}
