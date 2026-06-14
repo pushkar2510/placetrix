@@ -89,7 +89,7 @@ interface CalendarCell {
   dayOfWeek: number
 }
 
-interface ProblemsDirectoryProps {
+interface LogicLabDashboardProps {
   problems: Problem[]
   isAdmin: boolean
   streakStats: {
@@ -193,7 +193,7 @@ function ConcentricRing({
   )
 }
 
-export function ProblemsDirectoryClient({
+export function LogicLabDashboardClient({
   problems,
   isAdmin,
   streakStats,
@@ -210,7 +210,7 @@ export function ProblemsDirectoryClient({
   globalStats,
   initialPotd,
   fullPotdProblem,
-}: ProblemsDirectoryProps) {
+}: LogicLabDashboardProps) {
   const router = useRouter()
   const pathname = usePathname()
 

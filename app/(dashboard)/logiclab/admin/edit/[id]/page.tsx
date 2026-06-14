@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { redirect, notFound } from "next/navigation"
-import { AdminProblemCreatorClient } from "../../AdminProblemCreatorClient"
+import { AdminProblemEditorClient } from "../../../_components/AdminProblemEditorClient"
 
 export const metadata = {
   title: "Edit Problem — LogicLab Admin",
@@ -34,7 +34,7 @@ export default async function EditProblemPage({ params }: PageProps) {
   }
 
   return (
-    <AdminProblemCreatorClient
+    <AdminProblemEditorClient
       initialProblem={problem}
       isEdit={true}
     />

@@ -1,7 +1,7 @@
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { redirect } from "next/navigation"
-import { DailychallengesPageClient } from "./DailychallengesPageClient"
+import { DailyChallengesHistoryClient } from "../_components/DailyChallengesHistoryClient"
 
 export const metadata = {
   title: "Daily Challenges History",
@@ -86,7 +86,7 @@ export default async function DailyChallengesPage() {
   const pastHistory = enrichedHistory.filter((h: any) => h.date !== todayStr)
 
   return (
-    <DailychallengesPageClient
+    <DailyChallengesHistoryClient
       history={pastHistory}
       currentPotd={currentPotd}
       totalPotds={totalPotds}

@@ -21,7 +21,7 @@ interface PotdHistoryItem {
   acceptance_rate: number
 }
 
-interface DailychallengesPageClientProps {
+interface DailyChallengesHistoryClientProps {
   history: PotdHistoryItem[]
   currentPotd: PotdHistoryItem | null
   totalPotds: number
@@ -34,7 +34,7 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   Hard: "text-rose-500",
 }
 
-export function DailychallengesPageClient({ history, currentPotd, totalPotds, solvedPotds }: DailychallengesPageClientProps) {
+export function DailyChallengesHistoryClient({ history, currentPotd, totalPotds, solvedPotds }: DailyChallengesHistoryClientProps) {
   const router = useRouter()
   const calculateTimeLeft = () => {
     const now = new Date()

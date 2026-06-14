@@ -15,28 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  IconLayoutNavbar,
-  IconCode,
-  IconKeyboard,
-  IconAdjustments,
-  IconFlask,
-  IconClock,
-  IconX,
-} from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
-
-export type IdeSettings = {
-  fontSize: number;
-  wordWrap: "on" | "off";
-  buttonPosition: "toolbar" | "bottom";
-};
-
-export const DEFAULT_IDE_SETTINGS: IdeSettings = {
-  fontSize: 13,
-  wordWrap: "on",
-  buttonPosition: "toolbar",
-};
+import { IdeSettings } from "../../_types";
+import { DEFAULT_IDE_SETTINGS } from "../../_constants";
 
 interface IdeSettingsModalProps {
   open: boolean;
@@ -207,7 +188,6 @@ export function IdeSettingsModal({
                     if (open) {
                       savedFontSizeRef.current = safeSettings.fontSize;
                     } else {
-                      // Revert if closed without selection by directly updating monaco via callback
                       if (onPreviewFontSize) {
                         onPreviewFontSize(savedFontSizeRef.current);
                       }

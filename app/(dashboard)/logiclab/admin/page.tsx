@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { redirect } from "next/navigation"
-import { AdminDashboardClient } from "./AdminDashboardClient"
+import { AdminDashboardClient } from "../_components/AdminDashboardClient"
 
 export const metadata = {
   title: "Admin Center — LogicLab",

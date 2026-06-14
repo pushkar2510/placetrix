@@ -31,7 +31,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
-import { AdminProblemCreatorClient } from "./AdminProblemCreatorClient"
+import { AdminProblemEditorClient } from "./AdminProblemEditorClient"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -1085,7 +1085,7 @@ export function AdminDashboardClient({
           {/* ── CREATE / IMPORT TAB ── */}
           <TabsContent value="create" className="mt-0">
             <div className="animate-in fade-in-50 duration-200">
-              <AdminProblemCreatorClient />
+              <AdminProblemEditorClient />
             </div>
           </TabsContent>
         </div>

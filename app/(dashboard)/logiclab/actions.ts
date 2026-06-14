@@ -3,7 +3,9 @@
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { unstable_cache } from "next/cache"
+import { Problem } from "./_types"
 
+// Cache LogicLab global problems list for 1 hour
 export const getCachedGlobalProblemsList = unstable_cache(
   async () => {
     const adminSupabase = createAdminClient()
@@ -16,14 +18,13 @@ export const getCachedGlobalProblemsList = unstable_cache(
     return (problems as any[]) || []
   },
   ["global-problems-list-cache-v1"],
-  { revalidate: 3600 } // Cache for 1 hour
+  { revalidate: 3600 }
 )
 
+// Fetch light problem array for side list inside IDE
 export async function getIdeProblemList(userId: string) {
-  // 1. Fetch cached problems (0ms, no database load)
   const problems = await getCachedGlobalProblemsList()
   
-  // 2. Fetch live user solved status
   const supabase = (await createServerClient()) as any
   const { data: solvedData } = await supabase
     .from("logiclab_problem_submissions")
@@ -33,7 +34,6 @@ export async function getIdeProblemList(userId: string) {
     
   const solvedSet = new Set(solvedData?.map((s: any) => s.problem_id) || [])
   
-  // 3. Merge and return lightweight array
   return problems.map((p: any, idx: number) => ({
     id: p.id,
     title: p.title,
@@ -43,10 +43,10 @@ export async function getIdeProblemList(userId: string) {
   }))
 }
 
+// Fetch single problem details, testcases and past submissions for SPA transition
 export async function getProblemDataSPA(problemId: string, userId: string) {
   const supabase = (await createServerClient()) as any
 
-  // Fetch problem
   const { data: problem, error } = await supabase
     .from("logiclab_problems")
     .select("*")
@@ -55,7 +55,6 @@ export async function getProblemDataSPA(problemId: string, userId: string) {
 
   if (error || !problem) return null
 
-  // Extract test cases
   let parsedTestCases: any[] = problem.test_cases || []
   if (typeof parsedTestCases === "string") {
     try {
@@ -76,7 +75,6 @@ export async function getProblemDataSPA(problemId: string, userId: string) {
 
   const totalTestCases = parsedTestCases.length
 
-  // Fetch submissions
   const { data: submissions } = await supabase
     .from("logiclab_problem_submissions")
     .select("id, status, language_id, runtime, memory, passed_count, total_count, created_at")
@@ -85,7 +83,6 @@ export async function getProblemDataSPA(problemId: string, userId: string) {
     .order("created_at", { ascending: false })
     .limit(20)
 
-  // Fetch previous/next problem IDs
   const allProblems = await getCachedGlobalProblemsList()
   const currentIndex = allProblems.findIndex((p: any) => p.id === problemId)
   
@@ -108,3 +105,38 @@ export async function getProblemDataSPA(problemId: string, userId: string) {
     nextProblemId
   }
 }
+
+// Cache daily challenge POTD metadata for 1 min
+export const getCachedPotd = unstable_cache(
+  async (todayStr: string) => {
+    const adminSupabase = createAdminClient()
+    const { data } = await (adminSupabase as any)
+      .from("logiclab_daily_challenges")
+      .select("id, problem_id, logiclab_problems ( id, title, difficulty )")
+      .eq("date", todayStr)
+      .single()
+    return data
+  },
+  ["daily-potd-cache"],
+  { revalidate: 60, tags: ["potd"] }
+)
+
+// Cache global problems and submission stats for 1 hour
+export const getCachedGlobalProblems = unstable_cache(
+  async () => {
+    const adminSupabase = createAdminClient()
+    
+    const { data: problems } = await adminSupabase
+      .from("logiclab_problems")
+      .select("id, number, title, difficulty, tags, created_at")
+      .order("number", { ascending: true })
+
+    const { data: stats } = await adminSupabase
+      .from("logiclab_problem_stats")
+      .select("problem_id, total_submissions, accepted_submissions")
+
+    return { problems: problems || [], stats: stats || [] }
+  },
+  ["global-problems-stats-cache-v2"],
+  { revalidate: 3600 }
+)

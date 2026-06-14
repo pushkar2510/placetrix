@@ -48,7 +48,7 @@ import {
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { getIdeProblemList, getProblemDataSPA } from "./actions";
+import { getIdeProblemList, getProblemDataSPA } from "../../actions";
 import { buildStorageUrl } from "@/lib/storage";
 import { useMonaco } from "@monaco-editor/react";
 import {
@@ -59,7 +59,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { IdeSettingsModal, IdeSettings, DEFAULT_IDE_SETTINGS } from "./IdeSettingsModal";
+import { IdeSettingsModal } from "./IdeSettingsModal";
+import { ProblemDescriptionViewer } from "./ProblemDescriptionViewer";
+import { IdeSettings, Problem, Submission, SampleTestCase } from "../../_types";
+import { DEFAULT_IDE_SETTINGS, LANGUAGES, DIFFICULTY_COLORS } from "../../_constants";
 import {
   Sheet,
   SheetContent,
@@ -130,211 +133,7 @@ const truncateText = (text: string | null | undefined, limit = 5000) => {
   );
 };
 
-// Inline Markdown Parser
-function parseInline(text: string) {
-  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
-  return parts.map((part, idx) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return (
-        <strong key={idx} className={cn('font-bold', 'text-foreground')}>
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith("`") && part.endsWith("`")) {
-      return (
-        <code
-          key={idx}
-          className={cn('bg-muted/70', 'border', 'border-border/40', 'px-1.5', 'py-0.5', 'rounded-md', 'text-xs', 'font-mono', 'text-zinc-900 dark:text-foreground/90')}
-        >
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-    return part;
-  });
-}
-
-// Robust Custom Markdown Renderer with Operator Replacements
-function MarkdownDescription({ content }: { content: string }) {
-  if (!content) return null;
-
-  let formatted = content
-    .replace(/<=/g, " ≤ ")
-    .replace(/>=/g, " ≥ ")
-    .replace(/!=/g, " ≠ ")
-    .replace(/->/g, " → ")
-    .replace(/==/g, " ＝ ");
-
-  const blocks = formatted.split(/(```[\s\S]*?```)/g);
-
-  return (
-    <div className={cn('text-zinc-800 dark:text-foreground/80', 'leading-relaxed', 'text-sm', 'space-y-4', 'font-sans')}>
-      {blocks.map((block, idx) => {
-        if (block.startsWith("```")) {
-          const match = block.match(/```(\w*)\n([\s\S]*?)```/);
-          const lang = match ? match[1] : "";
-          const codeText = match ? match[2] : block.slice(3, -3);
-          return (
-            <div
-              key={idx}
-              className={cn('bg-muted/30', 'border', 'border-border/50', 'rounded-lg', 'overflow-hidden', 'my-3.5', 'font-mono', 'text-xs')}
-            >
-              {lang && (
-                <div className={cn('bg-muted/40', 'px-3', 'py-1.5', 'border-b', 'border-border/40', 'text-[10px]', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold')}>
-                  {lang}
-                </div>
-              )}
-              <pre className={cn('p-3.5', 'overflow-x-auto', 'text-zinc-900 dark:text-foreground/90', 'whitespace-pre', 'scrollbar-thin')}>
-                {codeText.trim()}
-              </pre>
-            </div>
-          );
-        }
-
-        const lines = block.split("\n");
-        return (
-          <div key={idx} className="space-y-2">
-            {lines.map((line, lIdx) => {
-              const trimmed = line.trim();
-              if (!trimmed) return <div key={lIdx} className="h-1.5" />;
-
-              if (trimmed.startsWith("### ")) {
-                return (
-                  <h3
-                    key={lIdx}
-                    className={cn('text-sm', 'font-bold', 'text-foreground', 'uppercase', 'tracking-wider', 'mt-4', 'mb-2')}
-                  >
-                    {parseInline(trimmed.slice(4))}
-                  </h3>
-                );
-              }
-              if (trimmed.startsWith("## ")) {
-                return (
-                  <h2
-                    key={lIdx}
-                    className={cn('text-base', 'font-bold', 'text-foreground', 'uppercase', 'tracking-wider', 'mt-5', 'mb-2', 'border-b', 'border-border/80', 'pb-1')}
-                  >
-                    {parseInline(trimmed.slice(3))}
-                  </h2>
-                );
-              }
-              if (trimmed.startsWith("# ")) {
-                return (
-                  <h1
-                    key={lIdx}
-                    className={cn('text-lg', 'font-bold', 'text-foreground', 'uppercase', 'tracking-wider', 'mt-6', 'mb-3', 'border-b', 'border-border/80', 'pb-1')}
-                  >
-                    {parseInline(trimmed.slice(2))}
-                  </h1>
-                );
-              }
-
-              if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-                return (
-                  <ul
-                    key={lIdx}
-                    className={cn('list-disc', 'pl-5', 'space-y-1', 'text-zinc-600 dark:text-muted-foreground')}
-                  >
-                    <li>{parseInline(trimmed.slice(2))}</li>
-                  </ul>
-                );
-              }
-
-              const numMatch = trimmed.match(/^(\d+)\.\s(.*)/);
-              if (numMatch) {
-                return (
-                  <ol
-                    key={lIdx}
-                    className={cn('list-decimal', 'pl-5', 'space-y-1', 'text-zinc-600 dark:text-muted-foreground')}
-                  >
-                    <li value={parseInt(numMatch[1])}>
-                      {parseInline(numMatch[2])}
-                    </li>
-                  </ol>
-                );
-              }
-
-              if (trimmed.startsWith("> ")) {
-                return (
-                  <blockquote
-                    key={lIdx}
-                    className={cn('border-l-2', 'border-zinc-400 dark:border-zinc-500', 'bg-muted/20', 'px-4', 'py-2.5', 'rounded-r-md', 'text-zinc-650 dark:text-muted-foreground', 'text-sm', 'italic', 'my-3')}
-                  >
-                    {parseInline(trimmed.slice(2))}
-                  </blockquote>
-                );
-              }
-
-              if (trimmed === "---" || trimmed === "***") {
-                return <hr key={lIdx} className={cn('border-border', 'my-4')} />;
-              }
-
-              return (
-                <p key={lIdx} className={cn('text-zinc-800 dark:text-foreground/80', 'leading-relaxed')}>
-                  {parseInline(line)}
-                </p>
-              );
-            })}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-const LANGUAGES = [
-  { id: 71, name: "Python 3", value: "python", extension: "py" },
-  {
-    id: 63,
-    name: "JavaScript (Node.js)",
-    value: "javascript",
-    extension: "js",
-  },
-  { id: 54, name: "C++ (GCC 9.2)", value: "cpp", extension: "cpp" },
-  { id: 62, name: "Java (OpenJDK 13)", value: "java", extension: "java" },
-];
-
-const DIFFICULTY_COLORS: Record<string, string> = {
-  Easy: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/15 dark:border-emerald-500/20",
-  Medium:
-    "text-amber-600 dark:text-amber-400 bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/15 dark:border-amber-500/20",
-  Hard: "text-rose-600 dark:text-rose-400 bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/15 dark:border-rose-500/20",
-};
-
-interface SampleTestCase {
-  id: string;
-  input: string;
-  expected_output: string;
-  explanation?: string;
-}
-
-interface Submission {
-  id: string;
-  status: string;
-  language_id: number;
-  runtime: number | null;
-  memory: number | null;
-  passed_count: number;
-  total_count: number;
-  created_at: string;
-}
-
-interface Problem {
-  id: string;
-  title: string;
-  description: string;
-  difficulty: string;
-  tags: string[];
-  time_limit: number;
-  memory_limit: number;
-  constraints?: string[];
-  number?: number;
-  boilerplates: Record<string, string>;
-  driver_codes: Record<string, string>;
-}
-
-export function ProblemIDEClient({
+export function ProblemWorkspaceClient({
   problem: initialProblem,
   sampleTestCases: initialSampleTestCases,
   totalTestCases: initialTotalTestCases,
@@ -516,13 +315,13 @@ export function ProblemIDEClient({
 
   const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
   const selectedLangRef = React.useRef(LANGUAGES[0]);
-  
+
   useEffect(() => {
     selectedLangRef.current = selectedLang;
   }, [selectedLang]);
 
   const [code, setCode] = useState("");
-  
+
   // Settings State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [ideSettings, setIdeSettings] = useState<IdeSettings>(DEFAULT_IDE_SETTINGS);
@@ -534,7 +333,7 @@ export function ProblemIDEClient({
         const parsed = JSON.parse(stored);
         setIdeSettings({ ...DEFAULT_IDE_SETTINGS, ...parsed });
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   useEffect(() => {
@@ -543,9 +342,9 @@ export function ProblemIDEClient({
 
   useEffect(() => {
     if (editorRef.current) {
-      editorRef.current.updateOptions({ 
+      editorRef.current.updateOptions({
         fontSize: ideSettings.fontSize,
-        wordWrap: ideSettings.wordWrap 
+        wordWrap: ideSettings.wordWrap
       });
     }
   }, [ideSettings.fontSize, ideSettings.wordWrap]);
@@ -1475,7 +1274,7 @@ export function ProblemIDEClient({
 
                   {/* Description */}
                   <div className={cn('text-sm', 'text-zinc-900 dark:text-foreground/90', 'leading-relaxed', 'mt-4')}>
-                    <MarkdownDescription content={problem.description} />
+                    <ProblemDescriptionViewer content={problem.description} />
                     {/* Sample Test Cases */}
                     {sampleTestCases.length > 0 && (
                       <div className={cn('space-y-6', 'mt-8')}>
@@ -2277,45 +2076,45 @@ export function ProblemIDEClient({
                 <IconRefresh className={cn('h-4', 'w-4')} />
               </Button>
             </PopoverTrigger>
-          <PopoverContent
-            className={cn('w-64', 'p-3', 'z-[9999]')}
-            side="bottom"
-            align="end"
-            onOpenAutoFocus={(e) => e.preventDefault()}
-            onCloseAutoFocus={(e) => e.preventDefault()}
-          >
-            <div className={cn('flex', 'flex-col', 'gap-3')}>
-              <span className={cn('text-sm', 'font-medium')}>Reset code?</span>
-              <span className={cn('text-xs', 'text-zinc-600 dark:text-muted-foreground')}>
-                This will delete your current code and restore the default boilerplate.
-              </span>
-              <div className={cn('flex', 'gap-2', 'justify-end', 'mt-1')}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn('h-7', 'text-xs')}
-                  onClick={() => setIsResetOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className={cn('h-7', 'text-xs')}
-                  onClick={() => {
-                    const boilerplate =
-                      parsedBoilerplates[String(selectedLang.id)] ||
-                      `// Write your ${selectedLang.name} solution here\n`;
-                    setCode(boilerplate);
-                    setIsResetOpen(false);
-                  }}
-                >
-                  Reset
-                </Button>
+            <PopoverContent
+              className={cn('w-64', 'p-3', 'z-[9999]')}
+              side="bottom"
+              align="end"
+              onOpenAutoFocus={(e) => e.preventDefault()}
+              onCloseAutoFocus={(e) => e.preventDefault()}
+            >
+              <div className={cn('flex', 'flex-col', 'gap-3')}>
+                <span className={cn('text-sm', 'font-medium')}>Reset code?</span>
+                <span className={cn('text-xs', 'text-zinc-600 dark:text-muted-foreground')}>
+                  This will delete your current code and restore the default boilerplate.
+                </span>
+                <div className={cn('flex', 'gap-2', 'justify-end', 'mt-1')}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn('h-7', 'text-xs')}
+                    onClick={() => setIsResetOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className={cn('h-7', 'text-xs')}
+                    onClick={() => {
+                      const boilerplate =
+                        parsedBoilerplates[String(selectedLang.id)] ||
+                        `// Write your ${selectedLang.name} solution here\n`;
+                      setCode(boilerplate);
+                      setIsResetOpen(false);
+                    }}
+                  >
+                    Reset
+                  </Button>
+                </div>
               </div>
-            </div>
-          </PopoverContent>
-        </Popover>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
       <div className={cn('flex-1', 'min-h-0', 'relative')}>
@@ -2362,12 +2161,12 @@ export function ProblemIDEClient({
           onMount={(editor, monaco) => {
             editorRef.current = editor;
             monacoRef.current = monaco;
-            
+
             // Bind Ctrl + Equal (=) and NumpadAdd to Zoom In
             const zoomIn = () => setIdeSettings(prev => ({ ...prev, fontSize: Math.min(24, prev.fontSize + 1) }));
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Equal, zoomIn);
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.NumpadAdd, zoomIn);
-            
+
             // Bind Ctrl + Minus (-) and NumpadSubtract to Zoom Out
             const zoomOut = () => setIdeSettings(prev => ({ ...prev, fontSize: Math.max(10, prev.fontSize - 1) }));
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Minus, zoomOut);

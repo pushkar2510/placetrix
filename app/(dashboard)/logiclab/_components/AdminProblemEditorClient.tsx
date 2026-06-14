@@ -271,7 +271,7 @@ const CSV_ROBUST_TEMPLATE = `title,description,difficulty,tags,time_limit,memory
 const CSV_SIMPLE_TEMPLATE = `title,description,difficulty,tags,time_limit,memory_limit,sample_input,sample_output
 "Two Sum","Given an array of integers...","Easy","Array;Hash Table",2.0,256,"[2,7,11,15]\\n9","[0,1]"`
 
-export function AdminProblemCreatorClient({
+export function AdminProblemEditorClient({
   initialProblem,
   isEdit = false,
 }: {

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { redirect, notFound } from "next/navigation"
-import { ProblemIDEClient } from "@/app/(dashboard)/logiclab/problems/[id]/ProblemIDEClient"
+import { ProblemWorkspaceClient } from "@/app/(dashboard)/logiclab/_components/ProblemWorkspaceClient/ProblemWorkspaceClient"
 
 export async function generateMetadata({ params }: { params: Promise<{ dailychallengeid: string }> }) {
   const { dailychallengeid } = await params
@@ -69,7 +69,7 @@ export default async function DailyChallengePage({ params }: { params: Promise<{
     .limit(20)
 
   return (
-    <ProblemIDEClient
+    <ProblemWorkspaceClient
       problem={problem}
       sampleTestCases={sampleTestCases ?? []}
       totalTestCases={totalTestCases ?? 0}

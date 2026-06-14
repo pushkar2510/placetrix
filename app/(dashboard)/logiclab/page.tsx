@@ -1,9 +1,8 @@
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { redirect } from "next/navigation"
-import { ProblemsDirectoryClient } from "./ProblemsDirectoryClient"
-import { unstable_cache } from "next/cache"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { LogicLabDashboardClient } from "./_components/LogicLabDashboardClient"
+import { getCachedPotd, getCachedGlobalProblems } from "./actions"
 
 export const metadata = {
   title: "LogicLab — Coding Problems",
@@ -27,38 +26,6 @@ function toIstYYYYMMDD(dateInput: Date | string) {
   return istDate.toISOString().split("T")[0]
 }
 
-const getCachedPotd = unstable_cache(
-  async (todayStr: string) => {
-    const adminSupabase = createAdminClient()
-    const { data } = await (adminSupabase as any)
-      .from("logiclab_daily_challenges")
-      .select("id, problem_id, logiclab_problems ( id, title, difficulty )")
-      .eq("date", todayStr)
-      .single()
-    return data
-  },
-  ["daily-potd-cache"],
-  { revalidate: 60, tags: ["potd"] } // Cache for 1 min, allow manual revalidation
-)
-
-const getCachedGlobalProblems = unstable_cache(
-  async () => {
-    const adminSupabase = createAdminClient()
-    
-    const { data: problems } = await adminSupabase
-      .from("logiclab_problems")
-      .select("id, number, title, difficulty, tags, created_at")
-      .order("number", { ascending: true })
-
-    const { data: stats } = await adminSupabase
-      .from("logiclab_problem_stats")
-      .select("problem_id, total_submissions, accepted_submissions")
-
-    return { problems: problems || [], stats: stats || [] }
-  },
-  ["global-problems-stats-cache-v2"],
-  { revalidate: 3600 } // Cache for 1 hour
-)
 
 export default async function LogicLabPage(props: {
   searchParams: Promise<SearchParams>
@@ -290,7 +257,7 @@ export default async function LogicLabPage(props: {
   }
 
   return (
-    <ProblemsDirectoryClient
+    <LogicLabDashboardClient
       problems={paginatedProblems}
       isAdmin={isAdmin}
       streakStats={streakStats}

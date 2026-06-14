@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { redirect, notFound } from "next/navigation"
-import { ProblemIDEClient } from "./ProblemIDEClient"
-import { getCachedGlobalProblemsList } from "./actions"
+import { ProblemWorkspaceClient } from "../../_components/ProblemWorkspaceClient/ProblemWorkspaceClient"
+import { getCachedGlobalProblemsList } from "../../actions"
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -79,7 +79,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <ProblemIDEClient
+    <ProblemWorkspaceClient
       problem={problem}
       sampleTestCases={sampleTestCases ?? []}
       totalTestCases={totalTestCases ?? 0}
