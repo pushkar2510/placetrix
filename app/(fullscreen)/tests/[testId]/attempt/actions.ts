@@ -194,7 +194,7 @@ export async function saveAnswerAction(
 ): Promise<void> {
   const { supabase } = await requireAuth()
 
-  const { error } = await (supabase as any).rpc("save_answer", {
+  const { error } = await (supabase as any).rpc("test_attempt_save_answer", {
     p_attempt_id: attemptId,
     p_question_id: questionId,
     p_selected_option_ids: selectedOptionIds,
@@ -223,7 +223,7 @@ export async function saveAnswersBatchAction(
   const { supabase } = await requireAuth()
 
   // Use the new bulk RPC to save everything in one round-trip.
-  const { error } = await (supabase as any).rpc("bulk_save_answers", {
+  const { error } = await (supabase as any).rpc("test_attempt_bulk_save_answers", {
     p_attempt_id: attemptId,
     p_batch: answers, // jsonb array
   })
@@ -262,7 +262,7 @@ export async function submitAttemptAction(
     throw new Error("Attempt not found or already submitted")
   }
 
-  const { data: result, error } = await (supabase as any).rpc("grade_attempt_v2", {
+  const { data: result, error } = await (supabase as any).rpc("test_attempt_grade", {
     p_attempt_id: attemptId,
     p_final_time_spent: timeSpentSeconds,
   })
@@ -340,7 +340,7 @@ export async function submitFeedbackAction(
 ): Promise<void> {
   const { supabase, userId } = await requireAuth()
 
-  const { error } = await (supabase as any).from("test_attempt_feedback").insert({
+  const { error } = await (supabase as any).from("test_attempt_feedbacks").insert({
     attempt_id: attemptId,
     candidate_id: userId,
     test_id: testId,

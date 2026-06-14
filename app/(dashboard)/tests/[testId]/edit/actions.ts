@@ -73,7 +73,7 @@ async function saveTestToDb(
 ): Promise<void> {
   const supabase = await createClient()
 
-  const { error } = await (supabase as any).rpc("save_test_v2", {
+  const { error } = await (supabase as any).rpc("test_save", {
     p_test_id: testId,
     p_settings: {
       title: settings.title.trim(),
@@ -133,10 +133,10 @@ export async function loadTestAction(
       title, description, instructions,
       time_limit_seconds, available_from, available_until, status,
       shuffle_questions, shuffle_options, strict_mode,
-      questions (
+      test_questions (
         id, question_text, question_type, marks, order_index, explanation,
-        options ( id, option_text, is_correct, order_index ),
-        question_tags ( tags ( id, name ) )
+        test_question_options ( id, option_text, is_correct, order_index ),
+        question_tags ( test_question_tags ( id, name ) )
       )
     `)
     .eq("id", testId)
@@ -160,7 +160,7 @@ export async function loadTestAction(
       strict_mode: test.strict_mode ?? false,
     },
     status: test.status as "draft" | "published",
-    questions: (test.questions ?? [])
+    questions: (test.test_questions ?? [])
       .sort((a: any, b: any) => a.order_index - b.order_index)
       .map((q: any) => ({
         id: q.id,
@@ -170,9 +170,9 @@ export async function loadTestAction(
         order_index: q.order_index,
         explanation: q.explanation ?? "",
         tag_names: (q.question_tags ?? [])
-          .map((qt: any) => qt.tags?.name)
+          .map((qt: any) => qt.test_question_tags?.name)
           .filter(Boolean),
-        options: (q.options ?? [])
+        options: (q.test_question_options ?? [])
           .sort((a: any, b: any) => a.order_index - b.order_index)
           .map((o: any) => ({
             _key: o.id,

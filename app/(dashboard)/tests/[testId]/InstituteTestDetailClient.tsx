@@ -90,6 +90,7 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
+  RotateCw,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -915,6 +916,40 @@ function AttemptsTab({
               Students will appear here once they start the test.
             </p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 mt-2"
+            onClick={async () => {
+              setIsLoadingPage(true)
+              try {
+                await Promise.all([
+                  onFetchPage({
+                    search: searchQuery.trim(),
+                    statusFilter,
+                    scoreFilter,
+                    sortCol,
+                    sortDir,
+                    page,
+                  }),
+                  onFetchStats(),
+                ])
+                toast.success("Attempts refreshed")
+              } catch (err) {
+                toast.error("Failed to refresh attempts")
+              } finally {
+                setIsLoadingPage(false)
+              }
+            }}
+            disabled={isLoadingPage}
+          >
+            {isLoadingPage ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCw className="h-4 w-4" />
+            )}
+            Refresh
+          </Button>
         </CardContent>
       </Card>
     )
@@ -954,24 +989,61 @@ function AttemptsTab({
           )}
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2" disabled={isExporting}>
-              {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Export Data
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={handleExportCSV} disabled={isExporting}>
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              Export as CSV (Excel)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleExportPDF} disabled={isExporting}>
-              <FileText className="mr-2 h-4 w-4" />
-              Export as PDF
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            disabled={isLoadingPage || isExporting}
+            onClick={async () => {
+              setIsLoadingPage(true)
+              try {
+                await Promise.all([
+                  onFetchPage({
+                    search: searchQuery.trim(),
+                    statusFilter,
+                    scoreFilter,
+                    sortCol,
+                    sortDir,
+                    page,
+                  }),
+                  onFetchStats(),
+                ])
+                toast.success("Attempts refreshed")
+              } catch (err) {
+                toast.error("Failed to refresh attempts")
+              } finally {
+                setIsLoadingPage(false)
+              }
+            }}
+          >
+            {isLoadingPage ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCw className="h-4 w-4" />
+            )}
+            Refresh
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2" disabled={isExporting}>
+                {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Export Data
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={handleExportCSV} disabled={isExporting}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export as CSV (Excel)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF} disabled={isExporting}>
+                <FileText className="mr-2 h-4 w-4" />
+                Export as PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* ── Filter bar ─────────────────────────────────────────────────────── */}
@@ -1533,9 +1605,8 @@ export function InstituteTestDetailClient({
   const [pageRows, setPageRows] = useState<InstituteAttemptRow[]>(test.attempts)
   const [totalCount, setTotalCount] = useState(test.attemptStats.total)
   const [liveStats, setLiveStats] = useState<AttemptPageStats>(test.attemptStats)
-  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null)
 
-  // Tracks the most recent query params so Realtime refresh re-fetches the same view
+  // Tracks the most recent query params so refresh re-fetches the same view
   const lastParamsRef = useRef<AttemptQueryParams>({
     search: "",
     statusFilter: "all",
@@ -1565,25 +1636,10 @@ export function InstituteTestDetailClient({
   // Fetch aggregate stats independently (runs after Realtime events)
   const refreshStats = useCallback(async () => {
     const supabase = createClient()
-    const { data: statsData, count } = await (supabase as any)
-      .from("view_test_results_detailed")
-      .select("status, percentage, score, total_marks", { count: "exact" })
-      .eq("test_id", testId)
-      .not("attempt_id", "is", null)
+    const { data: statsData } = await (supabase as any).rpc("get_test_attempt_stats", { p_test_id: testId })
 
     if (!statsData) return
-    const allRows: any[] = statsData
-    const total = count ?? allRows.length
-    const submittedRows = allRows.filter((a: any) => a.status === "submitted" || a.status === "auto_submitted")
-    const inProgressCount = allRows.filter((a: any) => a.status === "in_progress").length
-    const avgPct = submittedRows.length > 0
-      ? submittedRows.reduce((sum: number, a: any) => {
-          if (a.percentage != null) return sum + a.percentage
-          if (a.score != null && a.total_marks != null && a.total_marks > 0) return sum + (a.score / a.total_marks) * 100
-          return sum
-        }, 0) / submittedRows.length
-      : null
-    setLiveStats({ total, submitted: submittedRows.length, in_progress: inProgressCount, avg_pct: avgPct })
+    setLiveStats(statsData as AttemptPageStats)
   }, [testId])
 
   // Fetch all rows for export (no pagination, respects current filters/sort)
@@ -1596,39 +1652,7 @@ export function InstituteTestDetailClient({
     return data.map(mapRawAttempt)
   }, [testId])
 
-  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
-    const supabase = createClient()
-    const channel = supabase
-      .channel(`test-attempts:${testId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "test_attempts",
-          filter: `test_id=eq.${testId}`,
-        },
-        () => {
-          if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
-          refreshTimerRef.current = setTimeout(() => {
-            // Refresh current page view + aggregate stats
-            handleFetchPage(lastParamsRef.current)
-            refreshStats()
-            refreshTimerRef.current = null
-          }, 2000)
-        }
-      )
-      .subscribe()
-
-    channelRef.current = channel
-
-    return () => {
-      supabase.removeChannel(channel)
-      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
-    }
-  }, [testId, handleFetchPage, refreshStats])
 
   return (
     <div className="flex flex-col gap-6 px-4 py-8 md:px-8">

@@ -30,7 +30,7 @@ export default async function AttemptPage({
 
   // ── 1. Consolidated Initialization (RPC) ────────────────────────────────────
   const { data: initResult, error: initError } = await (supabase as any).rpc(
-    "init_test_attempt",
+    "test_attempt_init",
     { p_test_id: testId }
   ) as { data: any; error: any }
 

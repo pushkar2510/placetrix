@@ -386,6 +386,7 @@ export function ProblemWorkspaceClient({
         } else {
           setCode(data.code);
         }
+        toast.success("Code prettified!");
       }
     } catch (err) {
       console.error("Format error", err);

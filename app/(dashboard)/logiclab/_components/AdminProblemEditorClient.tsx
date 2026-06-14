@@ -27,10 +27,10 @@ import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 
 const LANGUAGES = [
+  { id: 62, name: "Java (OpenJDK 13)", value: "java" },
   { id: 71, name: "Python 3", value: "python" },
   { id: 63, name: "JavaScript (Node.js)", value: "javascript" },
   { id: 54, name: "C++ (GCC 9.2)", value: "cpp" },
-  { id: 62, name: "Java (OpenJDK 13)", value: "java" },
 ]
 
 const DEFAULT_BOILERPLATES: Record<string, string> = {
@@ -308,7 +308,7 @@ export function AdminProblemEditorClient({
   const [memoryLimit, setMemoryLimit] = useState(initialProblem?.memory_limit || 256)
 
   // Code templates
-  const [activeLang, setActiveLang] = useState("71")
+  const [activeLang, setActiveLang] = useState("62")
   const [boilerplates, setBoilerplates] = useState<Record<string, string>>({
     ...DEFAULT_BOILERPLATES,
     ...parsedBoilerplates,

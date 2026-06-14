@@ -34,7 +34,7 @@ export default async function TestEditorPage({ params }: Props) {
   const isNew = testId === "new"
 
   const [{ data: tags }, initialData] = await Promise.all([
-    (supabase as any).from("tags").select("id, name").order("name"),
+    (supabase as any).from("test_question_tags").select("id, name").order("name"),
     isNew ? Promise.resolve(null) : loadTestAction(testId, user.sub as string),
   ])
 

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
+import { redirect } from "next/navigation"
 import { CandidateTestsClient } from "./CandidateTestsClient"
 import { InstituteTestsClient } from "./InstituteTestsClient"
 import { UnderDevelopment } from "@/components/under-development"
@@ -387,7 +388,7 @@ export default async function TestsPage(props: {
   if (profile.account_type === "institute" && (profile.account_subtype === "staff" || profile.account_subtype === "tpo" || profile.account_subtype === "primary")) {
     // Staff/TPO/Primary users query tests by their parent institute's profile id
     const instituteId = profile.institute_id
-    if (!instituteId) return null
+    if (!instituteId) redirect("/home")
     const { tests, count, tabCounts } = await fetchInstituteTests(
       instituteId,
       nowStr,

@@ -14,11 +14,11 @@ type Views<T extends keyof Database["public"]["Views"]> =
 
 // Raw row types — use these if you ever need to pass plain DB rows around
 export type TestRow = Tables<"tests">
-export type QuestionRow = Tables<"questions">
-export type OptionRow = Tables<"options">
-export type TagRow = Tables<"tags">
+export type QuestionRow = Tables<"test_questions">
+export type OptionRow = Tables<"test_question_options">
+export type TagRow = Tables<"test_question_tags">
 export type AttemptRow = Tables<"test_attempts">
-export type AttemptDetail = Views<"attempt_details">   // the view
+export type AttemptDetail = Views<"view_test_attempt_details">   // the view
 
 
 

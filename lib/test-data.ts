@@ -8,12 +8,12 @@ export async function getTestQuestions(testId: string): Promise<AttemptQuestion[
 
   const supabase = await createClient()
   const { data: rawQuestions, error: qError } = await (supabase as any)
-    .from("questions")
+    .from("test_questions")
     .select(
       `id, question_text, question_type, marks, order_index,
-       options (id, option_text, order_index),
+       test_question_options (id, option_text, order_index),
        question_tags (
-         tags (id, name)
+         test_question_tags (id, name)
        )`
     )
     .eq("test_id", testId)
@@ -30,7 +30,7 @@ export async function getTestQuestions(testId: string): Promise<AttemptQuestion[
     question_type: q.question_type as "single_correct" | "multiple_correct",
     marks: q.marks,
     order_index: q.order_index,
-    options: ((q.options as any[]) ?? [])
+    options: ((q.test_question_options as any[]) ?? [])
       .map((o: any) => ({
         id: o.id,
         option_text: o.option_text,
@@ -38,6 +38,6 @@ export async function getTestQuestions(testId: string): Promise<AttemptQuestion[
       }))
       .sort((a: any, b: any) => a.order_index - b.order_index),
     tags: (((q as any).question_tags as any[]) ?? [])
-      .flatMap((qt: any) => qt.tags ? [qt.tags] : []),
+      .flatMap((qt: any) => qt.test_question_tags ? [qt.test_question_tags] : []),
   }))
 }

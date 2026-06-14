@@ -27,16 +27,16 @@ async function fetchResultData(
       available_from, available_until, results_available, status, institute_id,
       shuffle_questions, shuffle_options,
       institute:institutes(institute_name, logo_path),
-      questions (
+      test_questions (
         id, question_text, marks, explanation, order_index,
-        options (id, option_text, is_correct, order_index),
-        question_tags (tags (id, name))
+        test_question_options (id, option_text, is_correct, order_index),
+        question_tags (test_question_tags (id, name))
       ),
       test_attempts!inner (
         id, candidate_id, status, submitted_at, score, total_marks, percentage, 
         time_spent_seconds, tab_switch_count,
         student:profiles(display_name),
-        attempt_answers (
+        test_attempt_answers (
           question_id, selected_option_ids, is_correct, marks_awarded, time_spent_seconds
         )
       )
@@ -87,7 +87,7 @@ async function fetchResultData(
     shuffle_options: raw.shuffle_options,
     institute_name: (raw.institute as any)?.institute_name ?? null,
     institute_logo_url: instituteLogoUrl,
-    questions: (raw.questions ?? []).map((q: any) => ({ marks: q.marks })),
+    questions: (raw.test_questions ?? []).map((q: any) => ({ marks: q.marks })),
   }
 
   const rawAttempt = raw.test_attempts[0]
@@ -107,18 +107,18 @@ async function fetchResultData(
   }
 
   const answerMap: Record<string, any> = {}
-  for (const a of rawAttempt.attempt_answers ?? []) {
+  for (const a of rawAttempt.test_attempt_answers ?? []) {
     answerMap[a.question_id] = a
   }
 
   // Ensure questions and options are sorted by order_index
-  const sortedQuestions = [...(raw.questions ?? [])].sort(
+  const sortedQuestions = [...(raw.test_questions ?? [])].sort(
     (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)
   )
 
   const answers: CandidateAnswerDetail[] = sortedQuestions.map((q: any) => {
     const ans = answerMap[q.id]
-    const sortedOptions = [...(q.options ?? [])].sort(
+    const sortedOptions = [...(q.test_question_options ?? [])].sort(
       (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)
     )
 
@@ -138,7 +138,7 @@ async function fetchResultData(
         order_index: o.order_index,
       })),
       tags: ((q.question_tags as any[]) ?? [])
-        .map((qt) => qt.tags)
+        .map((qt) => qt.test_question_tags)
         .filter(Boolean)
         .flat(),
     }

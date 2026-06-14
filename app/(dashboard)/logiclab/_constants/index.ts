@@ -1,6 +1,7 @@
 import { Language, IdeSettings } from "../_types";
 
 export const LANGUAGES: Language[] = [
+  { id: 62, name: "Java (OpenJDK 13)", value: "java", extension: "java" },
   { id: 71, name: "Python 3", value: "python", extension: "py" },
   {
     id: 63,
@@ -9,7 +10,6 @@ export const LANGUAGES: Language[] = [
     extension: "js",
   },
   { id: 54, name: "C++ (GCC 9.2)", value: "cpp", extension: "cpp" },
-  { id: 62, name: "Java (OpenJDK 13)", value: "java", extension: "java" },
 ];
 
 export const DEFAULT_IDE_SETTINGS: IdeSettings = {

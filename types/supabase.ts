@@ -75,73 +75,6 @@ export type Database = {
         }
         Relationships: []
       }
-      attempt_answers: {
-        Row: {
-          answered_at: string
-          attempt_id: string
-          id: string
-          is_correct: boolean | null
-          marks_awarded: number | null
-          question_id: string
-          selected_option_ids: string[]
-          time_spent_seconds: number
-          updated_at: string
-        }
-        Insert: {
-          answered_at?: string
-          attempt_id: string
-          id?: string
-          is_correct?: boolean | null
-          marks_awarded?: number | null
-          question_id: string
-          selected_option_ids?: string[]
-          time_spent_seconds?: number
-          updated_at?: string
-        }
-        Update: {
-          answered_at?: string
-          attempt_id?: string
-          id?: string
-          is_correct?: boolean | null
-          marks_awarded?: number | null
-          question_id?: string
-          selected_option_ids?: string[]
-          time_spent_seconds?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "attempt_answers_attempt_id_fkey"
-            columns: ["attempt_id"]
-            referencedRelation: "attempt_details"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attempt_answers_attempt_id_fkey"
-            columns: ["attempt_id"]
-            referencedRelation: "test_attempts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attempt_answers_attempt_id_fkey"
-            columns: ["attempt_id"]
-            referencedRelation: "view_test_results_detailed"
-            referencedColumns: ["attempt_id"]
-          },
-          {
-            foreignKeyName: "attempt_answers_question_id_fkey"
-            columns: ["question_id"]
-            referencedRelation: "questions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attempt_answers_question_id_fkey"
-            columns: ["question_id"]
-            referencedRelation: "view_question_analysis"
-            referencedColumns: ["question_id"]
-          },
-        ]
-      }
       candidate_profiles: {
         Row: {
           aadhaar_number: string | null
@@ -937,46 +870,6 @@ export type Database = {
         }
         Relationships: []
       }
-      options: {
-        Row: {
-          id: string
-          is_correct: boolean
-          media_url: string | null
-          option_text: string
-          order_index: number
-          question_id: string
-        }
-        Insert: {
-          id?: string
-          is_correct?: boolean
-          media_url?: string | null
-          option_text: string
-          order_index: number
-          question_id: string
-        }
-        Update: {
-          id?: string
-          is_correct?: boolean
-          media_url?: string | null
-          option_text?: string
-          order_index?: number
-          question_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "options_question_id_fkey"
-            columns: ["question_id"]
-            referencedRelation: "questions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "options_question_id_fkey"
-            columns: ["question_id"]
-            referencedRelation: "view_question_analysis"
-            referencedColumns: ["question_id"]
-          },
-        ]
-      }
       placement_records: {
         Row: {
           candidate_id: string
@@ -1091,81 +984,26 @@ export type Database = {
           {
             foreignKeyName: "question_tags_question_id_fkey"
             columns: ["question_id"]
-            referencedRelation: "questions"
+            referencedRelation: "test_questions"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "question_tags_question_id_fkey"
             columns: ["question_id"]
-            referencedRelation: "view_question_analysis"
+            referencedRelation: "view_test_question_analysis"
             referencedColumns: ["question_id"]
           },
           {
             foreignKeyName: "question_tags_tag_id_fkey"
             columns: ["tag_id"]
-            referencedRelation: "tag_performance"
-            referencedColumns: ["tag_id"]
+            referencedRelation: "test_question_tags"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "question_tags_tag_id_fkey"
             columns: ["tag_id"]
-            referencedRelation: "tags"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      questions: {
-        Row: {
-          created_at: string
-          explanation: string | null
-          id: string
-          marks: number
-          media_url: string | null
-          negative_marks: number
-          order_index: number
-          question_text: string
-          question_type: Database["public"]["Enums"]["question_type"]
-          test_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          explanation?: string | null
-          id?: string
-          marks?: number
-          media_url?: string | null
-          negative_marks?: number
-          order_index: number
-          question_text: string
-          question_type: Database["public"]["Enums"]["question_type"]
-          test_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          explanation?: string | null
-          id?: string
-          marks?: number
-          media_url?: string | null
-          negative_marks?: number
-          order_index?: number
-          question_text?: string
-          question_type?: Database["public"]["Enums"]["question_type"]
-          test_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "questions_test_id_fkey"
-            columns: ["test_id"]
-            referencedRelation: "tests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "questions_test_id_fkey"
-            columns: ["test_id"]
-            referencedRelation: "view_test_summary"
-            referencedColumns: ["id"]
+            referencedRelation: "view_question_tag_performance"
+            referencedColumns: ["tag_id"]
           },
         ]
       }
@@ -1288,25 +1126,74 @@ export type Database = {
           },
         ]
       }
-      tags: {
+      test_attempt_answers: {
         Row: {
-          created_at: string
+          answered_at: string
+          attempt_id: string
           id: string
-          name: string
+          is_correct: boolean | null
+          marks_awarded: number | null
+          question_id: string
+          selected_option_ids: string[]
+          time_spent_seconds: number
+          updated_at: string
         }
         Insert: {
-          created_at?: string
+          answered_at?: string
+          attempt_id: string
           id?: string
-          name: string
+          is_correct?: boolean | null
+          marks_awarded?: number | null
+          question_id: string
+          selected_option_ids?: string[]
+          time_spent_seconds?: number
+          updated_at?: string
         }
         Update: {
-          created_at?: string
+          answered_at?: string
+          attempt_id?: string
           id?: string
-          name?: string
+          is_correct?: boolean | null
+          marks_awarded?: number | null
+          question_id?: string
+          selected_option_ids?: string[]
+          time_spent_seconds?: number
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "attempt_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            referencedRelation: "test_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attempt_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            referencedRelation: "view_test_attempt_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attempt_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            referencedRelation: "view_test_results_detailed"
+            referencedColumns: ["attempt_id"]
+          },
+          {
+            foreignKeyName: "attempt_answers_question_id_fkey"
+            columns: ["question_id"]
+            referencedRelation: "test_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attempt_answers_question_id_fkey"
+            columns: ["question_id"]
+            referencedRelation: "view_test_question_analysis"
+            referencedColumns: ["question_id"]
+          },
+        ]
       }
-      test_attempt_feedback: {
+      test_attempt_feedbacks: {
         Row: {
           attempt_id: string
           bugs_issues: string | null
@@ -1347,13 +1234,13 @@ export type Database = {
           {
             foreignKeyName: "test_attempt_feedback_attempt_id_fkey"
             columns: ["attempt_id"]
-            referencedRelation: "attempt_details"
+            referencedRelation: "test_attempts"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "test_attempt_feedback_attempt_id_fkey"
             columns: ["attempt_id"]
-            referencedRelation: "test_attempts"
+            referencedRelation: "view_test_attempt_details"
             referencedColumns: ["id"]
           },
           {
@@ -1452,6 +1339,119 @@ export type Database = {
           },
           {
             foreignKeyName: "test_attempts_test_id_fkey"
+            columns: ["test_id"]
+            referencedRelation: "view_test_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_question_options: {
+        Row: {
+          id: string
+          is_correct: boolean
+          media_url: string | null
+          option_text: string
+          order_index: number
+          question_id: string
+        }
+        Insert: {
+          id?: string
+          is_correct?: boolean
+          media_url?: string | null
+          option_text: string
+          order_index: number
+          question_id: string
+        }
+        Update: {
+          id?: string
+          is_correct?: boolean
+          media_url?: string | null
+          option_text?: string
+          order_index?: number
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "options_question_id_fkey"
+            columns: ["question_id"]
+            referencedRelation: "test_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "options_question_id_fkey"
+            columns: ["question_id"]
+            referencedRelation: "view_test_question_analysis"
+            referencedColumns: ["question_id"]
+          },
+        ]
+      }
+      test_question_tags: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      test_questions: {
+        Row: {
+          created_at: string
+          explanation: string | null
+          id: string
+          marks: number
+          media_url: string | null
+          negative_marks: number
+          order_index: number
+          question_text: string
+          question_type: Database["public"]["Enums"]["question_type"]
+          test_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          marks?: number
+          media_url?: string | null
+          negative_marks?: number
+          order_index: number
+          question_text: string
+          question_type: Database["public"]["Enums"]["question_type"]
+          test_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          marks?: number
+          media_url?: string | null
+          negative_marks?: number
+          order_index?: number
+          question_text?: string
+          question_type?: Database["public"]["Enums"]["question_type"]
+          test_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_test_id_fkey"
+            columns: ["test_id"]
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "questions_test_id_fkey"
             columns: ["test_id"]
             referencedRelation: "view_test_summary"
             referencedColumns: ["id"]
@@ -1699,45 +1699,6 @@ export type Database = {
       }
     }
     Views: {
-      attempt_details: {
-        Row: {
-          attempt_number: number | null
-          id: string | null
-          passed: boolean | null
-          percentage: number | null
-          score: number | null
-          started_at: string | null
-          status: Database["public"]["Enums"]["attempt_status"] | null
-          student_email: string | null
-          student_id: string | null
-          student_name: string | null
-          submitted_at: string | null
-          tab_switch_count: number | null
-          test_id: string | null
-          time_spent_seconds: number | null
-          total_marks: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "test_attempts_candidate_id_fkey"
-            columns: ["student_id"]
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "test_attempts_test_id_fkey"
-            columns: ["test_id"]
-            referencedRelation: "tests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "test_attempts_test_id_fkey"
-            columns: ["test_id"]
-            referencedRelation: "view_test_summary"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       logiclab_daily_challenge_user_activity: {
         Row: {
           activity_date: string | null
@@ -1793,7 +1754,16 @@ export type Database = {
           },
         ]
       }
-      tag_performance: {
+      user_daily_activity: {
+        Row: {
+          activity_date: string | null
+          solved_count: number | null
+          submission_count: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      view_question_tag_performance: {
         Row: {
           accuracy_pct: number | null
           correct_count: number | null
@@ -1824,16 +1794,46 @@ export type Database = {
           },
         ]
       }
-      user_daily_activity: {
+      view_test_attempt_details: {
         Row: {
-          activity_date: string | null
-          solved_count: number | null
-          submission_count: number | null
-          user_id: string | null
+          attempt_number: number | null
+          id: string | null
+          passed: boolean | null
+          percentage: number | null
+          score: number | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["attempt_status"] | null
+          student_email: string | null
+          student_id: string | null
+          student_name: string | null
+          submitted_at: string | null
+          tab_switch_count: number | null
+          test_id: string | null
+          time_spent_seconds: number | null
+          total_marks: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "test_attempts_candidate_id_fkey"
+            columns: ["student_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_attempts_test_id_fkey"
+            columns: ["test_id"]
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_attempts_test_id_fkey"
+            columns: ["test_id"]
+            referencedRelation: "view_test_summary"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      view_question_analysis: {
+      view_test_question_analysis: {
         Row: {
           avg_time_spent: number | null
           correct_answers: number | null
@@ -1910,6 +1910,7 @@ export type Database = {
           id: string | null
           institute_id: string | null
           institute_name: string | null
+          instructions: string | null
           question_count: number | null
           results_available: boolean | null
           status: Database["public"]["Enums"]["test_status"] | null
@@ -1918,6 +1919,7 @@ export type Database = {
           title: string | null
           total_attempts: number | null
           total_marks: number | null
+          updated_at: string | null
         }
         Relationships: [
           {
@@ -1930,10 +1932,6 @@ export type Database = {
       }
     }
     Functions: {
-      bulk_save_answers: {
-        Args: { p_attempt_id: string; p_batch: Json }
-        Returns: undefined
-      }
       check_username_available: {
         Args: { p_user_id: string; p_username: string }
         Returns: boolean
@@ -1947,18 +1945,21 @@ export type Database = {
         Args: { p_profile_id: string }
         Returns: Json
       }
-      grade_attempt: { Args: { p_attempt_id: string }; Returns: undefined }
-      grade_attempt_v2: {
-        Args: { p_attempt_id: string; p_final_time_spent: number }
-        Returns: Json
-      }
-      init_test_attempt: { Args: { p_test_id: string }; Returns: Json }
       revoke_session: { Args: { p_session_id: string }; Returns: undefined }
       revoke_sessions_batch: {
         Args: { p_session_ids: string[] }
         Returns: undefined
       }
-      save_answer: {
+      test_attempt_bulk_save_answers: {
+        Args: { p_attempt_id: string; p_batch: Json }
+        Returns: undefined
+      }
+      test_attempt_grade: {
+        Args: { p_attempt_id: string; p_final_time_spent: number }
+        Returns: Json
+      }
+      test_attempt_init: { Args: { p_test_id: string }; Returns: Json }
+      test_attempt_save_answer: {
         Args: {
           p_attempt_id: string
           p_question_id: string
@@ -1967,7 +1968,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      save_test_v2: {
+      test_save: {
         Args: {
           p_questions: Json[]
           p_settings: Json
