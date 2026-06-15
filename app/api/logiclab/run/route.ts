@@ -197,11 +197,34 @@ export async function POST(req: NextRequest) {
       executedResults.sort((a, b) => a.index - b.index)
 
       for (const execution of executedResults) {
-        const { index, tc, error, data } = execution
+        let { index, tc, error, data } = execution
+        let consoleOutput = ""
+
+        if (!error && data?.stdout) {
+          const stdoutRaw = decode(data.stdout).trim()
+          
+          const errMatch = stdoutRaw.match(/@@@LOGICLAB_ERR_START@@@([\\s\\S]*?)@@@LOGICLAB_ERR_END@@@/)
+          if (errMatch) {
+            error = "Runtime Error: " + errMatch[1].trim()
+            consoleOutput = stdoutRaw.replace(errMatch[0], "").trim()
+          } else {
+            const resMatch = stdoutRaw.match(/@@@LOGICLAB_RES_START@@@([\\s\\S]*?)@@@LOGICLAB_RES_END@@@/)
+            if (resMatch) {
+              data.stdout = Buffer.from(resMatch[1].trim()).toString("base64")
+              consoleOutput = stdoutRaw.replace(resMatch[0], "").trim()
+            } else {
+              // Fallback if delimiters were somehow destroyed
+              consoleOutput = stdoutRaw
+              data.stdout = Buffer.from("").toString("base64") 
+              // Wait, if no delimiters, it means the student's code probably crashed before driver finished.
+            }
+          }
+        }
+
         if (error) {
           overallSuccess = false
           overallStatus = { id: 13, description: "System Error" }
-          results.push({ index, passed: false, input: tc.input, error, actual: error, expected: tc.expected_output })
+          results.push({ index, passed: false, input: tc.input, error, actual: error, expected: tc.expected_output, consoleOutput })
           continue
         }
 
@@ -231,6 +254,7 @@ export async function POST(req: NextRequest) {
           actual: stdout,
           stderr: decode(data.stderr),
           compile_output: decode(data.compile_output),
+          console_output: consoleOutput,
           status: data.status || { id: 3, description: "Accepted" },
           time: (metrics.timeMs / 1000).toFixed(3),
           memory: String(metrics.memoryKb)

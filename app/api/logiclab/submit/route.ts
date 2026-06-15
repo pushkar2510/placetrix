@@ -11,6 +11,7 @@ interface TestCaseResult {
   status: { id: number; description: string }
   time: string
   memory: string
+  consoleOutput?: string
 }
 
 function getDeterministicMetrics(code: string, languageId: number | string) {
@@ -231,11 +232,32 @@ export async function POST(req: NextRequest) {
     executedResults.sort((a, b) => a.index - b.index)
 
     for (const execution of executedResults) {
-      const { index, tc, error, data } = execution
+      let { index, tc, error, data } = execution
+      let consoleOutput = ""
+
+      if (!error && data?.stdout) {
+        const stdoutRaw = decode(data.stdout).trim()
+        
+        const errMatch = stdoutRaw.match(/@@@LOGICLAB_ERR_START@@@([\\s\\S]*?)@@@LOGICLAB_ERR_END@@@/)
+        if (errMatch) {
+          error = "Runtime Error: " + errMatch[1].trim()
+          consoleOutput = stdoutRaw.replace(errMatch[0], "").trim()
+        } else {
+          const resMatch = stdoutRaw.match(/@@@LOGICLAB_RES_START@@@([\\s\\S]*?)@@@LOGICLAB_RES_END@@@/)
+          if (resMatch) {
+            data.stdout = Buffer.from(resMatch[1].trim()).toString("base64")
+            consoleOutput = stdoutRaw.replace(resMatch[0], "").trim()
+          } else {
+            // Fallback
+            consoleOutput = stdoutRaw
+            data.stdout = Buffer.from("").toString("base64") 
+          }
+        }
+      }
 
       if (error) {
         overallStatus = "Runtime Error"
-        failedInfo = { index, input: tc.is_sample ? tc.input : "(hidden)", expected: tc.is_sample ? tc.expected_output : "(hidden)", actual: error }
+        failedInfo = { index, input: tc.is_sample ? tc.input : "(hidden)", expected: tc.is_sample ? tc.expected_output : "(hidden)", actual: error, console_output: consoleOutput }
         break
       }
 
@@ -257,6 +279,7 @@ export async function POST(req: NextRequest) {
         status: { id: statusId, description: statusDesc },
         time: tcTime.toFixed(3),
         memory: String(tcMemory),
+        consoleOutput
       }
 
       if (statusId === 3) {
@@ -272,6 +295,7 @@ export async function POST(req: NextRequest) {
               input: tc.is_sample ? tc.input : "(hidden)",
               expected: tc.is_sample ? expectedTrimmed : "(hidden)",
               actual: tc.is_sample ? stdout : "(hidden)",
+              console_output: tc.is_sample ? consoleOutput : ""
             }
           }
         }
@@ -376,7 +400,8 @@ export async function POST(req: NextRequest) {
         actual: sc.actual,
         status: sc.status,
         time: sc.time,
-        memory: sc.memory
+        memory: sc.memory,
+        console_output: sc.consoleOutput
       }))
     })
   } catch (error: any) {

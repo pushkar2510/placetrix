@@ -285,7 +285,19 @@ export function AdminProblemEditorClient({
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<"single" | "bulk">("single")
-  const [signatureJson, setSignatureJson] = useState("")
+  
+  // Signature Generator States
+  const [sigName, setSigName] = useState("twoSum")
+  const [sigReturnType, setSigReturnType] = useState("int[]")
+  const [sigArgs, setSigArgs] = useState<Array<{name: string, type: string}>>([
+    { name: "nums", type: "int[]" },
+    { name: "target", type: "int" }
+  ])
+
+  const addArg = () => setSigArgs([...sigArgs, { name: "", type: "" }])
+  const removeArg = (idx: number) => setSigArgs(sigArgs.filter((_, i) => i !== idx))
+  const updateArg = (idx: number, field: "name" | "type", value: string) => 
+    setSigArgs(sigArgs.map((a, i) => i === idx ? { ...a, [field]: value } : a))
 
   // Parse initial values safely
   let parsedBoilerplates = initialProblem?.boilerplates || {}
@@ -328,21 +340,26 @@ export function AdminProblemEditorClient({
   )
 
   const handleGenerateTemplates = () => {
-    if (!signatureJson.trim()) {
-      toast.error("Please enter a JSON signature schema first.")
+    if (!sigName.trim() || !sigReturnType.trim()) {
+      toast.error("Function name and return type are required.")
+      return
+    }
+    if (sigArgs.some(a => !a.name.trim() || !a.type.trim())) {
+      toast.error("All arguments must have a name and type.")
       return
     }
     try {
-      const parsed: FunctionSignature = JSON.parse(signatureJson)
-      if (!parsed.name || !parsed.returnType || !parsed.args) {
-        throw new Error("Missing required fields: name, returnType, or args")
+      const parsed: FunctionSignature = {
+        name: sigName.trim(),
+        returnType: sigReturnType.trim() as any,
+        args: sigArgs.map(a => ({ name: a.name.trim(), type: a.type.trim() as any }))
       }
       const generated = generateTemplatesFromSignature(parsed)
       setBoilerplates(generated.boilerplates)
       setDriverCodes(generated.driverCodes)
       toast.success("Templates generated successfully!")
     } catch (err: any) {
-      toast.error("Failed to parse signature: " + err.message)
+      toast.error("Failed to generate templates: " + err.message)
     }
   }
 
@@ -771,8 +788,8 @@ export function AdminProblemEditorClient({
             
             {/* Auto-Generate Templates */}
             <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Auto-Generate Templates (JSON Schema)</h3>
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Auto-Generate Templates</h3>
                  <button 
                    onClick={handleGenerateTemplates} 
                    className="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-black px-3 py-1.5 rounded-lg font-bold uppercase tracking-widest transition-colors cursor-pointer"
@@ -780,13 +797,83 @@ export function AdminProblemEditorClient({
                    Generate
                  </button>
               </div>
-              <textarea
-                value={signatureJson}
-                onChange={(e) => setSignatureJson(e.target.value)}
-                placeholder={'{\n  "name": "twoSum",\n  "returnType": "int[]",\n  "args": [\n    {"name": "nums", "type": "int[]"},\n    {"name": "target", "type": "int"}\n  ]\n}'}
-                rows={4}
-                className="w-full bg-background border border-border rounded px-3 py-2 text-xs font-mono text-foreground/80 focus:outline-none focus:border-zinc-600 resize-none"
-              />
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <div>
+                  <label className="text-[9px] text-muted-foreground/60 uppercase tracking-widest block mb-1">Function Name</label>
+                  <input
+                    type="text"
+                    value={sigName}
+                    onChange={(e) => setSigName(e.target.value)}
+                    placeholder="e.g. twoSum"
+                    className="w-full bg-background border border-border rounded px-2 py-1.5 text-xs text-foreground/80 font-mono focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] text-muted-foreground/60 uppercase tracking-widest block mb-1">Return Type</label>
+                  <select
+                    value={sigReturnType}
+                    onChange={(e) => setSigReturnType(e.target.value)}
+                    className="w-full bg-background border border-border rounded px-2 py-1.5 text-xs text-foreground/80 font-mono focus:outline-none"
+                  >
+                    <option value="int">int</option>
+                    <option value="int[]">int[]</option>
+                    <option value="long">long</option>
+                    <option value="double">double</option>
+                    <option value="boolean">boolean</option>
+                    <option value="String">String</option>
+                    <option value="String[]">String[]</option>
+                    <option value="List<Integer>">List&lt;Integer&gt;</option>
+                    <option value="List<String>">List&lt;String&gt;</option>
+                    <option value="ListNode">ListNode</option>
+                    <option value="TreeNode">TreeNode</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mt-2 mb-2">
+                  <label className="text-[9px] text-muted-foreground/60 uppercase tracking-widest">Arguments</label>
+                  <button onClick={addArg} className="text-[9px] text-emerald-600 hover:text-emerald-500 uppercase tracking-widest font-bold cursor-pointer">
+                    + Add Arg
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {sigArgs.map((arg, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={arg.name}
+                        onChange={(e) => updateArg(idx, "name", e.target.value)}
+                        placeholder="name (e.g. nums)"
+                        className="flex-1 bg-background border border-border rounded px-2 py-1.5 text-xs text-foreground/80 font-mono focus:outline-none"
+                      />
+                      <select
+                        value={arg.type}
+                        onChange={(e) => updateArg(idx, "type", e.target.value)}
+                        className="flex-1 bg-background border border-border rounded px-2 py-1.5 text-xs text-foreground/80 font-mono focus:outline-none"
+                      >
+                        <option value="int">int</option>
+                        <option value="int[]">int[]</option>
+                        <option value="long">long</option>
+                        <option value="double">double</option>
+                        <option value="boolean">boolean</option>
+                        <option value="String">String</option>
+                        <option value="String[]">String[]</option>
+                        <option value="List<Integer>">List&lt;Integer&gt;</option>
+                        <option value="List<String>">List&lt;String&gt;</option>
+                        <option value="ListNode">ListNode</option>
+                        <option value="TreeNode">TreeNode</option>
+                      </select>
+                      <button onClick={() => removeArg(idx)} className="text-rose-500 hover:text-rose-400 p-1 cursor-pointer">
+                        <IconX className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {sigArgs.length === 0 && (
+                    <div className="text-xs text-muted-foreground/50 italic py-1">No arguments (function takes no parameters).</div>
+                  )}
+                </div>
+              </div>
             </div>
             {/* Language selector */}
             <div className="flex items-center gap-2">

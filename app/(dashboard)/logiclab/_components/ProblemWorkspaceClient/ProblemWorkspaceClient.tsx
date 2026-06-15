@@ -1932,6 +1932,18 @@ export function ProblemWorkspaceClient({
                             )}
                           </pre>
                         </div>
+                        {/* Console Output (if any) */}
+                        {submitResult.failed_test_case_info.console_output && submitResult.failed_test_case_info.console_output.trim() !== "" && (
+                          <div className={cn('rounded-lg', 'border', 'border-border/50', 'overflow-hidden')}>
+                            <div className={cn('px-3', 'py-1.5', 'bg-muted/40', 'border-b', 'border-border/40', 'flex', 'items-center', 'gap-1.5', 'select-none')}>
+                              <IconTerminal2 className={cn('h-3', 'w-3', 'text-zinc-500')} />
+                              <span className={cn('text-[10px]', 'font-extrabold', 'uppercase', 'tracking-widest', 'text-zinc-600', 'dark:text-muted-foreground')}>Console Output</span>
+                            </div>
+                            <pre className={cn('p-3', 'bg-muted/20', 'dark:bg-zinc-900/30', 'whitespace-pre-wrap', 'text-zinc-700', 'dark:text-zinc-400', 'leading-relaxed')}>
+                              {submitResult.failed_test_case_info.console_output}
+                            </pre>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -2619,6 +2631,16 @@ export function ProblemWorkspaceClient({
                               </pre>
                             </div>
                           </div>
+                          {activeCase.console_output && activeCase.console_output.trim() !== "" && (
+                            <div className={cn('mt-4')}>
+                              <span className={cn('text-[10px]', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none', 'flex', 'items-center', 'gap-1.5')}>
+                                <IconTerminal2 className="h-3 w-3" /> Console Output
+                              </span>
+                              <pre className={cn('p-2.5', 'bg-muted/40', 'dark:bg-black/40', 'border', 'border-zinc-200', 'dark:border-border/50', 'rounded-xl', 'text-zinc-700', 'dark:text-zinc-400', 'text-[11px]', 'font-mono', 'whitespace-pre-wrap', 'max-h-32', 'overflow-y-auto', 'leading-relaxed')}>
+                                {activeCase.console_output}
+                              </pre>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );

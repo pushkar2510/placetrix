@@ -154,13 +154,11 @@ function generateJava(sig: FunctionSignature): { boilerplate: string, driver: st
       driverParsing += `        if(line${i}.length()>=2 && line${i}.startsWith("\\"")) line${i} = line${i}.substring(1, line${i}.length()-1);\n`;
       driverParsing += `        String ${argName} = line${i};\n`;
     } else if (a.type === "int[]") {
-      driverParsing += `        if(line${i}.startsWith("[")) line${i} = line${i}.substring(1, line${i}.length()-1);\n`;
-      driverParsing += `        String[] parts${i} = line${i}.isEmpty() ? new String[0] : line${i}.split(",");\n`;
+      driverParsing += `        String[] parts${i} = parseJsonArray(line${i});\n`;
       driverParsing += `        int[] ${argName} = new int[parts${i}.length];\n`;
       driverParsing += `        for(int j=0; j<parts${i}.length; j++) ${argName}[j] = Integer.parseInt(parts${i}[j].trim());\n`;
     } else if (a.type === "string[]") {
-      driverParsing += `        if(line${i}.startsWith("[")) line${i} = line${i}.substring(1, line${i}.length()-1);\n`;
-      driverParsing += `        String[] parts${i} = line${i}.isEmpty() ? new String[0] : line${i}.split(",");\n`;
+      driverParsing += `        String[] parts${i} = parseJsonArray(line${i});\n`;
       driverParsing += `        String[] ${argName} = new String[parts${i}.length];\n`;
       driverParsing += `        for(int j=0; j<parts${i}.length; j++) {\n`;
       driverParsing += `            String t = parts${i}[j].trim();\n`;
@@ -175,15 +173,39 @@ function generateJava(sig: FunctionSignature): { boilerplate: string, driver: st
 
   let printLogic = "";
   if (sig.returnType.endsWith("[]")) {
-    printLogic = `        System.out.println(Arrays.toString(res).replaceAll(" ", ""));\n`;
+    printLogic = `        System.out.println("@@@LOGICLAB_RES_START@@@" + Arrays.toString(res).replaceAll(" ", "") + "@@@LOGICLAB_RES_END@@@");\n`;
   } else {
-    printLogic = `        System.out.println(res);\n`;
+    printLogic = `        System.out.println("@@@LOGICLAB_RES_START@@@" + res + "@@@LOGICLAB_RES_END@@@");\n`;
   }
 
   const driver = `// === Driver Code (hidden from student) ===
 import java.util.*;
 
 public class Main {
+    public static String[] parseJsonArray(String s) {
+        s = s.trim();
+        if (s.length() >= 2 && s.startsWith("[")) {
+            s = s.substring(1, s.length() - 1);
+        }
+        if (s.isEmpty()) return new String[0];
+        List<String> res = new ArrayList<>();
+        int depth = 0;
+        boolean inQuotes = false;
+        int start = 0;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '"' && (i == 0 || s.charAt(i-1) != '\\\\')) inQuotes = !inQuotes;
+            else if (!inQuotes && (c == '[' || c == '{')) depth++;
+            else if (!inQuotes && (c == ']' || c == '}')) depth--;
+            else if (!inQuotes && depth == 0 && c == ',') {
+                res.add(s.substring(start, i).trim());
+                start = i + 1;
+            }
+        }
+        res.add(s.substring(start).trim());
+        return res.toArray(new String[0]);
+    }
+
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
 ${driverParsing}
@@ -191,8 +213,8 @@ ${driverParsing}
         try {
             ${retType} res = sol.${sig.name}(${argNames.join(", ")});
 ${printLogic}
-        } catch (Exception e) {
-            System.out.println("Exception: " + e.getMessage());
+        } catch (Throwable t) {
+            System.out.println("@@@LOGICLAB_ERR_START@@@" + t.toString() + "@@@LOGICLAB_ERR_END@@@");
         }
     }
 }`;
@@ -210,15 +232,26 @@ function generateCpp(sig: FunctionSignature): { boilerplate: string, driver: str
   const boilerplate = `#include <iostream>\n#include <vector>\n#include <string>\nusing namespace std;\n\nclass Solution {\npublic:\n    ${retType} ${sig.name}(${args}) {\n        // Write your code here\n        \n    }\n};`;
 
   // Provide utility parsers in driver
-  let parseVectorInt = sig.args.some(a => a.type === "int[]") ? `
-vector<int> parseVectorInt(string line) {
-    if(line.empty()) return {};
-    if(line[0]=='[') line=line.substr(1);
-    if(line.back()==']') line.pop_back();
-    vector<int> res;
-    stringstream ss(line);
-    string t;
-    while(getline(ss, t, ',')) { if(t.length()>0) res.push_back(stoi(t)); }
+  let parseVectorInt = sig.args.some(a => a.type === "int[]" || a.type === "string[]") ? `
+vector<string> parseJsonArray(string s) {
+    if(!s.empty() && s[0]=='[') s=s.substr(1);
+    if(!s.empty() && s.back()==']') s.pop_back();
+    vector<string> res;
+    if(s.empty()) return res;
+    int depth = 0;
+    bool inQuotes = false;
+    size_t start = 0;
+    for(size_t i=0; i<s.length(); i++) {
+        char c = s[i];
+        if(c == '"' && (i==0 || s[i-1]!='\\\\')) inQuotes = !inQuotes;
+        else if(!inQuotes && (c=='[' || c=='{')) depth++;
+        else if(!inQuotes && (c==']' || c=='}')) depth--;
+        else if(!inQuotes && depth==0 && c==',') {
+            res.push_back(s.substr(start, i-start));
+            start = i + 1;
+        }
+    }
+    res.push_back(s.substr(start));
     return res;
 }\n` : "";
 
@@ -244,19 +277,25 @@ string parseString(string line) {
     } else if (a.type === "string") {
       driverParsing += `    string ${argName} = parseString(line);\n`;
     } else if (a.type === "int[]") {
-      driverParsing += `    vector<int> ${argName} = parseVectorInt(line);\n`;
+      driverParsing += `    vector<string> parts${i} = parseJsonArray(line);\n`;
+      driverParsing += `    vector<int> ${argName};\n`;
+      driverParsing += `    for(string p : parts${i}) ${argName}.push_back(stoi(p));\n`;
+    } else if (a.type === "string[]") {
+      driverParsing += `    vector<string> parts${i} = parseJsonArray(line);\n`;
+      driverParsing += `    vector<string> ${argName};\n`;
+      driverParsing += `    for(string p : parts${i}) ${argName}.push_back(parseString(p));\n`;
     } else {
       driverParsing += `    // Unhandled type ${a.type}\n`;
     }
   }
 
   let printLogic = "";
-  if (sig.returnType === "int[]") {
-    printLogic = `    cout << "[";\n    for(size_t i=0; i<res.size(); i++) cout << res[i] << (i==res.size()-1 ? "" : ",");\n    cout << "]" << endl;\n`;
+  if (sig.returnType.endsWith("[]")) {
+    printLogic = `    cout << "@@@LOGICLAB_RES_START@@@[";\n    for(size_t i=0; i<res.size(); i++) cout << res[i] << (i==res.size()-1 ? "" : ",");\n    cout << "]@@@LOGICLAB_RES_END@@@" << endl;\n`;
   } else if (sig.returnType === "boolean") {
-    printLogic = `    cout << (res ? "true" : "false") << endl;\n`;
+    printLogic = `    cout << "@@@LOGICLAB_RES_START@@@" << (res ? "true" : "false") << "@@@LOGICLAB_RES_END@@@" << endl;\n`;
   } else {
-    printLogic = `    cout << res << endl;\n`;
+    printLogic = `    cout << "@@@LOGICLAB_RES_START@@@" << res << "@@@LOGICLAB_RES_END@@@" << endl;\n`;
   }
 
   const driver = `// === Driver Code (hidden from student) ===
@@ -264,6 +303,7 @@ string parseString(string line) {
 #include <vector>
 #include <string>
 #include <sstream>
+#include <exception>
 using namespace std;
 ${parseVectorInt}${parseString}
 int main() {
@@ -273,8 +313,10 @@ ${driverParsing}
     try {
         ${retType} res = sol.${sig.name}(${argNames.join(", ")});
 ${printLogic}
+    } catch (const std::exception& e) {
+        cout << "@@@LOGICLAB_ERR_START@@@" << e.what() << "@@@LOGICLAB_ERR_END@@@" << endl;
     } catch (...) {
-        cout << "Runtime Error" << endl;
+        cout << "@@@LOGICLAB_ERR_START@@@Unknown Runtime Error@@@LOGICLAB_ERR_END@@@" << endl;
     }
     return 0;
 }`;
@@ -294,7 +336,7 @@ function generatePython(sig: FunctionSignature): { boilerplate: string, driver: 
   // Python parsing
   const driver = `
 # === Driver Code (hidden from student) ===
-import sys, json
+import sys, json, traceback
 
 if __name__ == "__main__":
     input_data = sys.stdin.read().strip().splitlines()
@@ -313,9 +355,9 @@ if __name__ == "__main__":
     try:
         result = sol.${sig.name}(*parsed_args)
         # Convert true/false to lower case for json or just use json.dumps
-        print(json.dumps(result).replace(" ", ""))
+        print("@@@LOGICLAB_RES_START@@@" + json.dumps(result).replace(" ", "") + "@@@LOGICLAB_RES_END@@@")
     except Exception as e:
-        print(e)
+        print("@@@LOGICLAB_ERR_START@@@" + "\\n".join(traceback.format_exception_only(type(e), e)).strip() + "@@@LOGICLAB_ERR_END@@@")
 `;
 
   return { boilerplate, driver };
@@ -343,9 +385,9 @@ function run() {
     const sol = new Solution();
     try {
         const result = sol.${sig.name}(...parsedArgs);
-        console.log(JSON.stringify(result));
+        console.log("@@@LOGICLAB_RES_START@@@" + JSON.stringify(result) + "@@@LOGICLAB_RES_END@@@");
     } catch(e) {
-        console.log(e.message);
+        console.log("@@@LOGICLAB_ERR_START@@@" + e.stack + "@@@LOGICLAB_ERR_END@@@");
     }
 }
 run();
