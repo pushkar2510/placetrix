@@ -767,6 +767,77 @@ export type Database = {
           },
         ]
       }
+      logiclab_problem_notes: {
+        Row: {
+          attached_code: string | null
+          attached_language: string | null
+          content: string
+          created_at: string | null
+          id: string
+          is_public: boolean
+          problem_id: string
+          updated_at: string | null
+          upvotes_count: number
+          user_id: string
+        }
+        Insert: {
+          attached_code?: string | null
+          attached_language?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_public?: boolean
+          problem_id: string
+          updated_at?: string | null
+          upvotes_count?: number
+          user_id: string
+        }
+        Update: {
+          attached_code?: string | null
+          attached_language?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_public?: boolean
+          problem_id?: string
+          updated_at?: string | null
+          upvotes_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logiclab_problem_notes_problem_id_fkey"
+            columns: ["problem_id"]
+            referencedRelation: "logiclab_problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logiclab_problem_notes_upvotes: {
+        Row: {
+          created_at: string | null
+          note_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          note_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          note_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logiclab_problem_notes_upvotes_note_id_fkey"
+            columns: ["note_id"]
+            referencedRelation: "logiclab_problem_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       logiclab_problem_submissions: {
         Row: {
           code: string
@@ -1941,10 +2012,47 @@ export type Database = {
         Args: { p_profile_id: string }
         Returns: Json
       }
+      get_global_tags_count: { Args: never; Returns: Json }
+      get_ide_problem_list: {
+        Args: { p_user_id: string }
+        Returns: {
+          difficulty: string
+          id: string
+          isSolved: boolean
+          number: number
+          title: string
+        }[]
+      }
       get_institute_home_stats: {
         Args: { p_profile_id: string }
         Returns: Json
       }
+      get_paginated_problems: {
+        Args: {
+          p_difficulty?: string
+          p_limit: number
+          p_offset: number
+          p_search?: string
+          p_sort_by?: string
+          p_tab?: string
+          p_tag?: string
+          p_user_id: string
+        }
+        Returns: {
+          acceptance_rate: number
+          created_at: string
+          difficulty: string
+          id: string
+          number: number
+          solved_status: string
+          tags: string[]
+          title: string
+          total_count: number
+          total_submissions: number
+        }[]
+      }
+      get_test_attempt_stats: { Args: { p_test_id: string }; Returns: Json }
+      get_user_global_stats: { Args: { p_user_id: string }; Returns: Json }
       revoke_session: { Args: { p_session_id: string }; Returns: undefined }
       revoke_sessions_batch: {
         Args: { p_session_ids: string[] }
@@ -1976,6 +2084,10 @@ export type Database = {
           p_test_id: string
         }
         Returns: undefined
+      }
+      toggle_note_upvote: {
+        Args: { p_note_id: string; p_user_id: string }
+        Returns: boolean
       }
     }
     Enums: {
@@ -2695,3 +2807,4 @@ export const Constants = {
     },
   },
 } as const
+

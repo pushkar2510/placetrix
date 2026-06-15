@@ -1,155 +1,152 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import Prism from "prismjs";
 import { cn } from "@/lib/utils";
 
-// Inline Markdown Parser
-function parseInline(text: string) {
-  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
-  return parts.map((part, idx) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return (
-        <strong key={idx} className={cn('font-bold', 'text-foreground')}>
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith("`") && part.endsWith("`")) {
-      return (
-        <code
-          key={idx}
-          className={cn('bg-muted/70', 'border', 'border-border/40', 'px-1.5', 'py-0.5', 'rounded-md', 'text-xs', 'font-mono', 'text-zinc-900 dark:text-foreground/90')}
-        >
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-    return part;
-  });
-}
+import "prismjs/themes/prism-tomorrow.css";
+import "prismjs/components/prism-java";
+import "prismjs/components/prism-python";
+import "prismjs/components/prism-c";
+import "prismjs/components/prism-cpp";
+import "prismjs/components/prism-javascript";
+import "prismjs/components/prism-typescript";
+import "prismjs/components/prism-csharp";import { Lock } from "lucide-react";
 
-// Robust Custom Markdown Renderer with Operator Replacements
-export function ProblemDescriptionViewer({ content }: { content: string }) {
+export function ProblemDescriptionViewer({ content, isSpoilerMode = false }: { content: string; isSpoilerMode?: boolean }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   if (!content) return null;
 
-  let formatted = content
+  // Replace custom operators to maintain backward compatibility
+  const formattedContent = content
     .replace(/<=/g, " ≤ ")
     .replace(/>=/g, " ≥ ")
     .replace(/!=/g, " ≠ ")
     .replace(/->/g, " → ")
     .replace(/==/g, " ＝ ");
 
-  const blocks = formatted.split(/(```[\s\S]*?```)/g);
-
   return (
-    <div className={cn('text-zinc-800 dark:text-foreground/80', 'leading-relaxed', 'text-sm', 'space-y-4', 'font-sans')}>
-      {blocks.map((block, idx) => {
-        if (block.startsWith("```")) {
-          const match = block.match(/```(\w*)\n([\s\S]*?)```/);
-          const lang = match ? match[1] : "";
-          const codeText = match ? match[2] : block.slice(3, -3);
-          return (
-            <div
-              key={idx}
-              className={cn('bg-muted/30', 'border', 'border-border/50', 'rounded-lg', 'overflow-hidden', 'my-3.5', 'font-mono', 'text-xs')}
-            >
-              {lang && (
-                <div className={cn('bg-muted/40', 'px-3', 'py-1.5', 'border-b', 'border-border/40', 'text-[10px]', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold')}>
-                  {lang}
-                </div>
-              )}
-              <pre className={cn('p-3.5', 'overflow-x-auto', 'text-zinc-900 dark:text-foreground/90', 'whitespace-pre', 'scrollbar-thin')}>
-                {codeText.trim()}
-              </pre>
+    <div className={cn('text-zinc-800 dark:text-foreground/80', 'leading-relaxed', 'text-sm', 'space-y-4', 'font-sans', 'markdown-body')}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({node, ...props}) => <h1 className="text-[28px] leading-tight font-extrabold text-white mt-10 mb-5 tracking-tight first:mt-0" {...props} />,
+          h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-white mt-8 mb-4 tracking-tight first:mt-0" {...props} />,
+          h3: ({node, ...props}) => <h3 className="text-xl font-bold text-white mt-6 mb-3 tracking-tight first:mt-0" {...props} />,
+          p: ({node, ...props}) => <p className="text-zinc-300 leading-[1.7] text-[13px] my-4 first:mt-0" {...props} />,
+          a: ({node, ...props}) => <a className="text-blue-400 hover:text-blue-300 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
+          ul: ({node, ...props}) => <ul className="list-disc pl-6 space-y-1.5 text-zinc-300 my-4 first:mt-0" {...props} />,
+          ol: ({node, ...props}) => <ol className="list-decimal pl-6 space-y-1.5 text-zinc-300 my-4 first:mt-0" {...props} />,
+          li: ({node, ...props}) => <li className="text-[13px]" {...props} />,
+          blockquote: ({node, ...props}) => <blockquote className="border-l-[3px] border-zinc-500 pl-4 text-zinc-400 text-[13px] italic my-4 first:mt-0" {...props} />,
+          hr: ({node, ...props}) => <hr className="border-zinc-800 my-6" {...props} />,
+          table: ({node, ...props}) => (
+            <div className="overflow-x-auto my-4 first:mt-0 rounded-md border border-zinc-800">
+              <table className="w-full text-sm border-collapse" {...props} />
             </div>
-          );
-        }
-
-        const lines = block.split("\n");
-        return (
-          <div key={idx} className="space-y-2">
-            {lines.map((line, lIdx) => {
-              const trimmed = line.trim();
-              if (!trimmed) return <div key={lIdx} className="h-1.5" />;
-
-              if (trimmed.startsWith("### ")) {
+          ),
+          thead: ({node, ...props}) => <thead className="bg-zinc-900/40" {...props} />,
+          th: ({node, ...props}) => <th className="px-3 py-2 text-left font-semibold text-zinc-200 border-b border-zinc-800" {...props} />,
+          td: ({node, ...props}) => <td className="px-3 py-2 text-zinc-400 border-t border-zinc-800" {...props} />,
+          pre: ({node, ref, ...props}: any) => <div className="my-3.5 first:mt-0" {...props} />, // Strip standard pre wrap since we handle it in code
+          code({ node, className, children, ...props }: any) {
+            const match = /language-(\w+)/.exec(className || '');
+            const lang = match ? match[1].toLowerCase() : "";
+            const isBlock = String(children).includes('\n') || match;
+            
+            if (isBlock) {
+              if (isSpoilerMode) {
                 return (
-                  <h3
-                    key={lIdx}
-                    className={cn('text-sm', 'font-bold', 'text-foreground', 'uppercase', 'tracking-wider', 'mt-4', 'mb-2')}
-                  >
-                    {parseInline(trimmed.slice(4))}
-                  </h3>
-                );
-              }
-              if (trimmed.startsWith("## ")) {
-                return (
-                  <h2
-                    key={lIdx}
-                    className={cn('text-base', 'font-bold', 'text-foreground', 'uppercase', 'tracking-wider', 'mt-5', 'mb-2', 'border-b', 'border-border/80', 'pb-1')}
-                  >
-                    {parseInline(trimmed.slice(3))}
-                  </h2>
-                );
-              }
-              if (trimmed.startsWith("# ")) {
-                return (
-                  <h1
-                    key={lIdx}
-                    className={cn('text-lg', 'font-bold', 'text-foreground', 'uppercase', 'tracking-wider', 'mt-6', 'mb-3', 'border-b', 'border-border/80', 'pb-1')}
-                  >
-                    {parseInline(trimmed.slice(2))}
-                  </h1>
+                  <div className={cn('my-4', 'rounded-xl', 'overflow-hidden', 'border', 'border-zinc-800/80', 'bg-[#0a0a0a]', 'shadow-inner', 'relative', 'group', 'select-none')}>
+                    <div className={cn('flex', 'items-center', 'px-3', 'py-2.5', 'bg-[#18181b]', 'border-b', 'border-zinc-800', 'select-none', 'justify-between')}>
+                      <div className={cn('flex', 'gap-1.5', 'mr-3')}>
+                        <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-red-500/80')} />
+                        <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-yellow-500/80')} />
+                        <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-emerald-500/80')} />
+                      </div>
+                      <span className={cn('text-[10px]', 'text-zinc-500', 'uppercase', 'tracking-widest', 'font-bold')}>
+                        LOCKED
+                      </span>
+                    </div>
+                    <div className="absolute inset-0 top-[37px] bg-background/80 backdrop-blur-md z-10 flex flex-col items-center justify-center p-4 text-center">
+                      <Lock className="w-6 h-6 text-muted-foreground mb-2" />
+                      <p className="text-sm font-semibold text-foreground">Spoiler Locked Code</p>
+                      <p className="text-xs text-muted-foreground mt-1">Solve the problem to view attached code.</p>
+                    </div>
+                    <div className={cn('p-4', 'h-[140px]', 'overflow-hidden', 'opacity-30', 'pointer-events-none')}>
+                      <pre className={cn('text-[13px]', 'font-mono', 'whitespace-pre', 'leading-[1.7]', 'font-medium', 'm-0')}>
+                        <code className={className} {...props}>{children}</code>
+                      </pre>
+                    </div>
+                  </div>
                 );
               }
 
-              if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-                return (
-                  <ul
-                    key={lIdx}
-                    className={cn('list-disc', 'pl-5', 'space-y-1', 'text-zinc-600 dark:text-muted-foreground')}
-                  >
-                    <li>{parseInline(trimmed.slice(2))}</li>
-                  </ul>
-                );
-              }
-
-              const numMatch = trimmed.match(/^(\d+)\.\s(.*)/);
-              if (numMatch) {
-                return (
-                  <ol
-                    key={lIdx}
-                    className={cn('list-decimal', 'pl-5', 'space-y-1', 'text-zinc-600 dark:text-muted-foreground')}
-                  >
-                    <li value={parseInt(numMatch[1])}>
-                      {parseInline(numMatch[2])}
-                    </li>
-                  </ol>
-                );
-              }
-
-              if (trimmed.startsWith("> ")) {
-                return (
-                  <blockquote
-                    key={lIdx}
-                    className={cn('border-l-2', 'border-zinc-400 dark:border-zinc-500', 'bg-muted/20', 'px-4', 'py-2.5', 'rounded-r-md', 'text-zinc-650 dark:text-muted-foreground', 'text-sm', 'italic', 'my-3')}
-                  >
-                    {parseInline(trimmed.slice(2))}
-                  </blockquote>
-                );
-              }
-
-              if (trimmed === "---" || trimmed === "***") {
-                return <hr key={lIdx} className={cn('border-border', 'my-4')} />;
+              let effectiveLang = lang || 'javascript';
+              let highlightedCode = String(children).replace(/\n$/, '');
+              
+              if (mounted) {
+                try {
+                  if (effectiveLang === 'js') effectiveLang = 'javascript';
+                  if (effectiveLang === 'ts') effectiveLang = 'typescript';
+                  if (effectiveLang === 'py') effectiveLang = 'python';
+                  if (effectiveLang === 'c++') effectiveLang = 'cpp';
+                  
+                  if (Prism.languages[effectiveLang]) {
+                    highlightedCode = Prism.highlight(highlightedCode, Prism.languages[effectiveLang], effectiveLang);
+                  } else {
+                    effectiveLang = 'javascript';
+                    highlightedCode = Prism.highlight(highlightedCode, Prism.languages.javascript, 'javascript');
+                  }
+                } catch (e) {
+                  highlightedCode = highlightedCode.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                }
               }
 
               return (
-                <p key={lIdx} className={cn('text-zinc-800 dark:text-foreground/80', 'leading-relaxed')}>
-                  {parseInline(line)}
-                </p>
+                <div className={cn('my-4', 'rounded-xl', 'overflow-hidden', 'border', 'border-zinc-800/80', 'bg-[#0a0a0a]', 'shadow-inner')}>
+                  <div className={cn('flex', 'items-center', 'px-3', 'py-2.5', 'bg-[#18181b]', 'border-b', 'border-zinc-800', 'select-none', 'justify-between')}>
+                    <div className={cn('flex', 'gap-1.5', 'mr-3')}>
+                      <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-red-500/80')} />
+                      <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-yellow-500/80')} />
+                      <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-emerald-500/80')} />
+                    </div>
+                    {lang && (
+                      <span className={cn('text-[10px]', 'text-zinc-400', 'uppercase', 'tracking-widest', 'font-bold')}>
+                        {lang}
+                      </span>
+                    )}
+                  </div>
+                  <div className={cn('relative')}>
+                    <div className={cn('p-4', 'max-h-96', 'overflow-x-auto', 'scrollbar-thin')}>
+                      <pre className={cn('text-[13px]', 'whitespace-pre', 'leading-[1.7]', 'font-medium', 'font-mono', 'm-0', 'bg-transparent', `language-${effectiveLang}`)}>
+                        {mounted ? (
+                          <code className={`language-${effectiveLang}`} dangerouslySetInnerHTML={{ __html: highlightedCode }} />
+                        ) : (
+                          <code className={`language-${effectiveLang}`}>{children}</code>
+                        )}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
               );
-            })}
-          </div>
-        );
-      })}
+            }
+            
+            return (
+              <code className="bg-zinc-800/80 px-1.5 py-0.5 rounded text-[13px] font-mono text-emerald-400" {...props}>
+                {children}
+              </code>
+            );
+          }
+        }}
+      >
+        {formattedContent}
+      </ReactMarkdown>
     </div>
   );
 }

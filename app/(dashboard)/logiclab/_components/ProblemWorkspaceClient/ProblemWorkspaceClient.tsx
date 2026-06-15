@@ -59,6 +59,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProblemNotes } from "./ProblemNotes";
 import { IdeSettingsModal } from "./IdeSettingsModal";
 import { ProblemDescriptionViewer } from "./ProblemDescriptionViewer";
 import { IdeSettings, Problem, Submission, SampleTestCase } from "../../_types";
@@ -1228,12 +1229,18 @@ export function ProblemWorkspaceClient({
             <IconHistory className={cn('h-3.5', 'w-3.5', 'mr-1.5')} /> Submissions (
             {submissions.length})
           </TabsTrigger>
+          <TabsTrigger 
+            value="notes" 
+            className={cn('flex', 'items-center', 'px-4', 'h-full', 'text-[11px]', 'font-bold', 'uppercase', 'tracking-widest', 'transition-colors', 'cursor-pointer', 'data-[state=active]:text-foreground', 'data-[state=active]:border-b-2', 'data-[state=active]:border-foreground', 'data-[state=active]:!bg-transparent', 'dark:data-[state=active]:!bg-transparent', 'data-[state=active]:!border-t-transparent', 'data-[state=active]:!border-x-transparent', 'dark:data-[state=active]:!border-t-transparent', 'dark:data-[state=active]:!border-x-transparent', 'data-[state=active]:shadow-none', 'text-zinc-550 dark:text-muted-foreground/80', 'hover:text-foreground/80', '!rounded-none', 'border-b-2', 'border-transparent', 'focus-visible:ring-0', 'focus-visible:outline-none')}
+          >
+            <IconFileText className={cn('h-3.5', 'w-3.5', 'mr-1.5')} /> Notes
+          </TabsTrigger>
         </TabsList>
 
         {/* Tab Content */}
-        <ScrollArea className={cn('flex-1', 'w-full', 'min-h-0', '[&_[data-slot=scroll-area-scrollbar]]:hidden')}>
-          <div className="p-5">
-            <TabsContent value="description" className={cn('mt-0', 'outline-none')}>
+        <ScrollArea className={cn('flex-1', 'w-full', 'min-h-0', '[&_[data-slot=scroll-area-scrollbar]]:hidden', '[&_[data-radix-scroll-area-viewport]>div]:h-full')}>
+          <div className="flex-1 w-full h-full flex flex-col">
+            <TabsContent value="description" className={cn('mt-0', 'outline-none', 'p-5')}>
               {isTransitioning ? (
                 <div className={cn('flex', 'flex-col', 'w-full', 'space-y-4', 'animate-pulse', 'pt-2')}>
                   <div className={cn('h-6', 'bg-muted/60', 'rounded-md', 'w-1/3', 'mb-4')} />
@@ -1348,7 +1355,7 @@ export function ProblemWorkspaceClient({
                 </div>
               )}
             </TabsContent>
-            <TabsContent value="submissions" className={cn('mt-0', 'outline-none')}>
+            <TabsContent value="submissions" className={cn('mt-0', 'outline-none', 'p-5')}>
               {isTransitioning ? (
                 <div className={cn('flex', 'flex-col', 'w-full', 'space-y-4', 'animate-pulse', 'pt-2')}>
                   <div className={cn('h-16', 'bg-muted/30', 'rounded-lg', 'w-full', 'mb-2')} />
@@ -1934,14 +1941,23 @@ export function ProblemWorkspaceClient({
                         </div>
                         {/* Console Output (if any) */}
                         {submitResult.failed_test_case_info.console_output && submitResult.failed_test_case_info.console_output.trim() !== "" && (
-                          <div className={cn('rounded-lg', 'border', 'border-border/50', 'overflow-hidden')}>
-                            <div className={cn('px-3', 'py-1.5', 'bg-muted/40', 'border-b', 'border-border/40', 'flex', 'items-center', 'gap-1.5', 'select-none')}>
-                              <IconTerminal2 className={cn('h-3', 'w-3', 'text-zinc-500')} />
-                              <span className={cn('text-[10px]', 'font-extrabold', 'uppercase', 'tracking-widest', 'text-zinc-600', 'dark:text-muted-foreground')}>Console Output</span>
+                          <div className={cn('mt-4', 'rounded-xl', 'overflow-hidden', 'border', 'border-zinc-800/80', 'bg-[#0a0a0a]', 'shadow-inner')}>
+                            <div className={cn('flex', 'items-center', 'px-3', 'py-2.5', 'bg-[#18181b]', 'border-b', 'border-zinc-800', 'select-none')}>
+                              <div className={cn('flex', 'gap-1.5', 'mr-3')}>
+                                <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-red-500/80')} />
+                                <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-yellow-500/80')} />
+                                <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-emerald-500/80')} />
+                              </div>
+                              <IconTerminal2 className={cn('h-3.5', 'w-3.5', 'text-zinc-500', 'mr-2')} />
+                              <span className={cn('text-[10px]', 'text-zinc-400', 'uppercase', 'tracking-widest', 'font-bold')}>
+                                Console Output
+                              </span>
                             </div>
-                            <pre className={cn('p-3', 'bg-muted/20', 'dark:bg-zinc-900/30', 'whitespace-pre-wrap', 'text-zinc-700', 'dark:text-zinc-400', 'leading-relaxed')}>
-                              {submitResult.failed_test_case_info.console_output}
-                            </pre>
+                            <div className={cn('p-4', 'max-h-64', 'overflow-y-auto', 'scrollbar-thin')}>
+                              <pre className={cn('text-zinc-300', 'text-[12px]', 'font-mono', 'whitespace-pre-wrap', 'leading-[1.8]', 'font-medium')}>
+                                {submitResult.failed_test_case_info.console_output}
+                              </pre>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1995,6 +2011,15 @@ export function ProblemWorkspaceClient({
                   </div>
                 </div>
               ) : null}
+            </TabsContent>
+            <TabsContent value="notes" className={cn('mt-0', 'outline-none', 'flex-1', 'w-full', 'overflow-hidden', 'relative', 'flex', 'flex-col')}>
+              <ProblemNotes 
+                problemId={problem.id} 
+                currentCode={code} 
+                currentLanguage={selectedLang.name} 
+                submissions={submissions}
+                isDailyChallenge={isDailyChallenge}
+              />
             </TabsContent>
           </div>
         </ScrollArea>
@@ -2634,13 +2659,23 @@ export function ProblemWorkspaceClient({
                             </div>
                           </div>
                           {activeCase.console_output && activeCase.console_output.trim() !== "" && (
-                            <div className={cn('mt-4')}>
-                              <span className={cn('text-[10px]', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none', 'flex', 'items-center', 'gap-1.5')}>
-                                <IconTerminal2 className="h-3 w-3" /> Console Output
-                              </span>
-                              <pre className={cn('p-2.5', 'bg-muted/40', 'dark:bg-black/40', 'border', 'border-zinc-200', 'dark:border-border/50', 'rounded-xl', 'text-zinc-700', 'dark:text-zinc-400', 'text-[11px]', 'font-mono', 'whitespace-pre-wrap', 'max-h-32', 'overflow-y-auto', 'leading-relaxed')}>
-                                {activeCase.console_output}
-                              </pre>
+                            <div className={cn('mt-4', 'rounded-xl', 'overflow-hidden', 'border', 'border-zinc-800/80', 'bg-[#0a0a0a]', 'shadow-inner')}>
+                              <div className={cn('flex', 'items-center', 'px-3', 'py-2.5', 'bg-[#18181b]', 'border-b', 'border-zinc-800', 'select-none')}>
+                                <div className={cn('flex', 'gap-1.5', 'mr-3')}>
+                                  <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-red-500/80')} />
+                                  <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-yellow-500/80')} />
+                                  <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-emerald-500/80')} />
+                                </div>
+                                <IconTerminal2 className={cn('h-3.5', 'w-3.5', 'text-zinc-500', 'mr-2')} />
+                                <span className={cn('text-[10px]', 'text-zinc-400', 'uppercase', 'tracking-widest', 'font-bold')}>
+                                  Console Output
+                                </span>
+                              </div>
+                              <div className={cn('p-4', 'max-h-48', 'overflow-y-auto', 'scrollbar-thin')}>
+                                <pre className={cn('text-zinc-300', 'text-[12px]', 'font-mono', 'whitespace-pre-wrap', 'leading-[1.8]', 'font-medium')}>
+                                  {activeCase.console_output}
+                                </pre>
+                              </div>
                             </div>
                           )}
                         </div>
