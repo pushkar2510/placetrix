@@ -18,7 +18,7 @@ export const getCachedGlobalProblemsList = unstable_cache(
     return (problems as any[]) || []
   },
   ["global-problems-list-cache-v1"],
-  { revalidate: 3600 }
+  { revalidate: 3600, tags: ["global-problems"] }
 )
 
 // Fetch light problem array for side list inside IDE
@@ -138,7 +138,7 @@ export const getCachedGlobalProblems = unstable_cache(
     return { problems: problems || [], stats: stats || [] }
   },
   ["global-problems-stats-cache-v2"],
-  { revalidate: 3600 }
+  { revalidate: 3600, tags: ["global-problems"] }
 )
 
 // Infinite scroll pagination for daily challenges history

@@ -25,6 +25,7 @@ import {
 } from "@tabler/icons-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
+import { generateTemplatesFromSignature, FunctionSignature } from "@/lib/generator/templateGenerator"
 
 const LANGUAGES = [
   { id: 62, name: "Java (OpenJDK 13)", value: "java" },
@@ -284,6 +285,7 @@ export function AdminProblemEditorClient({
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<"single" | "bulk">("single")
+  const [signatureJson, setSignatureJson] = useState("")
 
   // Parse initial values safely
   let parsedBoilerplates = initialProblem?.boilerplates || {}
@@ -324,6 +326,25 @@ export function AdminProblemEditorClient({
       ? parsedTestCases
       : [{ input: "", expected_output: "", is_sample: true }]
   )
+
+  const handleGenerateTemplates = () => {
+    if (!signatureJson.trim()) {
+      toast.error("Please enter a JSON signature schema first.")
+      return
+    }
+    try {
+      const parsed: FunctionSignature = JSON.parse(signatureJson)
+      if (!parsed.name || !parsed.returnType || !parsed.args) {
+        throw new Error("Missing required fields: name, returnType, or args")
+      }
+      const generated = generateTemplatesFromSignature(parsed)
+      setBoilerplates(generated.boilerplates)
+      setDriverCodes(generated.driverCodes)
+      toast.success("Templates generated successfully!")
+    } catch (err: any) {
+      toast.error("Failed to parse signature: " + err.message)
+    }
+  }
 
   // Bulk import states
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -450,12 +471,17 @@ export function AdminProblemEditorClient({
         })
         result = { data, error }
       } else {
-        const { data: resultData, error: resultError } = await (supabase as any)
-          .from("logiclab_problems")
-          .insert(payload)
-          .select("id")
-          .single()
-        result = { data: resultData, error: resultError }
+        const res = await fetch("/api/logiclab/seed-problems", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify([payload]),
+        })
+        const json = await res.json()
+        if (!res.ok || json.error) {
+          result = { error: { message: json.error || "Failed to create problem via API" } }
+        } else {
+          result = { data: { id: json.problems?.[0]?.id } }
+        }
       }
 
       if (result.error || !result.data) {
@@ -496,14 +522,16 @@ export function AdminProblemEditorClient({
         test_cases: p.test_cases,
       }))
 
-      const { data: insertedProblems, error: problemsError } = await (supabase as any)
-        .from("logiclab_problems")
-        .insert(problemInserts)
-        .select("id, title")
-
-      if (problemsError || !insertedProblems) {
-        throw new Error(problemsError?.message || "Failed to batch insert problems.")
+      const res = await fetch("/api/logiclab/seed-problems", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(problemInserts),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) {
+        throw new Error(json.error || "Failed to batch insert problems via API.")
       }
+      const insertedProblems = json.problems || []
 
       toast.success(`Successfully imported ${insertedProblems.length} problems!`)
       router.push("/logiclab/admin")
@@ -740,6 +768,26 @@ export function AdminProblemEditorClient({
 
           {/* RIGHT: Code Templates */}
           <div className="flex flex-col gap-4">
+            
+            {/* Auto-Generate Templates */}
+            <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Auto-Generate Templates (JSON Schema)</h3>
+                 <button 
+                   onClick={handleGenerateTemplates} 
+                   className="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-black px-3 py-1.5 rounded-lg font-bold uppercase tracking-widest transition-colors cursor-pointer"
+                 >
+                   Generate
+                 </button>
+              </div>
+              <textarea
+                value={signatureJson}
+                onChange={(e) => setSignatureJson(e.target.value)}
+                placeholder={'{\n  "name": "twoSum",\n  "returnType": "int[]",\n  "args": [\n    {"name": "nums", "type": "int[]"},\n    {"name": "target", "type": "int"}\n  ]\n}'}
+                rows={4}
+                className="w-full bg-background border border-border rounded px-3 py-2 text-xs font-mono text-foreground/80 focus:outline-none focus:border-zinc-600 resize-none"
+              />
+            </div>
             {/* Language selector */}
             <div className="flex items-center gap-2">
               {LANGUAGES.map((lang) => (

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
+import { revalidatePath } from "next/cache"
 
 // POST /api/logiclab/seed-problems
 // Seeds the coding_problems table from a JSON array in the request body.
@@ -55,6 +56,14 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error("[seed-problems] Insert error:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    // Revalidate the global problems cache so it appears on the student side instantly
+    try {
+      revalidatePath("/logiclab", "page");
+      revalidatePath("/logiclab/admin", "page");
+    } catch (e) {
+      console.error("Failed to revalidate cache:", e);
     }
 
     return NextResponse.json({
