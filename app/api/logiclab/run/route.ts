@@ -91,23 +91,25 @@ export async function POST(req: NextRequest) {
       const langKey = String(language_id)
       const driverCode = driverCodes[langKey] || ""
 
-      if (driverCode) {
-        if (langKey === "62") { // Java
-          const lines = driverCode.split("\n")
-          const imports = lines.filter((line: string) => line.trim().startsWith("import "))
-          const nonImports = lines.filter((line: string) => !line.trim().startsWith("import "))
-          finalSource = "import java.util.*;\nimport java.io.*;\n" + imports.join("\n") + "\n\n" + source_code + "\n\n" + nonImports.join("\n")
-        } else if (langKey === "71") { // Python
-          const merged = source_code + "\n\n" + driverCode
-          finalSource = "import sys\nimport json\nimport math\nimport collections\nfrom typing import *\n" + merged
-        } else if (langKey === "54") { // C++
-          const lines = driverCode.split("\n")
-          const includes = lines.filter((line: string) => line.trim().startsWith("#include") || line.trim().startsWith("using "))
-          const nonIncludes = lines.filter((line: string) => !line.trim().startsWith("#include") && !line.trim().startsWith("using "))
-          finalSource = "#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\n#include <map>\n#include <set>\n#include <unordered_map>\n#include <unordered_set>\n#include <queue>\n#include <stack>\n#include <cmath>\nusing namespace std;\n" + includes.join("\n") + "\n\n" + source_code + "\n\n" + nonIncludes.join("\n")
-        } else {
-          finalSource = source_code + "\n\n" + driverCode
-        }
+      if (!driverCode) {
+        return NextResponse.json({ success: false, error: `Execution engine error: Driver code missing for language ${langKey}. Please recreate this problem.` }, { status: 400 })
+      }
+
+      if (langKey === "62") { // Java
+        const lines = driverCode.split("\n")
+        const imports = lines.filter((line: string) => line.trim().startsWith("import "))
+        const nonImports = lines.filter((line: string) => !line.trim().startsWith("import "))
+        finalSource = "import java.util.*;\nimport java.io.*;\n" + imports.join("\n") + "\n\n" + source_code + "\n\n" + nonImports.join("\n")
+      } else if (langKey === "71") { // Python
+        const merged = source_code + "\n\n" + driverCode
+        finalSource = "import sys\nimport json\nimport math\nimport collections\nfrom typing import *\n" + merged
+      } else if (langKey === "54") { // C++
+        const lines = driverCode.split("\n")
+        const includes = lines.filter((line: string) => line.trim().startsWith("#include") || line.trim().startsWith("using "))
+        const nonIncludes = lines.filter((line: string) => !line.trim().startsWith("#include") && !line.trim().startsWith("using "))
+        finalSource = "#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\n#include <map>\n#include <set>\n#include <unordered_map>\n#include <unordered_set>\n#include <queue>\n#include <stack>\n#include <cmath>\nusing namespace std;\n" + includes.join("\n") + "\n\n" + source_code + "\n\n" + nonIncludes.join("\n")
+      } else {
+        finalSource = source_code + "\n\n" + driverCode
       }
 
       // Parse test cases
@@ -203,20 +205,27 @@ export async function POST(req: NextRequest) {
         if (!error && data?.stdout) {
           const stdoutRaw = decode(data.stdout).trim()
           
-          const errMatch = stdoutRaw.match(/@@@LOGICLAB_ERR_START@@@([\\s\\S]*?)@@@LOGICLAB_ERR_END@@@/)
+          const errMatch = stdoutRaw.match(/@@@LOGICLAB_ERR_START@@@([\s\S]*?)@@@LOGICLAB_ERR_END@@@/)
           if (errMatch) {
             error = "Runtime Error: " + errMatch[1].trim()
             consoleOutput = stdoutRaw.replace(errMatch[0], "").trim()
           } else {
-            const resMatch = stdoutRaw.match(/@@@LOGICLAB_RES_START@@@([\\s\\S]*?)@@@LOGICLAB_RES_END@@@/)
+            const resMatch = stdoutRaw.match(/@@@LOGICLAB_RES_START@@@([\s\S]*?)@@@LOGICLAB_RES_END@@@/)
             if (resMatch) {
               data.stdout = Buffer.from(resMatch[1].trim()).toString("base64")
               consoleOutput = stdoutRaw.replace(resMatch[0], "").trim()
             } else {
-              // Fallback if delimiters were somehow destroyed
-              consoleOutput = stdoutRaw
-              data.stdout = Buffer.from("").toString("base64") 
-              // Wait, if no delimiters, it means the student's code probably crashed before driver finished.
+              // Fallback for legacy driver codes that don't have delimiters
+              // Legacy driver codes just console.log the JSON stringified result at the very end
+              const lines = stdoutRaw.split('\n')
+              if (lines.length > 0) {
+                const lastLine = lines.pop() || ""
+                data.stdout = Buffer.from(lastLine.trim()).toString("base64")
+                consoleOutput = lines.join('\n').trim()
+              } else {
+                data.stdout = Buffer.from("").toString("base64")
+                consoleOutput = stdoutRaw
+              }
             }
           }
         }

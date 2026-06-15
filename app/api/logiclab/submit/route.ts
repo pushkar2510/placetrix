@@ -238,26 +238,33 @@ export async function POST(req: NextRequest) {
       if (!error && data?.stdout) {
         const stdoutRaw = decode(data.stdout).trim()
         
-        const errMatch = stdoutRaw.match(/@@@LOGICLAB_ERR_START@@@([\\s\\S]*?)@@@LOGICLAB_ERR_END@@@/)
+        const errMatch = stdoutRaw.match(/@@@LOGICLAB_ERR_START@@@([\s\S]*?)@@@LOGICLAB_ERR_END@@@/)
         if (errMatch) {
           error = "Runtime Error: " + errMatch[1].trim()
           consoleOutput = stdoutRaw.replace(errMatch[0], "").trim()
         } else {
-          const resMatch = stdoutRaw.match(/@@@LOGICLAB_RES_START@@@([\\s\\S]*?)@@@LOGICLAB_RES_END@@@/)
+          const resMatch = stdoutRaw.match(/@@@LOGICLAB_RES_START@@@([\s\S]*?)@@@LOGICLAB_RES_END@@@/)
           if (resMatch) {
             data.stdout = Buffer.from(resMatch[1].trim()).toString("base64")
             consoleOutput = stdoutRaw.replace(resMatch[0], "").trim()
           } else {
             // Fallback
-            consoleOutput = stdoutRaw
-            data.stdout = Buffer.from("").toString("base64") 
+            const lines = stdoutRaw.split('\n');
+              if (lines.length > 0) {
+                const lastLine = lines.pop() || "";
+                data.stdout = Buffer.from(lastLine.trim()).toString("base64");
+                consoleOutput = lines.join('\n').trim();
+              } else {
+                data.stdout = Buffer.from("").toString("base64");
+                consoleOutput = stdoutRaw;
+              } 
           }
         }
       }
 
       if (error) {
         overallStatus = "Runtime Error"
-        failedInfo = { index, input: tc.is_sample ? tc.input : "(hidden)", expected: tc.is_sample ? tc.expected_output : "(hidden)", actual: error, console_output: consoleOutput }
+        failedInfo = { index, input: tc.input, expected: tc.expected_output, actual: error, console_output: consoleOutput }
         break
       }
 
@@ -292,26 +299,26 @@ export async function POST(req: NextRequest) {
           if (!failedInfo) {
             failedInfo = {
               index,
-              input: tc.is_sample ? tc.input : "(hidden)",
-              expected: tc.is_sample ? expectedTrimmed : "(hidden)",
-              actual: tc.is_sample ? stdout : "(hidden)",
-              console_output: tc.is_sample ? consoleOutput : ""
+              input: tc.input,
+              expected: expectedTrimmed,
+              actual: stdout,
+              console_output: consoleOutput
             }
           }
         }
       } else if (statusId === 5 || statusDesc.toLowerCase().includes("time limit")) {
         overallStatus = "Time Limit Exceeded"
-        if (!failedInfo) failedInfo = { index, input: tc.is_sample ? tc.input : "(hidden)", expected: tc.is_sample ? expectedTrimmed : "(hidden)", actual: `TLE (${statusDesc})` }
+        if (!failedInfo) failedInfo = { index, input: tc.input, expected: expectedTrimmed, actual: `TLE (${statusDesc})`, console_output: consoleOutput }
       } else if (statusId === 6) {
         overallStatus = "Compile Error"
         if (!failedInfo) failedInfo = { index, input: tc.input, expected: expectedTrimmed, actual: decode(data.compile_output) }
         break 
       } else if (statusDesc.toLowerCase().includes("memory limit") || statusId === 12 && statusDesc.includes("Memory")) {
         overallStatus = "Memory Limit Exceeded"
-        if (!failedInfo) failedInfo = { index, input: tc.is_sample ? tc.input : "(hidden)", expected: tc.is_sample ? expectedTrimmed : "(hidden)", actual: `MLE (${statusDesc})` }
+        if (!failedInfo) failedInfo = { index, input: tc.input, expected: expectedTrimmed, actual: `MLE (${statusDesc})`, console_output: consoleOutput }
       } else {
         overallStatus = "Runtime Error"
-        if (!failedInfo) failedInfo = { index, input: tc.is_sample ? tc.input : "(hidden)", expected: tc.is_sample ? expectedTrimmed : "(hidden)", actual: decode(data.stderr) || statusDesc }
+        if (!failedInfo) failedInfo = { index, input: tc.input, expected: expectedTrimmed, actual: decode(data.stderr) || statusDesc, console_output: consoleOutput }
       }
 
       totalTime = Math.max(totalTime, parseFloat(tcResult.time))
