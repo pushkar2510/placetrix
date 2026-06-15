@@ -195,6 +195,7 @@ export function CreateCourseClient({ initialCourse, initialModules = [], adminPr
     }
   }, [lastAddedId, modules])
 
+
   const removeModule = (index: number) => {
     setModules(modules.filter((_, i) => i !== index))
   }
@@ -212,9 +213,7 @@ export function CreateCourseClient({ initialCourse, initialModules = [], adminPr
     setModules(updated)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const handleSave = (shouldExit: boolean) => {
     if (!canSave) {
       toast.error("Please fill in all required fields.")
       return
@@ -314,13 +313,21 @@ export function CreateCourseClient({ initialCourse, initialModules = [], adminPr
           const result = await updateCourseAction(initialCourse.id, courseData, updatedModules)
           if (result.success) {
             toast.success("Course updated successfully!")
-            router.push("/courses")
+            if (shouldExit) {
+              router.push("/courses")
+            } else {
+              router.refresh()
+            }
           }
         } else {
           const result = await createCourseAction(courseData, updatedModules)
           if (result.success) {
             toast.success("Course created successfully!")
-            router.push("/courses")
+            if (shouldExit) {
+              router.push("/courses")
+            } else {
+              router.replace(`/courses/${result.courseId}/edit`)
+            }
           }
         }
       } catch (err: any) {
@@ -329,12 +336,27 @@ export function CreateCourseClient({ initialCourse, initialModules = [], adminPr
     })
   }
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault()
+        if (isPending) return
+        handleSave(false)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [handleSave, isPending])
+
   const coverUrl = coverPreviewUrl || (coverImagePath ? buildStorageUrl("course-covers", coverImagePath) : null)
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <form onSubmit={handleSubmit} className="min-h-screen w-full">
+    <form onSubmit={(e) => { e.preventDefault(); handleSave(false); }} className="min-h-screen w-full">
       <div className="mx-auto space-y-6 px-4 py-6 md:px-8 md:py-8">
 
         {/* ── Page Header ── */}
@@ -362,9 +384,25 @@ export function CreateCourseClient({ initialCourse, initialModules = [], adminPr
               Cancel
             </Button>
             <Button
-              type="submit"
+              type="button"
+              variant="secondary"
               size="sm"
               disabled={isPending || !canSave}
+              onClick={() => handleSave(false)}
+              className="rounded-full gap-1.5"
+            >
+              {isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Save className="size-4" />
+              )}
+              Save Changes
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isPending || !canSave}
+              onClick={() => handleSave(true)}
               className="rounded-full gap-1.5 shadow-md shadow-primary/10"
             >
               {isPending ? (
@@ -372,7 +410,7 @@ export function CreateCourseClient({ initialCourse, initialModules = [], adminPr
               ) : (
                 <Save className="size-4" />
               )}
-              {isEditMode ? "Save Changes" : "Create Course"}
+              Save & Exit
             </Button>
           </div>
         </div>
@@ -796,6 +834,35 @@ export function CreateCourseClient({ initialCourse, initialModules = [], adminPr
             </Card>
 
           </div>
+        </div>
+
+        {/* ── Bottom Buttons ── */}
+        <div className="flex items-center justify-end gap-2 border-t pt-6">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/courses")}
+            disabled={isPending}
+            className="rounded-full"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={isPending || !canSave}
+            onClick={() => handleSave(false)}
+            className="rounded-full gap-1.5"
+          >
+            {isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Save className="size-4" />
+            )}
+            Save Changes
+          </Button>
         </div>
       </div>
     </form>
