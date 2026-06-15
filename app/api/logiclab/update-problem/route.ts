@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,6 +39,10 @@ export async function POST(req: NextRequest) {
     try {
       revalidatePath("/logiclab", "page")
       revalidatePath("/logiclab/admin", "page")
+      // @ts-ignore
+      revalidateTag("problem-execution-data")
+      // @ts-ignore
+      revalidateTag(`problem-execution-data-${problemId}`)
     } catch (e) {
       console.error("Failed to revalidate cache:", e)
     }

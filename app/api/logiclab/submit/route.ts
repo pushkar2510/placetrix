@@ -94,16 +94,14 @@ export async function POST(req: NextRequest) {
     const judge0Endpoint = process.env.NEXT_PUBLIC_JUDGE0_ENDPOINT || "http://187.127.171.46:2358"
 
     // 1. Fetch problem data (driver code + time/memory limits + test cases)
-    const { data: problems, error: problemError } = await (supabase as any)
-      .from("logiclab_problems")
-      .select("driver_codes, time_limit, memory_limit, test_cases")
-      .eq("id", problem_id)
+    const { getCachedProblemExecutionData } = await import("@/app/(dashboard)/logiclab/actions")
+    const problemData = await getCachedProblemExecutionData(problem_id)
 
-    if (problemError || !problems || !problems.length) {
-      throw new Error(problemError?.message || "Problem not found.")
+    if (!problemData) {
+      throw new Error("Problem not found or could not be loaded from cache.")
     }
 
-    const problem = problems[0]
+    const problem = problemData as any
     let driverCodes: any = problem.driver_codes || {}
     if (typeof driverCodes === "string") {
       try {

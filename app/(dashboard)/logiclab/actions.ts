@@ -21,26 +21,15 @@ export const getCachedGlobalProblemsList = unstable_cache(
   { revalidate: 3600, tags: ["global-problems"] }
 )
 
-// Fetch light problem array for side list inside IDE
 export async function getIdeProblemList(userId: string) {
-  const problems = await getCachedGlobalProblemsList()
-  
   const supabase = (await createServerClient()) as any
-  const { data: solvedData } = await supabase
-    .from("logiclab_problem_submissions")
-    .select("problem_id")
-    .eq("user_id", userId)
-    .eq("status", "Accepted")
-    
-  const solvedSet = new Set(solvedData?.map((s: any) => s.problem_id) || [])
+  const { data: problems, error } = await supabase.rpc('get_ide_problem_list', { p_user_id: userId })
   
-  return problems.map((p: any) => ({
-    id: p.id,
-    title: p.title,
-    difficulty: p.difficulty,
-    number: p.number,
-    isSolved: solvedSet.has(p.id)
-  }))
+  if (error || !problems) {
+    console.error("Error fetching IDE problem list via RPC:", error)
+    return []
+  }
+  return problems
 }
 
 // Fetch single problem details, testcases and past submissions for SPA transition
@@ -121,25 +110,7 @@ export const getCachedPotd = unstable_cache(
   { revalidate: 60, tags: ["potd"] }
 )
 
-// Cache global problems and submission stats for 1 hour
-export const getCachedGlobalProblems = unstable_cache(
-  async () => {
-    const adminSupabase = createAdminClient()
-    
-    const { data: problems } = await adminSupabase
-      .from("logiclab_problems")
-      .select("id, number, title, difficulty, tags, created_at")
-      .order("number", { ascending: true })
-
-    const { data: stats } = await adminSupabase
-      .from("logiclab_problem_stats")
-      .select("problem_id, total_submissions, accepted_submissions")
-
-    return { problems: problems || [], stats: stats || [] }
-  },
-  ["global-problems-stats-cache-v2"],
-  { revalidate: 3600, tags: ["global-problems"] }
-)
+// (Removed getCachedGlobalProblems as pagination is now natively handled by Postgres RPC)
 
 // Infinite scroll pagination for daily challenges history
 export async function fetchDailyChallengesInfinite({
@@ -265,105 +236,45 @@ export async function fetchProblemsInfinite({
   tag?: string
   sortBy?: string
 }): Promise<{ problems: any[]; hasMore: boolean; totalCount: number }> {
-  const { problems, stats: globalStatsRaw } = await getCachedGlobalProblems()
-
   const supabase = (await createServerClient()) as any
-  const { data: submissions } = await supabase
-    .from("logiclab_problem_submissions")
-    .select("problem_id, status")
-    .eq("user_id", userId)
+  const { data, error } = await supabase.rpc('get_paginated_problems', {
+    p_user_id: userId,
+    p_limit: limit,
+    p_offset: offset,
+    p_search: search,
+    p_tab: tab,
+    p_difficulty: difficulty,
+    p_tag: tag,
+    p_sort_by: sortBy
+  })
 
-  // Build a map: problem_id -> best status
-  const solvedMap: Record<string, string> = {}
-  for (const sub of submissions ?? []) {
-    if (!solvedMap[sub.problem_id] || sub.status === "Accepted") {
-      solvedMap[sub.problem_id] = sub.status
-    }
+  if (error || !data) {
+    console.error("[fetchProblemsInfinite] RPC Error:", error)
+    return { problems: [], hasMore: false, totalCount: 0 }
   }
 
-  // Build a map for stats
-  const statsMap: Record<string, { total: number; accepted: number }> = {}
-  for (const row of globalStatsRaw as any[]) {
-    statsMap[row.problem_id] = { 
-      total: Number(row.total_submissions), 
-      accepted: Number(row.accepted_submissions) 
-    }
-  }
+  const totalCount = data.length > 0 ? Number(data[0].total_count) : 0
+  const hasMore = offset + limit < totalCount
 
-  // Enrich
-  let enriched = (problems ?? []).map((p: any) => ({
-    id: p.id,
-    number: p.number,
-    title: p.title,
-    difficulty: p.difficulty as "Easy" | "Medium" | "Hard",
-    tags: (p.tags || []) as string[],
-    created_at: p.created_at,
-    solved_status: solvedMap[p.id] || null,
-    acceptance_rate: statsMap[p.id]
-      ? Math.round((statsMap[p.id].accepted / statsMap[p.id].total) * 100)
-      : null,
-    total_submissions: statsMap[p.id]?.total || 0,
-  }))
-
-  // Apply filters
-  if (search) {
-    const q = search.toLowerCase()
-    enriched = enriched.filter(
-      (p: any) =>
-        p.title.toLowerCase().includes(q) ||
-        p.tags?.some((t: string) => t.toLowerCase().includes(q))
-    )
-  }
-  if (difficulty !== "All") {
-    enriched = enriched.filter((p: any) => p.difficulty === difficulty)
-  }
-  if (tag !== "All") {
-    enriched = enriched.filter((p: any) => (p.tags || []).includes(tag))
-  }
-  if (tab === "solved") {
-    enriched = enriched.filter((p: any) => p.solved_status === "Accepted")
-  } else if (tab === "attempted") {
-    enriched = enriched.filter((p: any) => p.solved_status && p.solved_status !== "Accepted")
-  } else if (tab === "unsolved") {
-    enriched = enriched.filter((p: any) => !p.solved_status)
-  }
-
-  // Apply sorting
-  if (sortBy === "number-asc") {
-    enriched.sort((a: any, b: any) => (a.number || 0) - (b.number || 0))
-  } else if (sortBy === "number-desc") {
-    enriched.sort((a: any, b: any) => (b.number || 0) - (a.number || 0))
-  } else if (sortBy === "difficulty-asc") {
-    const rank: Record<string, number> = { Easy: 1, Medium: 2, Hard: 3 }
-    enriched.sort((a: any, b: any) => (rank[a.difficulty] || 0) - (rank[b.difficulty] || 0) || (a.number || 0) - (b.number || 0))
-  } else if (sortBy === "difficulty-desc") {
-    const rank: Record<string, number> = { Easy: 1, Medium: 2, Hard: 3 }
-    enriched.sort((a: any, b: any) => (rank[b.difficulty] || 0) - (rank[a.difficulty] || 0) || (a.number || 0) - (b.number || 0))
-  } else if (sortBy === "title-asc") {
-    enriched.sort((a: any, b: any) => a.title.localeCompare(b.title))
-  } else if (sortBy === "title-desc") {
-    enriched.sort((a: any, b: any) => b.title.localeCompare(a.title))
-  } else if (sortBy === "acceptance-desc") {
-    enriched.sort((a: any, b: any) => {
-      const rateA = a.acceptance_rate !== null ? a.acceptance_rate : -1
-      const rateB = b.acceptance_rate !== null ? b.acceptance_rate : -1
-      return rateB - rateA || (a.number || 0) - (b.number || 0)
-    })
-  } else if (sortBy === "acceptance-asc") {
-    enriched.sort((a: any, b: any) => {
-      const rateA = a.acceptance_rate !== null ? a.acceptance_rate : 999
-      const rateB = b.acceptance_rate !== null ? b.acceptance_rate : 999
-      return rateA - rateB || (a.number || 0) - (b.number || 0)
-    })
-  } else if (sortBy === "submissions-desc") {
-    enriched.sort((a: any, b: any) => (b.total_submissions || 0) - (a.total_submissions || 0) || (a.number || 0) - (b.number || 0))
-  } else if (sortBy === "submissions-asc") {
-    enriched.sort((a: any, b: any) => (a.total_submissions || 0) - (b.total_submissions || 0) || (a.number || 0) - (b.number || 0))
-  }
-
-  const page = enriched.slice(offset, offset + limit)
-  const hasMore = offset + limit < enriched.length
-
-  return { problems: page, hasMore, totalCount: enriched.length }
+  return { problems: data, hasMore, totalCount }
 }
 
+// Cache execution-critical static data to eliminate DB reads on /run and /submit
+export const getCachedProblemExecutionData = async (problemId: string) => {
+  return unstable_cache(
+    async () => {
+      const adminSupabase = createAdminClient() as any
+      const { data: problems, error } = await adminSupabase
+        .from("logiclab_problems")
+        .select("driver_codes, time_limit, memory_limit, test_cases")
+        .eq("id", problemId)
+        
+      if (error || !problems || !problems.length) {
+        return null
+      }
+      return problems[0]
+    },
+    [`problem-execution-data-${problemId}`],
+    { revalidate: 31536000, tags: [`problem-execution-data-${problemId}`, "problem-execution-data"] }
+  )()
+}

@@ -2,7 +2,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { redirect } from "next/navigation"
 import { LogicLabDashboardClient } from "./_components/LogicLabDashboardClient"
-import { getCachedPotd, getCachedGlobalProblems } from "./actions"
+import { getCachedPotd } from "./actions"
 
 export const metadata = {
   title: "LogicLab — Coding Problems",
@@ -34,46 +34,20 @@ export default async function LogicLabPage() {
   const isAdmin = profile.account_type === "admin"
   if (isAdmin) redirect("/logiclab/admin")
 
-  // 1. Fetch cached global data (0ms, no database load)
-  const { problems, stats: globalStatsRaw } = await getCachedGlobalProblems()
-
-  // 2. Fetch live user data (Lightning fast, filtered by user_id)
+  // 1. Fetch live user data (Lightning fast, paginated via Postgres RPC)
   const supabase = (await createServerClient()) as any
-  const { data: submissions } = await supabase
-    .from("logiclab_problem_submissions")
-    .select("problem_id, status")
-    .eq("user_id", profile.id)
-
-  // Build a map: problem_id -> best status
-  const solvedMap: Record<string, string> = {}
-  for (const sub of submissions ?? []) {
-    if (!solvedMap[sub.problem_id] || sub.status === "Accepted") {
-      solvedMap[sub.problem_id] = sub.status
-    }
-  }
-
-  // Build a map for acceptance rates using the new View
-  const statsMap: Record<string, { total: number; accepted: number }> = {}
-  for (const row of globalStatsRaw as any[]) {
-    statsMap[row.problem_id] = { 
-      total: Number(row.total_submissions), 
-      accepted: Number(row.accepted_submissions) 
-    }
-  }
-
-  const enrichedProblems = (problems ?? []).map((p: any) => ({
-    id: p.id,
-    number: p.number,
-    title: p.title,
-    difficulty: p.difficulty as "Easy" | "Medium" | "Hard",
-    tags: (p.tags || []) as string[],
-    created_at: p.created_at,
-    solved_status: solvedMap[p.id] || null,
-    acceptance_rate: statsMap[p.id]
-      ? Math.round((statsMap[p.id].accepted / statsMap[p.id].total) * 100)
-      : null,
-    total_submissions: statsMap[p.id]?.total || 0,
-  }))
+  const { data: initialProblemsData } = await supabase.rpc('get_paginated_problems', {
+    p_user_id: profile.id,
+    p_limit: 20,
+    p_offset: 0,
+    p_search: "",
+    p_tab: "all",
+    p_difficulty: "All",
+    p_tag: "All",
+    p_sort_by: "number-asc"
+  })
+  
+  const enrichedProblems = initialProblemsData || []
   // Force POTD & Streaks to use IST (+5.5 hours)
   const istOffset = 5.5 * 60 * 60 * 1000
   const today = new Date()
@@ -200,37 +174,23 @@ export default async function LogicLabPage() {
       hardAttempted: activity?.hard_attempted || 0,
     })
   }
-  // Derive unique tags and counts from all enriched problems
-  const tagCounts: Record<string, number> = {}
-  const allTagsSet = new Set<string>()
-  for (const p of enrichedProblems) {
-    for (const t of p.tags || []) {
-      const trimmed = t.trim()
-      allTagsSet.add(trimmed)
-      tagCounts[trimmed] = (tagCounts[trimmed] || 0) + 1
-    }
-  }
-  const allTags = Array.from(allTagsSet).sort((a, b) => a.localeCompare(b))
+  // Fetch global tags count via RPC
+  const { data: tagsData } = await supabase.rpc('get_global_tags_count')
+  const tagCounts: Record<string, number> = tagsData || {}
+  const allTags = Object.keys(tagCounts).sort((a, b) => a.localeCompare(b))
 
-  const globalStats = {
-    total: enrichedProblems.length,
-    solved: enrichedProblems.filter((p) => p.solved_status === "Accepted").length,
-    easy: {
-      total: enrichedProblems.filter((p) => p.difficulty === "Easy").length,
-      solved: enrichedProblems.filter((p) => p.difficulty === "Easy" && p.solved_status === "Accepted").length,
-    },
-    medium: {
-      total: enrichedProblems.filter((p) => p.difficulty === "Medium").length,
-      solved: enrichedProblems.filter((p) => p.difficulty === "Medium" && p.solved_status === "Accepted").length,
-    },
-    hard: {
-      total: enrichedProblems.filter((p) => p.difficulty === "Hard").length,
-      solved: enrichedProblems.filter((p) => p.difficulty === "Hard" && p.solved_status === "Accepted").length,
-    },
+  // Fetch global user stats via RPC
+  const { data: statsData } = await supabase.rpc('get_user_global_stats', { p_user_id: profile.id })
+  const globalStats = statsData || { 
+    total: 0, solved: 0, 
+    easy: { total: 0, solved: 0 }, 
+    medium: { total: 0, solved: 0 }, 
+    hard: { total: 0, solved: 0 } 
   }
 
-  const initialProblems = enrichedProblems.slice(0, 20)
-  const initialHasMore = enrichedProblems.length > 20
+  const initialProblems = enrichedProblems
+  const initialTotalCount = enrichedProblems.length > 0 ? Number(enrichedProblems[0].total_count) : 0
+  const initialHasMore = initialTotalCount > 20
 
   // Fetch initial POTD directly from aggressively cached function
   let initialPotd = await getCachedPotd(todayStr);

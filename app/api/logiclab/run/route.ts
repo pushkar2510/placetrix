@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { getCachedProblemExecutionData } from "@/app/(dashboard)/logiclab/actions"
 
 function getDeterministicMetrics(code: string, languageId: number | string) {
   let h = 0
@@ -66,21 +67,16 @@ export async function POST(req: NextRequest) {
     let memoryLimit = 256000
 
     if (mode === "problem" && problem_id) {
-      const supabase = (await createClient()) as any
+      const problemData = await getCachedProblemExecutionData(problem_id) as any
 
-      const { data: problems, error: problemError } = await (supabase as any)
-        .from("logiclab_problems")
-        .select("driver_codes, time_limit, memory_limit, test_cases")
-        .eq("id", problem_id)
-
-      if (problemError || !problems || !problems.length) {
-        throw new Error(problemError?.message || "Problem not found.")
+      if (!problemData) {
+        throw new Error("Problem not found or could not be loaded from cache.")
       }
 
-      timeLimit = Math.min(problems[0].time_limit || 2.0, 15.0)
-      memoryLimit = Math.min((problems[0].memory_limit || 256) * 1024, 512000)
+      timeLimit = Math.min(problemData.time_limit || 2.0, 15.0)
+      memoryLimit = Math.min((problemData.memory_limit || 256) * 1024, 512000)
 
-      let driverCodes: any = problems[0].driver_codes || {}
+      let driverCodes: any = problemData.driver_codes || {}
       if (typeof driverCodes === "string") {
         try {
           driverCodes = JSON.parse(driverCodes)
@@ -113,7 +109,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Parse test cases
-      let testCases: any[] = problems[0].test_cases || []
+      let testCases: any[] = problemData.test_cases || []
       if (typeof testCases === "string") {
         try { testCases = JSON.parse(testCases) } catch { testCases = [] }
       }
