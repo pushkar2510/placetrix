@@ -1,6 +1,4 @@
 "use client"
-import Image from "next/image";
-import PlaceTrixLogo from "@/assets/placetrix.svg";
 import * as React from "react"
 import { usePathname } from "next/navigation"
 import {
@@ -44,7 +42,7 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton,
   SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton,
-  SidebarSeparator, useSidebar,
+  SidebarSeparator, useSidebar, SidebarMenuBadge,
 } from "@/components/ui/sidebar"
 import {
   Collapsible,
@@ -79,6 +77,7 @@ type NavItem = {
     title: string
     url: string
   }[]
+  badge?: string
 }
 
 const VALID_ACCOUNT_TYPES: AccountType[] = ["candidate", "institute", "admin", "recruiter"]
@@ -91,7 +90,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "Job Search", url: "/jobs", icon: Search },
     { title: "My Applications", url: "/applications", icon: ClipboardList },
     { title: "Logic Lab", url: "/logiclab", icon: Code },
-    { title: "Courses", url: "/courses", icon: BookOpen },
+    { title: "Courses", url: "/courses", icon: BookOpen, badge: "Beta" },
     { title: "Tests", url: "/tests", icon: BarChart3 },
     { title: "Events", url: "/events", icon: Calendar },
     { title: "Tools", url: "/tools", icon: Wrench },
@@ -106,7 +105,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "Home", url: "/home", icon: Home },
     { title: "Analytics", url: "/analytics", icon: FileBarChart },
     { title: "Users", url: "/users", icon: Users },
-    { title: "Courses", url: "/courses", icon: BookOpen },
+    { title: "Courses", url: "/courses", icon: BookOpen, badge: "Beta" },
     { title: "LogicLab", url: "/logiclab/admin", icon: Code },
     { title: "Support Queue", url: "/support", icon: CircleHelp },
   ],
@@ -130,7 +129,7 @@ const NAV_INSTITUTE_SUBTYPES: Record<InstituteSubtype, NavItem[]> = {
   staff: [
     { title: "Home", url: "/home", icon: Home },
     { title: "Tests", url: "/tests", icon: BarChart3 },
-    { title: "Courses", url: "/courses", icon: BookOpen },
+    { title: "Courses", url: "/courses", icon: BookOpen, badge: "Beta" },
     { title: "Events", url: "/events", icon: Calendar },
   ],
   tpo: [
@@ -258,7 +257,7 @@ export function NavUser({ user }: { user: UserProfile | null }) {
           <DropdownMenuTrigger asChild disabled={!user}>
             <SidebarMenuButton
               size="lg"
-              className="w-full text-sidebar-foreground group-data-[state=expanded]/sidebar-wrapper:bg-sidebar-border/30 group-data-[state=expanded]/sidebar-wrapper:border group-data-[state=expanded]/sidebar-wrapper:border-sidebar-border/60 group-data-[state=expanded]/sidebar-wrapper:shadow-2xs hover:bg-sidebar-border/50! hover:text-sidebar-foreground! active:bg-sidebar-border/50! active:text-sidebar-foreground! data-[state=open]:bg-sidebar-border/50! data-[state=open]:text-sidebar-foreground! data-[state=open]:hover:bg-sidebar-border/50! data-[state=open]:hover:text-sidebar-foreground! group-data-[state=expanded]/sidebar-wrapper:p-2.5 group/user transition-all duration-200 cursor-pointer group-data-[state=expanded]/sidebar-wrapper:h-14 rounded-xl"
+              className="w-full text-sidebar-foreground group-data-[state=expanded]/sidebar-wrapper:bg-sidebar-border/50 group-data-[state=expanded]/sidebar-wrapper:border group-data-[state=expanded]/sidebar-wrapper:border-sidebar-border/80 group-data-[state=expanded]/sidebar-wrapper:shadow-2xs group-data-[state=expanded]/sidebar-wrapper:p-2.5 group/user transition-all duration-200 cursor-pointer rounded-xl group-data-[state=expanded]/sidebar-wrapper:hover:bg-sidebar-accent group-data-[state=expanded]/sidebar-wrapper:hover:text-sidebar-accent-foreground group-data-[state=expanded]/sidebar-wrapper:hover:border-transparent group-data-[state=expanded]/sidebar-wrapper:data-[state=open]:bg-sidebar-accent group-data-[state=expanded]/sidebar-wrapper:data-[state=open]:text-sidebar-accent-foreground group-data-[state=expanded]/sidebar-wrapper:data-[state=open]:border-transparent data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground data-[state=open]:border-transparent"
               asChild
             >
               <div className="flex items-center gap-2.5 w-full" suppressHydrationWarning>
@@ -269,10 +268,10 @@ export function NavUser({ user }: { user: UserProfile | null }) {
                       <AvatarFallback className="rounded-lg bg-sidebar-border text-sidebar-foreground font-semibold">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col flex-1 text-left min-w-0 gap-1 group-data-[state=collapsed]/sidebar-wrapper:hidden">
-                      <span className="truncate font-semibold text-sm leading-none text-sidebar-foreground">{displayName}</span>
-                      <span className="truncate text-[11px] text-muted-foreground leading-none">{sidebarSubtitle}</span>
+                      <span className="truncate font-semibold text-sm leading-none text-sidebar-foreground group-hover/user:text-sidebar-accent-foreground group-data-[state=open]/user:text-sidebar-accent-foreground transition-colors duration-200">{displayName}</span>
+                      <span className="truncate text-[11px] text-muted-foreground leading-none group-hover/user:text-sidebar-accent-foreground/80 group-data-[state=open]/user:text-sidebar-accent-foreground/80 transition-colors duration-200">{sidebarSubtitle}</span>
                     </div>
-                    <MoreVertical className="ml-auto shrink-0 size-4 text-muted-foreground/80 group-hover/user:text-sidebar-foreground group-data-[state=open]/user:text-sidebar-foreground transition-all group-hover/user:translate-x-0.5 duration-200 group-data-[state=collapsed]/sidebar-wrapper:hidden" />
+                    <MoreVertical className="ml-auto shrink-0 size-4 text-muted-foreground/80 group-hover/user:text-sidebar-accent-foreground group-data-[state=open]/user:text-sidebar-accent-foreground transition-all group-hover/user:translate-x-0.5 duration-200 group-data-[state=collapsed]/sidebar-wrapper:hidden" />
                   </>
                 ) : (
                   <>
@@ -315,27 +314,35 @@ export function NavUser({ user }: { user: UserProfile | null }) {
               <DropdownMenuSeparator />
 
               {/* ── Theme selector ─────────────────────────── */}
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="px-2 py-1 text-xs font-medium text-muted-foreground">
+              <div className="px-2 py-1.5">
+                <span className="text-[11px] font-medium text-muted-foreground/80 block mb-1.5 px-1 uppercase tracking-wider">
                   Appearance
-                </DropdownMenuLabel>
-                {THEME_OPTIONS.map(({ value, label, icon: ThemeIcon }) => {
-                  const isActive = mounted && theme === value
-                  return (
-                    <DropdownMenuItem
-                      key={value}
-                      onClick={() => setTheme(value)}
-                      className="cursor-pointer"
-                    >
-                      <ThemeIcon className="size-4 shrink-0" />
-                      <span className="flex-1">{label}</span>
-                      {isActive && (
-                        <Check className="ml-auto size-3.5 text-primary" />
-                      )}
-                    </DropdownMenuItem>
-                  )
-                })}
-              </DropdownMenuGroup>
+                </span>
+                <div className="flex items-center gap-1 bg-muted/50 p-0.5 rounded-lg border border-sidebar-border/40">
+                  {THEME_OPTIONS.map(({ value, label, icon: ThemeIcon }) => {
+                    const isActive = mounted && theme === value
+                    return (
+                      <button
+                        key={value}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setTheme(value)
+                        }}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-1.5 py-1 px-1.5 text-xs rounded-md transition-all duration-200 cursor-pointer outline-none select-none",
+                          isActive
+                            ? "bg-background text-sidebar-foreground shadow-2xs font-medium"
+                            : "text-muted-foreground hover:bg-sidebar-border/30 hover:text-sidebar-foreground"
+                        )}
+                        title={label}
+                      >
+                        <ThemeIcon className={cn("size-3.5", isActive ? "text-primary" : "text-muted-foreground")} />
+                        <span className="text-[11px]">{label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
               <DropdownMenuSeparator />
 
@@ -398,10 +405,10 @@ export function NavMain({ items }: { items: NavItem[] }) {
                               <SidebarMenuSubButton
                                 asChild
                                 isActive={isSubActive}
-                                className={cn(
+                               className={cn(
                                   "transition-all duration-200",
                                   isSubActive &&
-                                  "border-l-2 border-primary rounded-l-none pl-1.5 bg-sidebar-accent/50 text-sidebar-accent-foreground font-semibold"
+                                  "bg-sidebar-accent/50 text-sidebar-accent-foreground font-semibold"
                                 )}
                               >
                                 <Link href={subItem.url} onClick={() => setOpenMobile(false)}>
@@ -431,7 +438,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                   className={cn(
                     "transition-all duration-200",
                     isActive &&
-                    "group-data-[state=expanded]/sidebar-wrapper:border-l-2 group-data-[state=expanded]/sidebar-wrapper:border-primary group-data-[state=expanded]/sidebar-wrapper:rounded-l-none group-data-[state=expanded]/sidebar-wrapper:pl-1.5 bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold"
+                    "bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold"
                   )}
                 >
                   <Link href={item.url} onClick={() => setOpenMobile(false)}>
@@ -439,6 +446,11 @@ export function NavMain({ items }: { items: NavItem[] }) {
                     <span className="truncate">{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
+                {item.badge && (
+                  <SidebarMenuBadge className="italic">
+                    {item.badge}
+                  </SidebarMenuBadge>
+                )}
               </SidebarMenuItem>
             )
           })}
@@ -476,7 +488,7 @@ export function NavSecondary({
                   className={cn(
                     "transition-all duration-200",
                     isActive &&
-                    "group-data-[state=expanded]/sidebar-wrapper:border-l-2 group-data-[state=expanded]/sidebar-wrapper:border-primary group-data-[state=expanded]/sidebar-wrapper:rounded-l-none group-data-[state=expanded]/sidebar-wrapper:pl-1.5 bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold"
+                    "bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold"
                   )}
                 >
                   <Link
@@ -487,6 +499,11 @@ export function NavSecondary({
                     <span>{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
+                {item.badge && (
+                  <SidebarMenuBadge>
+                    {item.badge}
+                  </SidebarMenuBadge>
+                )}
               </SidebarMenuItem>
             )
           })}
@@ -506,14 +523,31 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 const Logo = React.memo(() => (
   <div className="shrink-0 size-5 flex items-center justify-center transition-transform duration-300 group-hover/logo:scale-110">
-    <Image
-      src={PlaceTrixLogo}
-      alt="PlaceTrix"
-      width={20}
-      height={20}
-      className="size-full dark:invert"
-      priority
-    />
+    <svg
+      viewBox="0 0 234 139"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="size-full"
+    >
+      <path
+        d="M3.78965 131.389L49.3376 57.9376C53.1673 51.7618 59.9207 48 67.1876 48H137.213C140.37 48 142.283 51.4846 140.588 54.1475L121.179 84.6475C120.445 85.8013 119.172 86.5 117.804 86.5H78.2496C76.8527 86.5 75.5571 87.2287 74.8315 88.4223L50.8424 127.888C47.2146 133.857 40.7363 137.5 33.752 137.5H7.1871C4.05169 137.5 2.13726 134.053 3.78965 131.389Z"
+        className="fill-current stroke-current text-foreground"
+        strokeWidth="2"
+      />
+      <path
+        d="M57.0333 32.8693L72.9628 8.65652C76.107 3.87731 81.4442 1 87.1649 1H155.75H216.833C223.991 1 228.285 8.95097 224.359 14.9362L177.535 86.3238C174.393 91.1143 169.049 94 163.32 94H133.417C130.233 94 128.326 90.4625 130.074 87.8027L157.47 46.1296C159.21 43.4836 157.331 39.9616 154.165 39.9324L60.3381 39.0676C57.1712 39.0384 55.2926 35.5152 57.0333 32.8693Z"
+        className="fill-muted-foreground/30"
+      />
+      <path
+        d="M57.0333 32.8693L72.9628 8.65652C76.107 3.87731 81.4442 1 87.1649 1H155.75H216.833C223.991 1 228.285 8.95097 224.359 14.9362L177.535 86.3238C174.393 91.1143 169.049 94 163.32 94H133.417C130.233 94 128.326 90.4625 130.074 87.8027L157.47 46.1296C159.21 43.4836 157.331 39.9616 154.165 39.9324L60.3381 39.0676C57.1712 39.0384 55.2926 35.5152 57.0333 32.8693Z"
+        className="fill-current text-foreground"
+      />
+      <path
+        d="M57.0333 32.8693L72.9628 8.65652C76.107 3.87731 81.4442 1 87.1649 1H155.75H216.833C223.991 1 228.285 8.95097 224.359 14.9362L177.535 86.3238C174.393 91.1143 169.049 94 163.32 94H133.417C130.233 94 128.326 90.4625 130.074 87.8027L157.47 46.1296C159.21 43.4836 157.331 39.9616 154.165 39.9324L60.3381 39.0676C57.1712 39.0384 55.2926 35.5152 57.0333 32.8693Z"
+        className="stroke-current text-foreground"
+        strokeWidth="2"
+      />
+    </svg>
   </div>
 ))
 Logo.displayName = "Logo"

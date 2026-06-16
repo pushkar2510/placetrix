@@ -6,6 +6,7 @@ import { UserProfile } from "@/lib/supabase/profile";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -476,11 +477,11 @@ export function StaffSettingsClient({ userProfile }: Props) {
                 {sessionsLoading && (
                   <div className="space-y-2">
                     {[...Array(3)].map((_, i) => (
-                      <div key={i} className="flex items-center gap-3 rounded-lg border p-3.5 animate-pulse">
-                        <div className="h-9 w-9 rounded-md bg-muted shrink-0" />
+                      <div key={i} className="flex items-center gap-3 rounded-lg border border-border/50 p-3.5">
+                        <Skeleton className="h-9 w-9 rounded-md shrink-0" />
                         <div className="flex-1 space-y-2">
-                          <div className="h-3 w-1/3 rounded bg-muted" />
-                          <div className="h-2.5 w-1/2 rounded bg-muted" />
+                          <Skeleton className="h-3 w-1/3" />
+                          <Skeleton className="h-2.5 w-1/2" />
                         </div>
                       </div>
                     ))}

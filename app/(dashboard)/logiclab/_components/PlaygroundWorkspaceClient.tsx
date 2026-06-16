@@ -54,9 +54,14 @@ import {
   EmptyMedia,
 } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LANGUAGES, CODE_TEMPLATES } from "../_constants";
 
-export default function PlaygroundWorkspaceClient()  {
+interface PlaygroundWorkspaceClientProps {
+  userId?: string;
+}
+
+export default function PlaygroundWorkspaceClient({ userId }: PlaygroundWorkspaceClientProps)  {
   const { resolvedTheme } = useTheme();
   const monacoTheme = resolvedTheme === "light" ? "vs" : "vs-dark";
 
@@ -70,15 +75,17 @@ export default function PlaygroundWorkspaceClient()  {
   const [timerRunning, setTimerRunning] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("logiclab_playground_layout");
+    const key = userId ? `logiclab_playground_layout_${userId}` : "logiclab_playground_layout";
+    const saved = localStorage.getItem(key);
     if (saved === "standard" || saved === "split" || saved === "vertical") {
       setIdeLayout(saved);
     }
-  }, []);
+  }, [userId]);
 
   const handleLayoutChange = (layout: "standard" | "split" | "vertical") => {
     setIdeLayout(layout);
-    localStorage.setItem("logiclab_playground_layout", layout);
+    const key = userId ? `logiclab_playground_layout_${userId}` : "logiclab_playground_layout";
+    localStorage.setItem(key, layout);
   };
 
   useEffect(() => {
@@ -128,13 +135,21 @@ export default function PlaygroundWorkspaceClient()  {
   }, []);
 
   useEffect(() => {
-    const saved = localStorage.getItem(`logiclab_playground_code_${selectedLang.value}`);
+    const key = userId 
+      ? `logiclab_playground_code_${userId}_${selectedLang.value}` 
+      : `logiclab_playground_code_${selectedLang.value}`;
+    const saved = localStorage.getItem(key);
     setCode(saved ?? CODE_TEMPLATES[selectedLang.value]);
-  }, [selectedLang.value]);
+  }, [selectedLang.value, userId]);
 
   useEffect(() => {
-    if (code) localStorage.setItem(`logiclab_playground_code_${selectedLang.value}`, code);
-  }, [code, selectedLang.value]);
+    if (code) {
+      const key = userId 
+        ? `logiclab_playground_code_${userId}_${selectedLang.value}` 
+        : `logiclab_playground_code_${selectedLang.value}`;
+      localStorage.setItem(key, code);
+    }
+  }, [code, selectedLang.value, userId]);
 
   // Fullscreen
   const toggleFullScreen = async () => {
@@ -559,7 +574,7 @@ export default function PlaygroundWorkspaceClient()  {
                 <div key={i} className={cn("flex", "items-center", "gap-4")}>
                   <div className={cn("w-6", "text-right", "text-[10px]", "text-muted-foreground/40", "select-none")}>{i + 1}</div>
                   <div style={{ paddingLeft: `${indent[i]}rem`, width: "100%" }}>
-                    <div className={cn("h-3.5", "bg-muted/60", "rounded-md", "animate-pulse")} style={{ width: `${widths[i]}%` }} />
+                    <Skeleton className="h-3.5" style={{ width: `${widths[i]}%` }} />
                   </div>
                 </div>
               );
@@ -590,7 +605,7 @@ export default function PlaygroundWorkspaceClient()  {
                     <div key={i} className={cn("flex", "items-center", "gap-4")}>
                       <div className={cn("w-6", "text-right", "text-[10px]", "text-muted-foreground/40", "select-none")}>{i + 1}</div>
                       <div style={{ paddingLeft: `${indent[i]}rem`, width: "100%" }}>
-                        <div className={cn("h-3.5", "bg-muted/60", "rounded-md", "animate-pulse")} style={{ width: `${widths[i]}%` }} />
+                        <Skeleton className="h-3.5" style={{ width: `${widths[i]}%` }} />
                       </div>
                     </div>
                   );
@@ -811,7 +826,7 @@ export default function PlaygroundWorkspaceClient()  {
         {navbar}
         <div className={cn("flex-1", "pt-0", "px-2", "pb-2", "min-h-0", "overflow-hidden")}>
           {!isMounted ? (
-            <div className={cn("w-full", "h-full", "bg-card", "rounded-md", "border", "border-border/40", "animate-pulse")} />
+            <Skeleton className="w-full h-full border border-border/40" />
           ) : (
             <>
               {ideLayout === "standard" && (

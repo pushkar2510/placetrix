@@ -1,3 +1,4 @@
+import { getUserProfile } from "@/lib/supabase/profile"
 import PlaygroundWorkspaceClient from "../_components/PlaygroundWorkspaceClient"
 
 export const metadata = {
@@ -5,6 +6,8 @@ export const metadata = {
   description: "A free programming sandbox to write, execute, and test code.",
 }
 
-export default function PlaygroundPage() {
-  return <PlaygroundWorkspaceClient />
+export default async function PlaygroundPage() {
+  const profile = await getUserProfile()
+  return <PlaygroundWorkspaceClient userId={profile?.id} />
 }
+

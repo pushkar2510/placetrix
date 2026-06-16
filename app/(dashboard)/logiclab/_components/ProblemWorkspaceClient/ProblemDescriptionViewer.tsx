@@ -31,28 +31,28 @@ export function ProblemDescriptionViewer({ content, isSpoilerMode = false }: { c
     .replace(/==/g, " ＝ ");
 
   return (
-    <div className={cn('text-zinc-800 dark:text-foreground/80', 'leading-relaxed', 'text-sm', 'space-y-4', 'font-sans', 'markdown-body')}>
+    <div className={cn('text-zinc-800 dark:text-zinc-200', 'leading-relaxed', 'text-sm', 'space-y-4', 'font-sans', 'markdown-body')}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: ({node, ...props}) => <h1 className="text-[28px] leading-tight font-extrabold text-white mt-10 mb-5 tracking-tight first:mt-0" {...props} />,
-          h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-white mt-8 mb-4 tracking-tight first:mt-0" {...props} />,
-          h3: ({node, ...props}) => <h3 className="text-xl font-bold text-white mt-6 mb-3 tracking-tight first:mt-0" {...props} />,
-          p: ({node, ...props}) => <p className="text-zinc-300 leading-[1.7] text-[13px] my-4 first:mt-0" {...props} />,
-          a: ({node, ...props}) => <a className="text-blue-400 hover:text-blue-300 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
-          ul: ({node, ...props}) => <ul className="list-disc pl-6 space-y-1.5 text-zinc-300 my-4 first:mt-0" {...props} />,
-          ol: ({node, ...props}) => <ol className="list-decimal pl-6 space-y-1.5 text-zinc-300 my-4 first:mt-0" {...props} />,
+          h1: ({node, ...props}) => <h1 className="text-[28px] leading-tight font-extrabold text-zinc-900 dark:text-zinc-50 mt-10 mb-5 tracking-tight first:mt-0" {...props} />,
+          h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mt-8 mb-4 tracking-tight first:mt-0" {...props} />,
+          h3: ({node, ...props}) => <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-50 mt-6 mb-3 tracking-tight first:mt-0" {...props} />,
+          p: ({node, ...props}) => <p className="text-zinc-800 dark:text-zinc-200 leading-[1.7] text-[13px] my-4 first:mt-0" {...props} />,
+          a: ({node, ...props}) => <a className="text-blue-500 hover:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
+          ul: ({node, ...props}) => <ul className="list-disc pl-6 space-y-1.5 text-zinc-800 dark:text-zinc-200 my-4 first:mt-0" {...props} />,
+          ol: ({node, ...props}) => <ol className="list-decimal pl-6 space-y-1.5 text-zinc-800 dark:text-zinc-200 my-4 first:mt-0" {...props} />,
           li: ({node, ...props}) => <li className="text-[13px]" {...props} />,
-          blockquote: ({node, ...props}) => <blockquote className="border-l-[3px] border-zinc-500 pl-4 text-zinc-400 text-[13px] italic my-4 first:mt-0" {...props} />,
-          hr: ({node, ...props}) => <hr className="border-zinc-800 my-6" {...props} />,
+          blockquote: ({node, ...props}) => <blockquote className="border-l-[3px] border-zinc-300 dark:border-zinc-700 pl-4 text-zinc-550 dark:text-zinc-400 text-[13px] italic my-4 first:mt-0" {...props} />,
+          hr: ({node, ...props}) => <hr className="border-zinc-200 dark:border-zinc-800 my-6" {...props} />,
           table: ({node, ...props}) => (
-            <div className="overflow-x-auto my-4 first:mt-0 rounded-md border border-zinc-800">
+            <div className="overflow-x-auto my-4 first:mt-0 rounded-md border border-zinc-200 dark:border-zinc-800">
               <table className="w-full text-sm border-collapse" {...props} />
             </div>
           ),
-          thead: ({node, ...props}) => <thead className="bg-zinc-900/40" {...props} />,
-          th: ({node, ...props}) => <th className="px-3 py-2 text-left font-semibold text-zinc-200 border-b border-zinc-800" {...props} />,
-          td: ({node, ...props}) => <td className="px-3 py-2 text-zinc-400 border-t border-zinc-800" {...props} />,
+          thead: ({node, ...props}) => <thead className="bg-zinc-100/60 dark:bg-zinc-900/40" {...props} />,
+          th: ({node, ...props}) => <th className="px-3 py-2 text-left font-semibold text-zinc-800 dark:text-zinc-200 border-b border-zinc-200 dark:border-zinc-800" {...props} />,
+          td: ({node, ...props}) => <td className="px-3 py-2 text-zinc-750 dark:text-zinc-300 border-t border-zinc-200 dark:border-zinc-800" {...props} />,
           pre: ({node, ref, ...props}: any) => <div className="my-3.5 first:mt-0" {...props} />, // Strip standard pre wrap since we handle it in code
           code({ node, className, children, ...props }: any) {
             const match = /language-(\w+)/.exec(className || '');
@@ -138,7 +138,7 @@ export function ProblemDescriptionViewer({ content, isSpoilerMode = false }: { c
             }
             
             return (
-              <code className="bg-zinc-800/80 px-1.5 py-0.5 rounded text-[13px] font-mono text-emerald-400" {...props}>
+              <code className="bg-emerald-50/80 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded text-[13px] font-mono text-emerald-800 dark:text-emerald-300 border border-emerald-100/80 dark:border-emerald-900/30" {...props}>
                 {children}
               </code>
             );

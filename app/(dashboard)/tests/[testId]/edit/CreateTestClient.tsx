@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -1047,7 +1048,7 @@ function AiGenerateSheet({
           {isPending && (
             <div className="space-y-3">
               {Array.from({ length: Number(form.count) || 3 }).map((_, i) => (
-                <div key={i} className="h-24 animate-pulse rounded-md border bg-muted/40" />
+                <Skeleton key={i} className="h-24 border border-border/40" />
               ))}
             </div>
           )}

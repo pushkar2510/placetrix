@@ -48,7 +48,7 @@ import {
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { getIdeProblemList, getProblemDataSPA } from "../../actions";
+import { getProblemDataSPA, fetchProblemsInfinite } from "../../actions";
 import { buildStorageUrl } from "@/lib/storage";
 import { useMonaco } from "@monaco-editor/react";
 import {
@@ -70,6 +70,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import {
   AlertDialog,
@@ -87,6 +88,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
 } from "@/components/ui/select";
 import {
   Tooltip,
@@ -101,6 +103,7 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia } from "@/components/ui/empty";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 // Robust memory usage display formatter
 const formatMemory = (
@@ -422,6 +425,10 @@ export function ProblemWorkspaceClient({
     "all" | "easy" | "medium" | "hard"
   >("all");
   const [isLoadingProblems, setIsLoadingProblems] = useState(false);
+  const [hasMoreProblems, setHasMoreProblems] = useState(true);
+  const [isNextPageLoading, setIsNextPageLoading] = useState(false);
+  const [totalProblemsCount, setTotalProblemsCount] = useState(0);
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
 
   const [ideLayout, setIdeLayout] = useState<"standard" | "split" | "vertical">(
     "standard",
@@ -583,23 +590,83 @@ export function ProblemWorkspaceClient({
     localStorage.setItem("logiclab_ide_layout", layout);
   };
 
+  // Load initial page or reset list when filters/search changes
   React.useEffect(() => {
-    if (isProblemListOpen && problemList.length === 0) {
-      const fetchProblems = async () => {
+    if (!isProblemListOpen) return;
+
+    const timer = setTimeout(() => {
+      const fetchInitialProblems = async () => {
         setIsLoadingProblems(true);
         try {
-          const enhancedProblems = await getIdeProblemList(userId);
-          setProblemList(enhancedProblems);
+          const { problems: fresh, hasMore: more, totalCount: count } = await fetchProblemsInfinite({
+            userId,
+            offset: 0,
+            limit: 20,
+            search: searchQuery,
+            tab: statusFilter,
+            difficulty: difficultyFilter === "all" ? "All" : difficultyFilter.charAt(0).toUpperCase() + difficultyFilter.slice(1),
+          });
+          const mapped = fresh.map((p: any) => ({
+            ...p,
+            isSolved: p.solved_status === "Accepted"
+          }));
+          setProblemList(mapped);
+          setHasMoreProblems(more);
+          setTotalProblemsCount(count);
         } catch (error) {
-          console.error("Failed to fetch problem list:", error);
-          toast.error("Failed to load problem list");
+          console.error("Failed to load initial problems:", error);
+          toast.error("Failed to load problems");
         } finally {
           setIsLoadingProblems(false);
         }
       };
-      fetchProblems();
+      fetchInitialProblems();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [isProblemListOpen, searchQuery, statusFilter, difficultyFilter, userId]);
+
+  const loadMoreProblems = React.useCallback(async () => {
+    if (isNextPageLoading || !hasMoreProblems) return;
+    setIsNextPageLoading(true);
+    try {
+      const nextOffset = problemList.length;
+      const { problems: next, hasMore: more } = await fetchProblemsInfinite({
+        userId,
+        offset: nextOffset,
+        limit: 20,
+        search: searchQuery,
+        tab: statusFilter,
+        difficulty: difficultyFilter === "all" ? "All" : difficultyFilter.charAt(0).toUpperCase() + difficultyFilter.slice(1),
+      });
+      const mappedNext = next.map((p: any) => ({
+        ...p,
+        isSolved: p.solved_status === "Accepted"
+      }));
+      setProblemList((prev) => [...prev, ...mappedNext]);
+      setHasMoreProblems(more);
+    } catch (error) {
+      console.error("Failed to load more problems:", error);
+    } finally {
+      setIsNextPageLoading(false);
     }
-  }, [isProblemListOpen, problemList.length, userId]);
+  }, [isNextPageLoading, hasMoreProblems, problemList.length, userId, searchQuery, statusFilter, difficultyFilter]);
+
+  React.useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !isProblemListOpen) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMoreProblems();
+        }
+      },
+      { rootMargin: "100px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isProblemListOpen, loadMoreProblems]);
 
   React.useEffect(() => {
     if (isProblemListOpen && problemList.length > 0) {
@@ -611,7 +678,6 @@ export function ProblemWorkspaceClient({
         );
 
         if (activeLink && viewport) {
-          // Calculate exact center position
           const offsetTop = activeLink.offsetTop;
           const viewportHeight = viewport.clientHeight;
           viewport.scrollTo({
@@ -621,38 +687,7 @@ export function ProblemWorkspaceClient({
         }
       }, 150);
     }
-  }, [
-    isProblemListOpen,
-    problemList.length,
-    searchQuery,
-    statusFilter,
-    difficultyFilter,
-  ]);
-
-  const filteredProblems = problemList.filter((p) => {
-    // Text search (Title, Number)
-    const searchStr = searchQuery.trim().toLowerCase();
-    const matchesSearch =
-      !searchStr ||
-      p.title.toLowerCase().includes(searchStr) ||
-      String(p.number).includes(searchStr);
-
-    // Status Filter
-    let matchesStatus = true;
-    if (statusFilter === "solved") matchesStatus = p.isSolved;
-    else if (statusFilter === "unsolved") matchesStatus = !p.isSolved;
-
-    // Difficulty Filter
-    let matchesDifficulty = true;
-    if (difficultyFilter === "easy")
-      matchesDifficulty = p.difficulty === "Easy";
-    else if (difficultyFilter === "medium")
-      matchesDifficulty = p.difficulty === "Medium";
-    else if (difficultyFilter === "hard")
-      matchesDifficulty = p.difficulty === "Hard";
-
-    return matchesSearch && matchesStatus && matchesDifficulty;
-  });
+  }, [isProblemListOpen]);
 
   // Custom case state
   const [customInputs, setCustomInputs] = useState<string[]>(() =>
@@ -1035,17 +1070,6 @@ export function ProblemWorkspaceClient({
               <IconArrowLeft className={cn('h-4', 'w-4')} />
             </Link>
           </Button>
-          {!isDailyChallenge && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setIsProblemListOpen(!isProblemListOpen)}
-              className={cn('h-8', 'w-8', 'text-zinc-600 dark:text-muted-foreground', 'hover:text-foreground')}
-              title="Toggle Problem List"
-            >
-              <IconList className={cn('h-4', 'w-4')} />
-            </Button>
-          )}
         </div>
 
         {!isDailyChallenge && (
@@ -1313,6 +1337,17 @@ export function ProblemWorkspaceClient({
             <IconMaximize className={cn('h-4', 'w-4')} />
           )}
         </Button>
+        {!isDailyChallenge && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsProblemListOpen(!isProblemListOpen)}
+            className={cn('h-7', 'w-7', 'text-zinc-600 dark:text-muted-foreground', 'hover:text-foreground', 'bg-background')}
+            title="Toggle Problem List"
+          >
+            <IconList className={cn('h-4', 'w-4')} />
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -1379,14 +1414,14 @@ export function ProblemWorkspaceClient({
           <div className="flex-1 w-full h-full flex flex-col">
             <TabsContent value="description" className={cn('mt-0', 'outline-none', 'p-5')}>
               {isTransitioning ? (
-                <div className={cn('flex', 'flex-col', 'w-full', 'space-y-4', 'animate-pulse', 'pt-2')}>
-                  <div className={cn('h-6', 'bg-muted/60', 'rounded-md', 'w-1/3', 'mb-4')} />
-                  <div className={cn('h-3.5', 'bg-muted/60', 'rounded-md', 'w-5/6')} />
-                  <div className={cn('h-3.5', 'bg-muted/60', 'rounded-md', 'w-4/5')} />
-                  <div className={cn('h-3.5', 'bg-muted/60', 'rounded-md', 'w-full')} />
-                  <div className={cn('h-3.5', 'bg-muted/60', 'rounded-md', 'w-2/3')} />
-                  <div className={cn('h-3.5', 'bg-muted/60', 'rounded-md', 'w-3/4', 'mt-8')} />
-                  <div className={cn('h-24', 'bg-muted/30', 'rounded-lg', 'w-full', 'mt-2')} />
+                <div className={cn('flex', 'flex-col', 'w-full', 'space-y-4', 'pt-2')}>
+                  <div className={cn('h-6', 'animate-shimmer', 'rounded-md', 'w-1/3', 'mb-4')} />
+                  <div className={cn('h-3.5', 'animate-shimmer', 'rounded-md', 'w-5/6')} />
+                  <div className={cn('h-3.5', 'animate-shimmer', 'rounded-md', 'w-4/5')} />
+                  <div className={cn('h-3.5', 'animate-shimmer', 'rounded-md', 'w-full')} />
+                  <div className={cn('h-3.5', 'animate-shimmer', 'rounded-md', 'w-2/3')} />
+                  <div className={cn('h-3.5', 'animate-shimmer', 'rounded-md', 'w-3/4', 'mt-8')} />
+                  <div className={cn('h-24', 'animate-shimmer', 'rounded-lg', 'w-full', 'mt-2')} />
                 </div>
               ) : (
                 <div className="space-y-5">
@@ -1494,10 +1529,10 @@ export function ProblemWorkspaceClient({
             </TabsContent>
             <TabsContent value="submissions" className={cn('mt-0', 'outline-none', 'p-5')}>
               {isTransitioning ? (
-                <div className={cn('flex', 'flex-col', 'w-full', 'space-y-4', 'animate-pulse', 'pt-2')}>
-                  <div className={cn('h-16', 'bg-muted/30', 'rounded-lg', 'w-full', 'mb-2')} />
-                  <div className={cn('h-16', 'bg-muted/30', 'rounded-lg', 'w-full', 'mb-2')} />
-                  <div className={cn('h-16', 'bg-muted/30', 'rounded-lg', 'w-full', 'mb-2')} />
+                <div className={cn('flex', 'flex-col', 'w-full', 'space-y-4', 'pt-2')}>
+                  <div className={cn('h-16', 'animate-shimmer', 'rounded-lg', 'w-full', 'mb-2')} />
+                  <div className={cn('h-16', 'animate-shimmer', 'rounded-lg', 'w-full', 'mb-2')} />
+                  <div className={cn('h-16', 'animate-shimmer', 'rounded-lg', 'w-full', 'mb-2')} />
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -2180,17 +2215,19 @@ export function ProblemWorkspaceClient({
               position="popper"
               sideOffset={4}
               align="start"
-              className={cn('z-[9999]', 'min-w-[120px]')}
+              className="min-w-[120px]"
             >
-              {LANGUAGES.map((l) => (
-                <SelectItem
-                  key={l.id}
-                  value={l.value}
-                  className="font-medium"
-                >
-                  {l.name}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {LANGUAGES.map((l) => (
+                  <SelectItem
+                    key={l.id}
+                    value={l.value}
+                    className="font-medium"
+                  >
+                    {l.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -2324,7 +2361,7 @@ export function ProblemWorkspaceClient({
                     style={{ paddingLeft: `${indent[i]}rem`, width: "100%" }}
                   >
                     <div
-                      className={cn('h-3.5', 'bg-muted/40', 'rounded-md', 'animate-pulse')}
+                      className={cn('h-3.5', 'animate-shimmer', 'rounded-md')}
                       style={{ width: `${widths[i]}%` }}
                     />
                   </div>
@@ -2390,7 +2427,7 @@ export function ProblemWorkspaceClient({
                       style={{ paddingLeft: `${indent[i]}rem`, width: "100%" }}
                     >
                       <div
-                        className={cn('h-3.5', 'bg-muted/60', 'rounded-md', 'animate-pulse')}
+                        className={cn('h-3.5', 'animate-shimmer', 'rounded-md')}
                         style={{ width: `${widths[i]}%` }}
                       />
                     </div>
@@ -2482,16 +2519,16 @@ export function ProblemWorkspaceClient({
           <div className={cn('p-3.5', 'font-mono', 'text-xs')}>
             <TabsContent value="testcases" className={cn('mt-0', 'outline-none')}>
               {isTransitioning ? (
-                <div className={cn('flex', 'flex-col', 'w-full', 'space-y-4', 'animate-pulse', 'pt-2')}>
+                <div className={cn('flex', 'flex-col', 'w-full', 'space-y-4', 'pt-2')}>
                   <div className={cn('flex', 'gap-2', 'mb-4')}>
-                    <div className={cn('h-6', 'bg-muted/60', 'rounded-md', 'w-16')} />
-                    <div className={cn('h-6', 'bg-muted/60', 'rounded-md', 'w-16')} />
-                    <div className={cn('h-6', 'bg-muted/60', 'rounded-md', 'w-16')} />
+                    <div className={cn('h-6', 'animate-shimmer', 'rounded-md', 'w-16')} />
+                    <div className={cn('h-6', 'animate-shimmer', 'rounded-md', 'w-16')} />
+                    <div className={cn('h-6', 'animate-shimmer', 'rounded-md', 'w-16')} />
                   </div>
-                  <div className={cn('h-3.5', 'bg-muted/60', 'rounded-md', 'w-24')} />
-                  <div className={cn('h-10', 'bg-muted/30', 'rounded-lg', 'w-full')} />
-                  <div className={cn('h-3.5', 'bg-muted/60', 'rounded-md', 'w-24', 'mt-4')} />
-                  <div className={cn('h-10', 'bg-muted/30', 'rounded-lg', 'w-full')} />
+                  <div className={cn('h-3.5', 'animate-shimmer', 'rounded-md', 'w-24')} />
+                  <div className={cn('h-10', 'animate-shimmer', 'rounded-lg', 'w-full')} />
+                  <div className={cn('h-3.5', 'animate-shimmer', 'rounded-md', 'w-24', 'mt-4')} />
+                  <div className={cn('h-10', 'animate-shimmer', 'rounded-lg', 'w-full')} />
                 </div>
               ) : customInputs.length > 0 ? (
                 <div className="space-y-3.5">
@@ -3055,138 +3092,133 @@ export function ProblemWorkspaceClient({
       </div>
 
       {/* PROBLEM LIST DRAWER */}
-      {/* PROBLEM LIST OVERLAY */}
-      {isProblemListOpen && (
-        <div
-          className={cn('absolute', 'inset-0', 'bg-black/50', 'z-[90]', 'animate-in', 'fade-in', 'duration-200')}
-          onClick={() => setIsProblemListOpen(false)}
-        />
-      )}
+      <Sheet open={isProblemListOpen} onOpenChange={setIsProblemListOpen}>
+        <SheetContent side="right" className="w-[320px] p-0 gap-0">
+          <SheetHeader className="border-b px-4 py-3 shrink-0">
+            <div className="flex items-center justify-between pr-8">
+              <SheetTitle className="font-bold text-lg">Problem List</SheetTitle>
+              <span className="text-xs text-muted-foreground font-semibold tracking-wide">
+                {totalProblemsCount} Problems
+              </span>
+            </div>
+          </SheetHeader>
+          <SheetDescription className="sr-only">
+            List of coding challenges available on LogicLab.
+          </SheetDescription>
 
-      {/* PROBLEM LIST DRAWER */}
-      <div
-        className={cn(
-          "absolute top-0 bottom-0 left-0 w-[400px] max-w-full bg-card/95 backdrop-blur-xl border-r border-border/60 z-[100] flex flex-col transition-transform duration-300 ease-in-out shadow-2xl",
-          isProblemListOpen ? "translate-x-0" : "-translate-x-full",
-        )}
-      >
-        <div className={cn('p-4', 'border-b', 'border-border/60', 'flex', 'items-center', 'justify-between', 'shrink-0')}>
-          <div className={cn('font-bold', 'text-lg', 'flex', 'items-center', 'gap-2')}>
-            <IconList className={cn('h-5', 'w-5')} /> Problem List
-          </div>
-          <div className={cn('flex', 'items-center', 'gap-3')}>
-            <span className={cn('text-xs', 'font-semibold', 'text-zinc-600 dark:text-muted-foreground', 'tracking-wide', 'font-normal')}>
-              {problemList.filter((p) => p.isSolved).length}/
-              {problemList.length} Solved
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn('h-6', 'w-6', 'rounded-full', 'text-zinc-600 dark:text-muted-foreground', 'hover:text-foreground')}
-              onClick={() => setIsProblemListOpen(false)}
-            >
-              <IconX className={cn('h-4', 'w-4')} />
-            </Button>
-          </div>
-        </div>
-
-        <div className={cn('p-3', 'border-b', 'border-border/60', 'shrink-0', 'bg-muted/20', 'flex', 'flex-col', 'gap-2')}>
-          <div className={cn('relative', 'w-full')}>
-            <IconSearch className={cn('absolute', 'left-2.5', 'top-1/2', '-translate-y-1/2', 'h-4', 'w-4', 'text-zinc-500 dark:text-muted-foreground')} />
-            <input
-              type="text"
-              placeholder="Search by title or ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={cn('w-full', 'bg-background', 'border', 'border-border/60', 'rounded-md', 'py-1.5', 'pl-8', 'pr-3', 'text-sm', 'focus:outline-none', 'focus:ring-1', 'focus:ring-emerald-500', 'transition-all', 'shadow-sm')}
-            />
-          </div>
-          <div className={cn('flex', 'items-center', 'gap-2')}>
-            <Select
-              value={statusFilter}
-              onValueChange={(v: any) => setStatusFilter(v)}
-            >
-              <SelectTrigger className={cn('flex-1', 'h-8', 'text-xs', 'bg-background', 'border-border/60', 'shadow-sm', 'focus:ring-0', 'focus-visible:ring-0', 'focus-visible:outline-none', 'font-medium')}>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent
-                position="popper"
-                sideOffset={4}
-                className="z-[9999]"
+          <div className="p-3 border-b shrink-0 bg-muted/20 flex flex-col gap-2">
+            {/* Search and filter controls */}
+            <div className="relative w-full">
+              <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search by title or ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-8 text-xs bg-background"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Select
+                value={statusFilter}
+                onValueChange={(v: any) => setStatusFilter(v)}
               >
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="unsolved">Unsolved</SelectItem>
-                <SelectItem value="solved">Solved</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={difficultyFilter}
-              onValueChange={(v: any) => setDifficultyFilter(v)}
-            >
-              <SelectTrigger className={cn('flex-1', 'h-8', 'text-xs', 'bg-background', 'border-border/60', 'shadow-sm', 'focus:ring-0', 'focus-visible:ring-0', 'focus-visible:outline-none', 'font-medium')}>
-                <SelectValue placeholder="Difficulty" />
-              </SelectTrigger>
-              <SelectContent
-                position="popper"
-                sideOffset={4}
-                className="z-[9999]"
-              >
-                <SelectItem value="all">All Levels</SelectItem>
-                <SelectItem value="easy">Easy</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="hard">Hard</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <ScrollArea
-          id="problem-list-scroll-area"
-          className={cn('flex-1', 'w-full', 'min-h-0')}
-        >
-          <div className="py-2">
-            {isLoadingProblems ? (
-              <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-20', 'gap-3')}>
-                <div className={cn('h-6', 'w-6', 'border-2', 'border-emerald-500/20', 'border-t-emerald-500', 'rounded-full', 'animate-spin')} />
-                <span className={cn('text-xs', 'text-zinc-550 dark:text-muted-foreground', 'font-semibold', 'uppercase', 'tracking-wider')}>
-                  Loading...
-                </span>
-              </div>
-            ) : filteredProblems.length > 0 ? (
-              filteredProblems.map((p) => (
-                <div
-                  key={p.id}
-                  id={p.id === problem.id ? "active-problem-link" : undefined}
-                  onClick={() => handleNavigate(p.id)}
-                  className={`flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-muted/60 transition-colors ${p.id === problem.id ? "bg-muted border-l-2 border-emerald-500" : ""}`}
+                <SelectTrigger size="sm" className="flex-1 text-xs font-medium">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent
+                  position="popper"
+                  sideOffset={4}
                 >
-                  <div className={cn('flex', 'items-center', 'gap-3', 'truncate', 'pr-4')}>
-                    {p.isSolved ? (
-                      <IconCheck className={cn('h-4', 'w-4', 'text-emerald-500', 'shrink-0')} />
-                    ) : (
-                      <div className={cn('h-4', 'w-4', 'shrink-0')} />
-                    )}
-                    <span
-                      className={`text-sm truncate ${p.id === problem.id ? "font-bold" : "font-medium"}`}
-                    >
-                      {p.number}. {p.title}
-                    </span>
-                  </div>
-                  <span
-                    className={`text-xs font-bold shrink-0 ${p.difficulty === "Easy" ? "text-emerald-500" : p.difficulty === "Medium" ? "text-amber-500" : "text-rose-500"}`}
-                  >
-                    {p.difficulty === "Medium" ? "Med." : p.difficulty}
+                  <SelectGroup>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="unsolved">Unsolved</SelectItem>
+                    <SelectItem value="solved">Solved</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <Select
+                value={difficultyFilter}
+                onValueChange={(v: any) => setDifficultyFilter(v)}
+              >
+                <SelectTrigger size="sm" className="flex-1 text-xs font-medium">
+                  <SelectValue placeholder="Difficulty" />
+                </SelectTrigger>
+                <SelectContent
+                  position="popper"
+                  sideOffset={4}
+                >
+                  <SelectGroup>
+                    <SelectItem value="all">All Levels</SelectItem>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <ScrollArea
+            id="problem-list-scroll-area"
+            className="flex-1 w-full min-h-0"
+          >
+            <div className="py-2">
+              {isLoadingProblems ? (
+                <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-20', 'gap-3')}>
+                  <div className={cn('size-6', 'border-2', 'border-emerald-500/20', 'border-t-emerald-500', 'rounded-full', 'animate-spin')} />
+                  <span className={cn('text-xs', 'text-muted-foreground', 'font-semibold', 'uppercase', 'tracking-wider')}>
+                    Loading...
                   </span>
                 </div>
-              ))
-            ) : (
-              <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-20', 'text-zinc-550 dark:text-muted-foreground', 'text-sm')}>
-                No problems found.
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-      </div>
+              ) : problemList.length > 0 ? (
+                <>
+                  {problemList.map((p) => (
+                    <div
+                      key={p.id}
+                      id={p.id === problem.id ? "active-problem-link" : undefined}
+                      onClick={() => {
+                        handleNavigate(p.id);
+                        setIsProblemListOpen(false);
+                      }}
+                      className={`flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-muted/60 transition-colors ${p.id === problem.id ? "bg-muted border-l-2 border-emerald-500" : ""}`}
+                    >
+                      <div className={cn('flex', 'items-start', 'gap-3', 'pr-4')}>
+                        {p.isSolved ? (
+                          <IconCheck className={cn('size-4', 'text-emerald-500', 'shrink-0', 'mt-0.5')} />
+                        ) : (
+                          <div className={cn('size-4', 'shrink-0')} />
+                        )}
+                        <span
+                          className={`text-sm whitespace-normal break-words leading-tight ${p.id === problem.id ? "font-bold" : "font-medium"}`}
+                        >
+                          {p.number}. {p.title}
+                        </span>
+                      </div>
+                      <span
+                        className={`text-xs font-bold shrink-0 ${p.difficulty === "Easy" ? "text-emerald-500" : p.difficulty === "Medium" ? "text-amber-500" : "text-rose-500"}`}
+                      >
+                        {p.difficulty === "Medium" ? "Med." : p.difficulty}
+                      </span>
+                    </div>
+                  ))}
+                  
+                  {/* Infinite Scroll Sentinel */}
+                  <div ref={sentinelRef} className="h-10 flex items-center justify-center">
+                    {isNextPageLoading && (
+                      <div className="size-4 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-20', 'text-muted-foreground', 'text-sm')}>
+                  No problems found.
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
       {/* Submit Confirmation Dialog */}
       <AlertDialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
         <AlertDialogContent>

@@ -9,7 +9,7 @@ import { usePathname } from "next/navigation"
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 
-const HOVER_OPEN_DELAY = 90   // ms
+const HOVER_OPEN_DELAY = 180   // ms
 const HOVER_CLOSE_DELAY = 140  // ms
 
 

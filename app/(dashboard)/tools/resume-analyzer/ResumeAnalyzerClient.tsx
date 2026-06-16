@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "motion/react"
@@ -433,9 +434,9 @@ export function ResumeAnalyzerClient({ initialDescription = "" }: { initialDescr
                 <div className="space-y-4">
                   {[...Array(4)].map((_, i) => (
                     <div key={i} className="space-y-2">
-                      <div className="h-2.5 w-24 rounded-full bg-muted animate-pulse" style={{ animationDelay: `${i * 150}ms` }} />
-                      <div className="h-2 w-full rounded-full bg-muted/60 animate-pulse" style={{ animationDelay: `${i * 150 + 75}ms` }} />
-                      <div className="h-2 w-3/4 rounded-full bg-muted/60 animate-pulse" style={{ animationDelay: `${i * 150 + 150}ms` }} />
+                      <Skeleton className="h-2.5 w-24" style={{ animationDelay: `${i * 150}ms` }} />
+                      <Skeleton className="h-2 w-full" style={{ animationDelay: `${i * 150 + 75}ms` }} />
+                      <Skeleton className="h-2 w-3/4" style={{ animationDelay: `${i * 150 + 150}ms` }} />
                     </div>
                   ))}
                 </div>

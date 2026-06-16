@@ -1,103 +1,73 @@
-// app/(dashboard)/tests/[testId]/edit/loading.tsx
-
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { DashboardPageLayout } from "@/components/ui/loading-skeleton"
 
 export default function TestEditorLoading() {
   return (
-    <div className="flex flex-col gap-6 px-4 py-8 md:px-8">
-
-        {/* ── Page Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-          <div className="flex flex-col gap-1.5">
-            <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground flex items-center"><Skeleton className="h-8 w-28" /></h1>
-            <Skeleton className="h-4 w-64" />
+    <DashboardPageLayout title="Edit Test" descWidth="w-64" hasButton buttonWidth="w-52">
+      {/* Settings Card */}
+      <Card className="border-border/60 shadow-2xs">
+        <CardHeader className="pb-4">
+          <Skeleton className="h-5 w-24 rounded" />
+          <Skeleton className="h-3.5 w-48 mt-1 rounded" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Skeleton className="h-3.5 w-8 rounded" />
+            <Skeleton className="h-9.5 w-full rounded-lg" />
           </div>
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-28 rounded-md" />
-            <Skeleton className="h-8 w-24 rounded-md" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-3.5 w-20 rounded" />
+            <Skeleton className="h-16 w-full rounded-lg" />
           </div>
-        </div>
-
-        {/* ── Settings Card ── */}
-        <Card>
-          <CardHeader className="pb-4">
-            <Skeleton className="h-5 w-24" />
-            <Skeleton className="h-3.5 w-48 mt-1" />
-          </CardHeader>
-          <CardContent className="space-y-4">
-
-            {/* Title */}
+          <div className="space-y-1.5">
+            <Skeleton className="h-3.5 w-24 rounded" />
+            <Skeleton className="h-20 w-full rounded-lg" />
+          </div>
+          <div className="space-y-1.5">
+            <Skeleton className="h-3.5 w-36 rounded" />
+            <Skeleton className="h-9.5 w-40 rounded-lg" />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Skeleton className="h-4 w-8" />
-              <Skeleton className="h-9 w-full rounded-md" />
+              <Skeleton className="h-3.5 w-28 rounded" />
+              <Skeleton className="h-9.5 w-full rounded-lg" />
             </div>
-
-            {/* Description */}
             <div className="space-y-1.5">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-16 w-full rounded-md" />
+              <Skeleton className="h-3.5 w-28 rounded" />
+              <Skeleton className="h-9.5 w-full rounded-lg" />
             </div>
+          </div>
+          <div className="pt-1">
+            <Skeleton className="h-9.5 w-36 rounded-lg" />
+          </div>
+        </CardContent>
+      </Card>
 
-            {/* Instructions */}
+      {/* Questions Card */}
+      <Card className="opacity-50 border-border/60 shadow-2xs">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1.5">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-20 w-full rounded-md" />
+              <Skeleton className="h-5 w-24 rounded" />
+              <Skeleton className="h-3.5 w-52 mt-1 rounded" />
             </div>
-
-            {/* Time Limit */}
-            <div className="space-y-1.5">
-              <Skeleton className="h-4 w-36" />
-              <Skeleton className="h-9 w-40 rounded-md" />
+            <div className="flex gap-2">
+              <Skeleton className="h-8.5 w-28 rounded-lg" />
+              <Skeleton className="h-8.5 w-20 rounded-lg" />
             </div>
-
-            {/* Available From / Until */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-9 w-full rounded-md" />
-              </div>
-              <div className="space-y-1.5">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-9 w-full rounded-md" />
-              </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center gap-3 py-10">
+            <Skeleton className="size-9 rounded-lg" />
+            <div className="space-y-1.5 text-center">
+              <Skeleton className="h-4 w-32 mx-auto rounded" />
+              <Skeleton className="h-3.5 w-52 mx-auto rounded" />
             </div>
-
-            {/* Save Settings button */}
-            <div className="pt-1">
-              <Skeleton className="h-9 w-36 rounded-md" />
-            </div>
-
-          </CardContent>
-        </Card>
-
-        {/* ── Questions Card ── */}
-        <Card className="opacity-50">
-          <CardHeader className="pb-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="space-y-1.5">
-                <Skeleton className="h-5 w-24" />
-                <Skeleton className="h-3.5 w-52 mt-1" />
-              </div>
-              {/* Toolbar buttons */}
-              <div className="flex gap-2">
-                <Skeleton className="h-8 w-28 rounded-md" />
-                <Skeleton className="h-8 w-20 rounded-md" />
-                <Skeleton className="h-8 w-28 rounded-md" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center gap-3 py-10">
-              <Skeleton className="h-9 w-9 rounded-md" />
-              <div className="space-y-1.5 text-center">
-                <Skeleton className="h-4 w-32 mx-auto" />
-                <Skeleton className="h-3.5 w-52 mx-auto" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-      </div>
+          </div>
+        </CardContent>
+      </Card>
+    </DashboardPageLayout>
   )
 }
