@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
     let sampleTestCases: any[] = []
     let timeLimit = 2.0
     let memoryLimit = 256000
+    let lineOffset = 0
 
     if (mode === "problem" && problem_id) {
       const problemData = await getCachedProblemExecutionData(problem_id) as any
@@ -95,14 +96,17 @@ export async function POST(req: NextRequest) {
         const lines = driverCode.split("\n")
         const imports = lines.filter((line: string) => line.trim().startsWith("import "))
         const nonImports = lines.filter((line: string) => !line.trim().startsWith("import "))
+        lineOffset = 2 + imports.length + 2
         finalSource = "import java.util.*;\nimport java.io.*;\n" + imports.join("\n") + "\n\n" + source_code + "\n\n" + nonImports.join("\n")
       } else if (langKey === "71") { // Python
         const merged = source_code + "\n\n" + driverCode
+        lineOffset = 5
         finalSource = "import sys\nimport json\nimport math\nimport collections\nfrom typing import *\n" + merged
       } else if (langKey === "54") { // C++
         const lines = driverCode.split("\n")
         const includes = lines.filter((line: string) => line.trim().startsWith("#include") || line.trim().startsWith("using "))
         const nonIncludes = lines.filter((line: string) => !line.trim().startsWith("#include") && !line.trim().startsWith("using "))
+        lineOffset = 12 + includes.length + 2
         finalSource = "#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\n#include <map>\n#include <set>\n#include <unordered_map>\n#include <unordered_set>\n#include <queue>\n#include <stack>\n#include <cmath>\nusing namespace std;\n" + includes.join("\n") + "\n\n" + source_code + "\n\n" + nonIncludes.join("\n")
       } else {
         finalSource = source_code + "\n\n" + driverCode
@@ -130,7 +134,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const judge0Endpoint = process.env.NEXT_PUBLIC_JUDGE0_ENDPOINT || "http://187.127.171.46:2358"
+    const judge0Endpoint = process.env.NEXT_PUBLIC_JUDGE0_ENDPOINT || process.env.JUDGE0_ENDPOINT || "http://187.127.171.46:2358"
     const submissionsUrl = `${judge0Endpoint}/submissions?wait=true&base64_encoded=true`
 
     const encodedSource = Buffer.from(finalSource || "").toString("base64")
@@ -178,10 +182,11 @@ export async function POST(req: NextRequest) {
           } catch {
             return { index: i + 1, tc, error: "Judge0 service error (invalid JSON response)." }
           }
-
+          
           if (!response.ok) {
             return { index: i + 1, tc, error: `Judge0 error: ${data.error || response.statusText}` }
           }
+          
           return { index: i + 1, tc, data }
         } catch (err: any) {
           clearTimeout(timeoutId)
@@ -259,6 +264,7 @@ export async function POST(req: NextRequest) {
           actual: stdout,
           stderr: decode(data.stderr),
           compile_output: decode(data.compile_output),
+          message: decode(data.message),
           console_output: consoleOutput,
           status: data.status || { id: 3, description: "Accepted" },
           time: (metrics.timeMs / 1000).toFixed(3),
@@ -271,7 +277,8 @@ export async function POST(req: NextRequest) {
         status: overallStatus,
         time: totalTime.toFixed(2),
         memory: String(maxMemory),
-        cases: results
+        cases: results,
+        lineOffset
       })
     } else {
       const encodedStdin = Buffer.from(finalStdin || "").toString("base64")

@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const judge0Endpoint = process.env.NEXT_PUBLIC_JUDGE0_ENDPOINT || "http://187.127.171.46:2358"
+    const judge0Endpoint = process.env.NEXT_PUBLIC_JUDGE0_ENDPOINT || process.env.JUDGE0_ENDPOINT || "http://187.127.171.46:2358"
 
     // 1. Fetch problem data (driver code + time/memory limits + test cases)
     const { getCachedProblemExecutionData } = await import("@/app/(dashboard)/logiclab/actions")
@@ -136,19 +136,23 @@ export async function POST(req: NextRequest) {
 
     // 3. Merge user code with driver code
     let finalSource = code
+    let lineOffset = 0
     if (driverCode) {
       if (langKey === "62") { // Java
         const lines = driverCode.split("\n")
         const imports = lines.filter((line: string) => line.trim().startsWith("import "))
         const nonImports = lines.filter((line: string) => !line.trim().startsWith("import "))
+        lineOffset = 2 + imports.length + 2
         finalSource = "import java.util.*;\nimport java.io.*;\n" + imports.join("\n") + "\n\n" + code + "\n\n" + nonImports.join("\n")
       } else if (langKey === "71") { // Python
         const merged = code + "\n\n" + driverCode
+        lineOffset = 5
         finalSource = "import sys\nimport json\nimport math\nimport collections\nfrom typing import *\n" + merged
       } else if (langKey === "54") { // C++
         const lines = driverCode.split("\n")
         const includes = lines.filter((line: string) => line.trim().startsWith("#include") || line.trim().startsWith("using "))
         const nonIncludes = lines.filter((line: string) => !line.trim().startsWith("#include") && !line.trim().startsWith("using "))
+        lineOffset = 12 + includes.length + 2
         finalSource = "#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\n#include <map>\n#include <set>\n#include <unordered_map>\n#include <unordered_set>\n#include <queue>\n#include <stack>\n#include <cmath>\nusing namespace std;\n" + includes.join("\n") + "\n\n" + code + "\n\n" + nonIncludes.join("\n")
       } else {
         finalSource = code + "\n\n" + driverCode
@@ -250,7 +254,7 @@ export async function POST(req: NextRequest) {
             const lines = stdoutRaw.split('\n');
               if (lines.length > 0) {
                 const lastLine = lines.pop() || "";
-                data.stdout = Buffer.from(lastLine.trim()).toString("base64");
+                data.stdout = Buffer.from(lastLine.trim()).toString("base64")
                 consoleOutput = lines.join('\n').trim();
               } else {
                 data.stdout = Buffer.from("").toString("base64");
@@ -397,6 +401,7 @@ export async function POST(req: NextRequest) {
       failed_test_case_info: failedInfo,
       submission_id: savedSubmission?.id || null,
       save_error: saveError?.message || null,
+      lineOffset,
       cases: sampleCases.map((sc) => ({
         index: sc.index,
         passed: sc.passed,

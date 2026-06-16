@@ -395,3 +395,17 @@
     transition: none;
   }
 }
+
+/* ─── Monaco Custom Error Line Styles ────────────────────────────────────── */
+.monaco-editor .monaco-error-line-bg {
+  background-color: rgba(244, 63, 94, 0.15) !important;
+}
+
+.monaco-editor .margin-view-overlays .monaco-error-line-number {
+  /* No background image needed anymore */
+}
+
+.monaco-editor .margin-view-overlays .monaco-error-line-number .line-numbers {
+  color: #f43f5e !important; /* Tailwind rose-500 */
+  font-weight: bold !important;
+}

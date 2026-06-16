@@ -175,6 +175,7 @@ export function ProblemWorkspaceClient({
   const runRef = React.useRef<any>(null);
   const editorRef = React.useRef<any>(null);
   const monacoRef = React.useRef<any>(null);
+  const errorDecorationsRef = React.useRef<any>(null);
 
   const handleNavigate = async (targetId: string) => {
     setIsTransitioning(true);
@@ -350,6 +351,8 @@ export function ProblemWorkspaceClient({
     }
   }, [ideSettings.fontSize, ideSettings.wordWrap]);
 
+
+
   const handleFormatCode = async () => {
     const editor = editorRef.current;
     const monaco = monacoRef.current;
@@ -387,7 +390,6 @@ export function ProblemWorkspaceClient({
         } else {
           setCode(data.code);
         }
-        toast.success("Code prettified!");
       }
     } catch (err) {
       console.error("Format error", err);
@@ -431,6 +433,150 @@ export function ProblemWorkspaceClient({
       setIdeLayout(saved);
     }
   }, []);
+
+  // --- Formatter for Error Diagnostics ---
+  const formatErrorDiagnostic = (text: string | null | undefined) => {
+    if (!text) return "";
+    let formatted = text;
+    const offset = runResult?.lineOffset || submitResult?.lineOffset || 0;
+
+    if (offset > 0) {
+      if (selectedLang.name.toLowerCase().includes("python")) {
+        formatted = formatted.replace(/(File ".*?", line )(\d+)/g, (match, prefix, line) => {
+          return `${prefix}${Math.max(1, parseInt(line, 10) - offset)}`;
+        });
+      } else if (selectedLang.name.toLowerCase().includes("c++") || selectedLang.name.toLowerCase().includes("c \(gcc\)")) {
+        formatted = formatted.replace(/(script\.cpp:|script\.c:|:\s*)(\d+)/g, (match, prefix, line) => {
+          return `${prefix}${Math.max(1, parseInt(line, 10) - offset)}`;
+        });
+      } else if (selectedLang.name.toLowerCase().includes("java")) {
+        formatted = formatted.replace(/(Main\.java:|Solution\.java:)(\d+)/g, (match, prefix, line) => {
+          return `${prefix}${Math.max(1, parseInt(line, 10) - offset)}`;
+        });
+      } else if (selectedLang.name.toLowerCase().includes("javascript") || selectedLang.name.toLowerCase().includes("typescript")) {
+        formatted = formatted.replace(/(script\.[jt]s:|:\s*)(\d+)/g, (match, prefix, line) => {
+          return `${prefix}${Math.max(1, parseInt(line, 10) - offset)}`;
+        });
+      }
+    }
+
+    formatted = formatted.replace(/File ".*?script\.py"/g, 'File "main.py"');
+    formatted = formatted.replace(/script\.cpp:/g, 'main.cpp:');
+    formatted = formatted.replace(/Main\.java:/g, 'Main.java:');
+    formatted = formatted.replace(/script\.js:/g, 'main.js:');
+    formatted = formatted.replace(/script\.ts:/g, 'main.ts:');
+    
+    return formatted;
+  };
+
+  // --- Editor Error Line Highlighting ---
+  React.useEffect(() => {
+    if (!editorRef.current || !monacoRef.current) return;
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+
+    let errorLine: number | null = null;
+    let errorText = "";
+
+    const extractErrorLine = (text: string, langName: string) => {
+      if (!text) return null;
+      if (langName.toLowerCase().includes("python")) {
+        const match = text.match(/line (\d+)/i);
+        if (match) return parseInt(match[1], 10);
+      } else if (langName.toLowerCase().includes("c++") || langName.toLowerCase().includes("c (gcc)")) {
+        const match = text.match(/script\.cpp:(\d+):/i) || text.match(/script\.c:(\d+):/i);
+        if (match) return parseInt(match[1], 10);
+      } else if (langName.toLowerCase().includes("java")) {
+        const match = text.match(/Main\.java:(\d+):/i) || text.match(/Solution\.java:(\d+):/i);
+        if (match) return parseInt(match[1], 10);
+      } else if (langName.toLowerCase().includes("javascript") || langName.toLowerCase().includes("typescript")) {
+        const match = text.match(/script\.[jt]s:(\d+)/i) || text.match(/:\s*(\d+):\d+/i);
+        if (match) return parseInt(match[1], 10);
+      }
+      return null;
+    };
+
+    let targetText = "";
+    let lineOffset = 0;
+    if (submitResult?.status === "Compile Error" || submitResult?.status?.includes("Runtime Error")) {
+      targetText = submitResult.compile_output || submitResult.failed_test_case_info?.actual || submitResult.stderr || "";
+      lineOffset = submitResult.lineOffset || 0;
+    } else if (runResult && !runResult.success) {
+      lineOffset = runResult.lineOffset || 0;
+      if (runResult.compile_output || runResult.stderr) {
+         targetText = runResult.compile_output || runResult.stderr || "";
+      } else if (runResult.cases && runResult.cases.length > 0) {
+         const failedCase = runResult.cases.find((c: any) => !c.passed && (c.compile_output || c.stderr));
+         if (failedCase) targetText = failedCase.compile_output || failedCase.stderr || "";
+      }
+    }
+
+    if (targetText) {
+       const parsedLine = extractErrorLine(targetText, selectedLang.name);
+       if (parsedLine !== null) {
+          errorLine = Math.max(1, parsedLine - lineOffset);
+       }
+       errorText = targetText;
+    }
+
+    const clearDecorations = () => {
+       if (errorDecorationsRef.current) {
+           if (editor.createDecorationsCollection) {
+               errorDecorationsRef.current.clear();
+           } else {
+               editor.deltaDecorations(errorDecorationsRef.current, []);
+           }
+           errorDecorationsRef.current = null;
+       }
+    };
+
+    if (errorLine) {
+       const newDecorations = [
+          {
+             range: new monaco.Range(errorLine, 1, errorLine, 1),
+             options: {
+                isWholeLine: true,
+                className: 'monaco-error-line-bg',
+                marginClassName: 'monaco-error-line-number',
+             }
+          },
+          {
+             range: new monaco.Range(errorLine, 1, errorLine, 100),
+             options: {
+                inlineClassName: 'decoration-rose-500 decoration-wavy underline decoration-[1.5px] underline-offset-2',
+                hoverMessage: { value: '```text\n' + errorText + '\n```' }
+             }
+          }
+       ];
+       if (!errorDecorationsRef.current) {
+          if (editor.createDecorationsCollection) {
+             errorDecorationsRef.current = editor.createDecorationsCollection(newDecorations);
+          } else {
+             errorDecorationsRef.current = editor.deltaDecorations([], newDecorations);
+          }
+       } else {
+          if (editor.createDecorationsCollection) {
+             errorDecorationsRef.current.set(newDecorations);
+          } else {
+             errorDecorationsRef.current = editor.deltaDecorations(errorDecorationsRef.current, newDecorations);
+          }
+       }
+    } else {
+       clearDecorations();
+    }
+  }, [submitResult, runResult, selectedLang]);
+
+  // Clear decorations when code changes
+  React.useEffect(() => {
+    if (errorDecorationsRef.current && editorRef.current) {
+       if (editorRef.current.createDecorationsCollection) {
+           errorDecorationsRef.current.clear();
+       } else {
+           editorRef.current.deltaDecorations(errorDecorationsRef.current, []);
+       }
+       errorDecorationsRef.current = null;
+    }
+  }, [code]);
 
   const handleLayoutChange = (layout: "standard" | "split" | "vertical") => {
     setIdeLayout(layout);
@@ -645,7 +791,7 @@ export function ProblemWorkspaceClient({
 
           return (
             <div key={idx} className={cn('space-y-1.5', 'text-xs')}>
-              <span className={cn('text-xs', 'text-zinc-600 dark:text-muted-foreground/80', 'font-bold', 'block', 'select-none')}>
+              <span className={cn('text-sm', 'text-zinc-600 dark:text-muted-foreground/80', 'font-bold', 'block', 'select-none')}>
                 {paramName} =
               </span>
               {isEditable ? (
@@ -653,10 +799,10 @@ export function ProblemWorkspaceClient({
                   type="text"
                   value={line}
                   onChange={(e) => onChange?.(idx, e.target.value)}
-                  className={cn('w-full', 'px-3', 'py-2', 'bg-zinc-100/80 dark:bg-zinc-900/50', 'border', 'border-border/60', 'rounded-md', 'text-foreground', 'text-sm', 'font-mono', 'outline-none', 'transition-colors', 'focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 shadow-sm')}
+                  className={cn('w-full', 'px-3', 'py-2', 'bg-zinc-100/80 dark:bg-zinc-900/50', 'border', 'border-border/60', 'rounded-md', 'text-foreground', 'text-[15px]', 'font-mono', 'outline-none', 'transition-colors', 'focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 shadow-sm')}
                 />
               ) : (
-                <pre className={cn('p-3', 'bg-zinc-100/70 dark:bg-zinc-900/30', 'border', 'border-border/40', 'rounded-md', 'text-zinc-900 dark:text-foreground/90', 'text-sm', 'font-mono', 'whitespace-pre-wrap', 'leading-relaxed', 'max-h-32', 'overflow-y-auto')}>
+                <pre className={cn('p-3', 'bg-zinc-100/70 dark:bg-zinc-900/30', 'border', 'border-border/40', 'rounded-md', 'text-zinc-900 dark:text-foreground/90', 'text-[15px]', 'font-mono', 'whitespace-pre-wrap', 'leading-relaxed', 'max-h-32', 'overflow-y-auto')}>
                   {line}
                 </pre>
               )}
@@ -723,15 +869,24 @@ export function ProblemWorkspaceClient({
     setSelectedCaseIndex(0);
     setActiveOutputTab("result");
     try {
+      let processedCode = code;
+      
+      // Fix for Java: Online compilers require the filename to match the class name if the class is public.
+      // In Problem Mode, the user MUST write 'class Solution' and MUST use the exact function name.
+      // We strip 'public' just in case they wrote 'public class Solution' to prevent compilation errors.
+      if (selectedLang.value === "java") {
+        processedCode = processedCode.replace(/public\s+class\s+/g, "class ");
+      }
+
       const res = await fetch("/api/logiclab/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          source_code: code,
+          source_code: processedCode,
           language_id: selectedLang.id,
           problem_id: problem.id,
           mode: "problem",
-          custom_cases: customInputs, // Pass custom edited inputs!
+          custom_cases: customInputs,
           custom_expected: customExpectedOutputs,
         }),
       });
@@ -747,13 +902,6 @@ export function ProblemWorkspaceClient({
       if (!res.ok) throw new Error(data.error || "Execution failed.");
 
       setRunResult(data);
-      if (data.status?.id === 3 && data.success) {
-        toast.success("All sample test cases passed!");
-      } else if (data.status?.id === 3) {
-        toast.error("Output mismatch on some sample test cases.");
-      } else {
-        toast.error(`${data.status?.description || "Error"}`);
-      }
     } catch (err: any) {
       setRunResult({
         success: false,
@@ -808,18 +956,7 @@ export function ProblemWorkspaceClient({
       data.submitted_code = code;
       data.submitted_language = selectedLang;
       setSubmitResult(data);
-
-      if (data.status === "Accepted") {
-        toast.success(
-          `Accepted! ${data.passed_count}/${data.total_count} test cases passed.`,
-        );
-      } else {
-        toast.error(
-          `${data.status}: ${data.passed_count}/${data.total_count} passed.`,
-        );
-      }
-
-      // Add or update local submissions list to match database upsert behavior
+      
       if (data.save_error) {
         toast.error(`Database save error: ${data.save_error}`);
       }
@@ -1882,26 +2019,28 @@ export function ProblemWorkspaceClient({
                   {/* Compile Error / Runtime Error specifics */}
                   {(submitResult.compile_output ||
                     submitResult.status === "Compile Error" ||
-                    submitResult.status === "Runtime Error" ||
+                    submitResult.status?.includes("Runtime Error") ||
                     submitResult.status === "Time Limit Exceeded" ||
                     submitResult.status === "Memory Limit Exceeded") && (
                       <div className={cn('p-4', 'bg-rose-500/5', 'border', 'border-rose-500/20', 'rounded-xl', 'space-y-2', 'select-text')}>
-                        <p className={cn('text-xs', 'font-bold', 'text-rose-600', 'dark:text-rose-400', 'uppercase', 'tracking-wider', 'flex', 'items-center', 'gap-1.5')}>
-                          <IconAlertTriangle className={cn('h-4', 'w-4')} /> Diagnostics
+                        <p className={cn('text-sm', 'font-bold', 'text-rose-600', 'dark:text-rose-400', 'uppercase', 'tracking-wider', 'flex', 'items-center', 'gap-1.5', 'mb-1')}>
+                          <IconAlertTriangle className={cn('h-4.5', 'w-4.5')} /> Diagnostics
                         </p>
-                        <pre className={cn('p-3', 'bg-black/40', 'border', 'border-border/80', 'rounded-lg', 'text-rose-400', 'text-xs', 'font-mono', 'whitespace-pre-wrap', 'max-h-[300px]', 'overflow-y-auto', 'leading-relaxed')}>
-                          {truncateText(
+                        <pre className={cn('p-4', 'bg-black/40', 'border', 'border-border/80', 'rounded-xl', 'text-rose-400', 'text-[13px]', 'font-mono', 'whitespace-pre-wrap', 'max-h-[400px]', 'overflow-y-auto', 'leading-relaxed', 'shadow-sm')}>
+                          {formatErrorDiagnostic(truncateText(
                             submitResult.failed_test_case_info?.actual ||
                             submitResult.compile_output ||
                             submitResult.stderr ||
                             submitResult.status,
-                          )}
+                          ))}
                         </pre>
                       </div>
                     )}
 
-                  {/* Failed Test Case details if it's Wrong Answer */}
-                  {submitResult.status === "Wrong Answer" &&
+                  {/* Failed Test Case details if it's Wrong Answer, TLE, or RE */}
+                  {(submitResult.status === "Wrong Answer" ||
+                    submitResult.status === "Time Limit Exceeded" ||
+                    submitResult.status?.includes("Runtime Error")) &&
                     submitResult.failed_test_case_info && (
                       <div className={cn('space-y-2', 'font-mono', 'text-xs', 'select-text')}>
                         {/* Input */}
@@ -2156,6 +2295,19 @@ export function ProblemWorkspaceClient({
         </div>
       </div>
       <div className={cn('flex-1', 'min-h-0', 'relative')}>
+        <style>{`
+          .monaco-editor .margin-view-overlays .monaco-error-line-number {
+            background-image: none !important;
+          }
+          .monaco-editor .margin-view-overlays .monaco-error-line-number .line-numbers {
+            color: #f43f5e !important;
+            font-weight: bold !important;
+            font-size: inherit !important;
+          }
+          .monaco-editor .monaco-error-line-bg {
+            background-color: rgba(244, 63, 94, 0.15) !important;
+          }
+        `}</style>
         {isTransitioning ? (
           <div className={cn('absolute', 'inset-0', 'z-10', 'flex', 'flex-col', 'w-full', 'h-full', 'p-4', 'space-y-3', 'bg-card', 'font-mono')}>
             {Array.from({ length: 15 }).map((_, i) => {
@@ -2352,7 +2504,7 @@ export function ProblemWorkspaceClient({
                           key={index}
                           variant={isSelected ? "secondary" : "ghost"}
                           onClick={() => setActiveTestcaseIndex(index)}
-                          className={cn('h-6', 'px-3.5', 'text-[11px]', 'font-bold', 'rounded-lg', 'transition-all')}
+                          className={cn('h-6', 'px-3.5', 'text-xs', 'font-bold', 'rounded-lg', 'transition-all')}
                         >
                           Case {index + 1}
                         </Button>
@@ -2424,8 +2576,8 @@ export function ProblemWorkspaceClient({
                       },
                     )}
 
-                    <div className={cn('mt-4', 'pt-4', 'border-t', 'border-border/10', 'space-y-1.5', 'text-xs', 'font-mono')}>
-                      <span className={cn('text-[10px]', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'select-none')}>
+                    <div className={cn('mt-4', 'pt-4', 'border-t', 'border-border/10', 'space-y-1.5', 'text-sm', 'font-mono')}>
+                      <span className={cn('text-sm', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'select-none')}>
                         Expected Output {activeTestcaseIndex >= sampleTestCases.length ? "(Optional) =" : "="}
                       </span>
                       {activeTestcaseIndex >= sampleTestCases.length ? (
@@ -2440,10 +2592,10 @@ export function ProblemWorkspaceClient({
                             });
                           }}
                           placeholder="Expected Output (e.g. 2)"
-                          className={cn('w-full', 'px-3', 'py-2', 'bg-zinc-100/80 dark:bg-zinc-900/50', 'border', 'border-border/60', 'rounded-md', 'text-foreground', 'text-sm', 'font-mono', 'outline-none', 'transition-colors', 'focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 shadow-sm')}
+                          className={cn('w-full', 'px-3', 'py-2', 'bg-zinc-100/80 dark:bg-zinc-900/50', 'border', 'border-border/60', 'rounded-md', 'text-foreground', 'text-[15px]', 'font-mono', 'outline-none', 'transition-colors', 'focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 shadow-sm')}
                         />
                       ) : (
-                        <div className={cn('w-full', 'px-3', 'py-2', 'bg-zinc-100/40 dark:bg-zinc-900/30', 'border', 'border-border/30', 'rounded-md', 'text-foreground/70', 'text-sm', 'font-mono')}>
+                        <div className={cn('w-full', 'px-3', 'py-2', 'bg-zinc-100/40 dark:bg-zinc-900/30', 'border', 'border-border/30', 'rounded-md', 'text-foreground/70', 'text-[15px]', 'font-mono')}>
                           {customExpectedOutputs[activeTestcaseIndex] || "N/A"}
                         </div>
                       )}
@@ -2480,29 +2632,32 @@ export function ProblemWorkspaceClient({
                     const result = runResult;
                     const isSubmit = false;
 
-                    // If it's a Compile Error
-                    const isCompileError =
+                    // If it's a Crash (Compile Error or Runtime Error)
+                    const failedWithError = result.cases?.find((c: any) => !c.passed && (c.compile_output || c.stderr));
+                    const isCrash =
                       result.status?.description === "Compilation Error" ||
+                      result.status?.description?.includes("Runtime Error") ||
                       result.status?.id === 6 ||
                       result.compile_output ||
-                      (result.cases && result.cases[0]?.compile_output);
+                      result.stderr ||
+                      failedWithError;
 
-                    if (isCompileError) {
+                    if (isCrash) {
                       const compileErrText =
                         result.compile_output ||
-                        (result.cases && result.cases[0]?.compile_output) ||
                         result.stderr ||
-                        (result.cases && result.cases[0]?.stderr) ||
+                        failedWithError?.compile_output ||
+                        failedWithError?.stderr ||
                         result.failed_test_case_info?.actual ||
-                        "Compilation failed.";
+                        "Execution failed.";
                       return (
                         <div className={cn('space-y-2', 'select-text', 'select-none')}>
-                          <p className={cn('text-[9px]', 'text-rose-600', 'dark:text-rose-400', 'uppercase', 'tracking-widest', 'font-bold', 'flex', 'items-center', 'gap-1')}>
-                            <IconAlertTriangle className={cn('h-3.5', 'w-3.5')} />{" "}
-                            Compile Output & Syntax Diagnostics
+                          <p className={cn('text-[13px]', 'text-rose-600', 'dark:text-rose-400', 'uppercase', 'tracking-widest', 'font-bold', 'flex', 'items-center', 'gap-1.5', 'mb-1')}>
+                            <IconAlertTriangle className={cn('h-4', 'w-4')} />{" "}
+                            Error Diagnostics
                           </p>
-                          <pre className={cn('p-3', 'bg-black/40', 'border', 'border-border/80', 'rounded-lg', 'text-rose-400', 'whitespace-pre-wrap', 'text-[11px]', 'font-mono', 'max-h-[140px]', 'overflow-y-auto', 'leading-relaxed', 'select-text')}>
-                            {compileErrText}
+                          <pre className={cn('p-4', 'bg-black/40', 'border', 'border-border/80', 'rounded-xl', 'text-rose-400', 'whitespace-pre-wrap', 'text-[15px]', 'font-mono', 'max-h-[400px]', 'overflow-y-auto', 'leading-relaxed', 'select-text', 'shadow-sm')}>
+                            {formatErrorDiagnostic(compileErrText)}
                           </pre>
                         </div>
                       );
@@ -2585,44 +2740,42 @@ export function ProblemWorkspaceClient({
                             >
                               {isAllPassed ? "Accepted" : "Wrong Answer"}
                             </span>
-                            <span className={cn('text-zinc-600 dark:text-muted-foreground/80', 'text-[11px]', 'font-semibold')}>
+                            <span className={cn('text-zinc-600 dark:text-muted-foreground/80', 'text-xs', 'font-semibold')}>
                               {passedCount}/{totalCount} testcases passed
                             </span>
-                            <span className={cn('text-zinc-500 dark:text-muted-foreground/60', 'text-[10px]', 'font-medium', 'border-l', 'border-border/40', 'pl-2', 'ml-1')}>
+                            <span className={cn('text-zinc-500 dark:text-muted-foreground/60', 'text-xs', 'font-medium', 'border-l', 'border-border/40', 'pl-2', 'ml-1')}>
                               Runtime: {runtimeDisplay}
                             </span>
                           </div>
-                          <div className={cn('text-[10px]', 'text-zinc-600 dark:text-muted-foreground', 'font-medium', 'flex', 'items-center', 'gap-1.5')}>
+                          <div className={cn('text-xs', 'text-zinc-600 dark:text-muted-foreground', 'font-medium', 'flex', 'items-center', 'gap-1.5')}>
                             <IconCpu className={cn('h-3.5', 'w-3.5', 'text-emerald-400')} />
                             {memoryDisplay}
                           </div>
                         </div>
 
                         {/* Interactive Case Selector Tabs (Case 1, Case 2, Case 3) */}
-                        <div className={cn('flex', 'flex-wrap', 'gap-2', 'select-none', 'border-b', 'border-border/10', 'pb-2')}>
+                        <div className={cn('flex', 'flex-wrap', 'gap-1.5', 'select-none', 'border-b', 'border-border/10', 'pb-2')}>
                           {result.cases.map((c: any, index: number) => {
                             const isSelected = selectedCaseIndex === index;
                             const isPassed = c.passed;
                             return (
-                              <button
+                              <Button
                                 key={index}
+                                variant={isSelected ? "secondary" : "ghost"}
                                 onClick={() => setSelectedCaseIndex(index)}
-                                className={`flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${isSelected
-                                  ? isPassed
-                                    ? "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
-                                    : "bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border-rose-500/30"
-                                  : isPassed
-                                    ? "bg-transparent text-emerald-600/80 dark:text-emerald-400/80 border-transparent hover:bg-emerald-500/5"
-                                    : "bg-transparent text-rose-600/80 dark:text-rose-400/80 border-transparent hover:bg-rose-500/5"
-                                  }`}
-                              >
-                                {isPassed ? (
-                                  <IconCheck className={cn('h-3.5', 'w-3.5', 'text-emerald-600', 'dark:text-emerald-400', 'shrink-0', 'stroke-[3]')} />
-                                ) : (
-                                  <IconX className={cn('h-3.5', 'w-3.5', 'text-rose-600', 'dark:text-rose-400', 'shrink-0', 'stroke-[3]')} />
+                                className={cn(
+                                  'h-6 px-3.5 text-xs font-bold rounded-lg transition-all',
+                                  isSelected 
+                                    ? isPassed 
+                                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 dark:bg-emerald-500/20"
+                                      : "bg-rose-500/15 text-rose-700 dark:text-rose-400 hover:bg-rose-500/25 dark:bg-rose-500/20"
+                                    : isPassed
+                                      ? "text-emerald-600/80 dark:text-emerald-400/80 hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-400"
+                                      : "text-rose-600/80 dark:text-rose-400/80 hover:bg-rose-500/10 hover:text-rose-700 dark:hover:text-rose-400"
                                 )}
-                                <span>Case {index + 1}</span>
-                              </button>
+                              >
+                                Case {index + 1}
+                              </Button>
                             );
                           })}
                         </div>
@@ -2630,7 +2783,7 @@ export function ProblemWorkspaceClient({
                         {/* Case Details (Input, Output, Expected) */}
                         <div className={cn('space-y-4', 'select-text', 'font-mono', 'mt-2')}>
                           <div>
-                            <span className={cn('text-xs', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
+                            <span className={cn('text-sm', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
                               Input
                             </span>
                             {renderInputParams(
@@ -2640,24 +2793,36 @@ export function ProblemWorkspaceClient({
                           </div>
                           <div className={cn('grid', 'grid-cols-1', 'sm:grid-cols-2', 'gap-4')}>
                             <div>
-                              <span className={cn('text-xs', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
+                              <span className={cn('text-sm', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
                                 Output
                               </span>
                               <pre
-                                className={`p-2.5 bg-muted/40 dark:bg-black/40 border border-zinc-200 dark:border-border/50 rounded-xl text-sm whitespace-pre-wrap max-h-32 overflow-y-auto leading-relaxed ${activeCase.passed ? "text-emerald-700 dark:text-emerald-400 font-medium" : "text-rose-700 dark:text-rose-400 font-bold"}`}
+                                className={`p-2.5 bg-muted/40 dark:bg-black/40 border border-zinc-200 dark:border-border/50 rounded-xl text-[15px] whitespace-pre-wrap max-h-32 overflow-y-auto leading-relaxed ${activeCase.passed ? "text-emerald-700 dark:text-emerald-400 font-medium" : "text-rose-700 dark:text-rose-400 font-bold"}`}
                               >
                                 {truncateText(activeCase.actual || "(empty)")}
                               </pre>
                             </div>
                             <div>
-                              <span className={cn('text-xs', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
+                              <span className={cn('text-sm', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
                                 Expected
                               </span>
-                              <pre className={cn('p-2.5', 'bg-muted/40', 'dark:bg-black/40', 'border', 'border-zinc-200', 'dark:border-border/50', 'rounded-xl', 'text-emerald-700', 'dark:text-emerald-400', 'text-sm', 'font-medium', 'whitespace-pre-wrap', 'max-h-32', 'overflow-y-auto', 'leading-relaxed')}>
+                              <pre className={cn('p-2.5', 'bg-muted/40', 'dark:bg-black/40', 'border', 'border-zinc-200', 'dark:border-border/50', 'rounded-xl', 'text-emerald-700', 'dark:text-emerald-400', 'text-[15px]', 'font-medium', 'whitespace-pre-wrap', 'max-h-32', 'overflow-y-auto', 'leading-relaxed')}>
                                 {truncateText(activeCase.expected || "(none)")}
                               </pre>
                             </div>
                           </div>
+                          {/* Compile/Runtime Error inside case */}
+                          {(activeCase.compile_output || activeCase.stderr) && (
+                            <div className={cn('mt-4', 'p-4', 'bg-rose-500/5', 'border', 'border-rose-500/20', 'rounded-xl', 'select-text')}>
+                              <p className={cn('text-[13px]', 'font-bold', 'text-rose-600', 'dark:text-rose-400', 'uppercase', 'tracking-widest', 'flex', 'items-center', 'gap-1.5', 'mb-2')}>
+                                <IconAlertTriangle className={cn('h-3.5', 'w-3.5')} />
+                                Error Diagnostics
+                              </p>
+                              <pre className={cn('p-4', 'bg-black/40', 'border', 'border-border/80', 'rounded-xl', 'text-rose-400', 'text-[15px]', 'font-mono', 'whitespace-pre-wrap', 'max-h-[400px]', 'overflow-y-auto', 'leading-relaxed', 'shadow-sm')}>
+                                {formatErrorDiagnostic(activeCase.compile_output || activeCase.stderr)}
+                              </pre>
+                            </div>
+                          )}
                           {activeCase.console_output && activeCase.console_output.trim() !== "" && (
                             <div className={cn('mt-4', 'rounded-xl', 'overflow-hidden', 'border', 'border-zinc-800/80', 'bg-[#0a0a0a]', 'shadow-inner')}>
                               <div className={cn('flex', 'items-center', 'px-3', 'py-2.5', 'bg-[#18181b]', 'border-b', 'border-zinc-800', 'select-none')}>
@@ -2667,12 +2832,12 @@ export function ProblemWorkspaceClient({
                                   <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-emerald-500/80')} />
                                 </div>
                                 <IconTerminal2 className={cn('h-3.5', 'w-3.5', 'text-zinc-500', 'mr-2')} />
-                                <span className={cn('text-[10px]', 'text-zinc-400', 'uppercase', 'tracking-widest', 'font-bold')}>
+                                <span className={cn('text-xs', 'text-zinc-400', 'uppercase', 'tracking-widest', 'font-bold')}>
                                   Console Output
                                 </span>
                               </div>
                               <div className={cn('p-4', 'max-h-48', 'overflow-y-auto', 'scrollbar-thin')}>
-                                <pre className={cn('text-zinc-300', 'text-[12px]', 'font-mono', 'whitespace-pre-wrap', 'leading-[1.8]', 'font-medium')}>
+                                <pre className={cn('text-zinc-300', 'text-[14px]', 'font-mono', 'whitespace-pre-wrap', 'leading-[1.8]', 'font-medium')}>
                                   {activeCase.console_output}
                                 </pre>
                               </div>
