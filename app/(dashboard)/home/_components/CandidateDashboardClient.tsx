@@ -208,41 +208,44 @@ export function CandidateDashboardClient({
               {greeting}, {profileName}!
             </h1>
             <p className="text-sm text-muted-foreground">
-              Track your placements, mock assessments, and progress in coding challenges all from one dashboard.
+              Track your placements, mock Tests, and progress in coding challenges all from one dashboard.
             </p>
           </div>
 
-          {/* Complete Profile banner (Using Alert) */}
-          {!isProfileComplete && (
-            <Alert className="w-full md:w-auto min-w-[320px] bg-card/60 border-amber-200/50 dark:border-amber-900/30 flex items-center justify-between p-4 shadow-sm">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <AlertCircle className="h-5 w-5 shrink-0 text-amber-500 mt-0.5" strokeWidth={1.5} />
-                <div className="space-y-0.5">
-                  <AlertTitle className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                    Profile Incomplete
-                  </AlertTitle>
-                  <AlertDescription className="text-xs text-muted-foreground truncate">
-                    Fill in your details to unlock all features.
-                  </AlertDescription>
-                </div>
-              </div>
-              <Link href="/myprofile" className="shrink-0 ml-4 z-10">
-                <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs font-medium border-amber-300/40 hover:bg-amber-500/10">
-                  Complete
-                  <ArrowRight className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" strokeWidth={1.5} />
-                </Button>
-              </Link>
-            </Alert>
-          )}
         </CardContent>
       </Card>
 
+      {/* Complete Profile banner (Separate CTA block) */}
+      {!isProfileComplete && (
+        <Alert className="bg-amber-500/[0.03] dark:bg-amber-500/[0.01] border-amber-500/20 text-amber-800 dark:text-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 md:p-5 rounded-xl shadow-xs">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <div className="p-2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+              <AlertCircle className="h-5 w-5 animate-pulse" strokeWidth={2} />
+            </div>
+            <div className="space-y-1">
+              <AlertTitle className="text-sm font-bold tracking-tight text-amber-900 dark:text-amber-200">
+                Your profile is incomplete!
+              </AlertTitle>
+              <AlertDescription className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
+                Please complete your profile to unlock custom placements, track mock tests, and get verified by your institution.
+              </AlertDescription>
+            </div>
+          </div>
+          <Button asChild size="sm" className="bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-500 dark:hover:bg-amber-600 dark:text-zinc-950 rounded-full font-semibold px-5 shrink-0 shadow-xs shadow-amber-500/10">
+            <Link href="/myprofile" className="flex items-center gap-1.5 text-xs">
+              Complete Profile
+              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
+            </Link>
+          </Button>
+        </Alert>
+      )}
+
       {/* ─── Main Content ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* ── COLUMN 1: Performance & Practice (Span 2) ── */}
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* Card: Practice & Mock Test Insights */}
           <Card className="bg-card/50 backdrop-blur-sm border-border/40 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -252,7 +255,7 @@ export function CandidateDashboardClient({
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+
                 {/* Left Panel: LogicLab Coding Stats (Shadcn default minimal design) */}
                 <Card className="border bg-card/40 shadow-none py-0">
                   <CardContent className="flex flex-row items-center justify-between gap-6 p-4 md:p-5">
@@ -370,7 +373,7 @@ export function CandidateDashboardClient({
                             className="h-1.5 bg-primary/10 [&>div]:bg-primary"
                           />
                         </div>
-                        
+
                         {/* Improvised dividers layout to avoid card nesting overload */}
                         <div className="grid grid-cols-3 gap-2 mt-4 bg-muted/20 dark:bg-muted/10 rounded-xl p-2.5 border border-border/10 select-none text-center">
                           <div>
@@ -419,7 +422,7 @@ export function CandidateDashboardClient({
                     <Info className="h-3.5 w-3.5 text-muted-foreground/80" strokeWidth={1.5} />
                     Practice Activity (Last 14 Days)
                   </span>
-                  
+
                   {/* Calendar Legend */}
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                     <div className="flex items-center gap-1">
@@ -436,7 +439,7 @@ export function CandidateDashboardClient({
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-2">
                   {activityCalendar.map((day) => {
                     const isToday = new Date(day.date).toDateString() === new Date().toDateString()
@@ -448,8 +451,8 @@ export function CandidateDashboardClient({
                           day.status === "solved"
                             ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
                             : day.status === "attempted"
-                            ? "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
-                            : "bg-background border-border/30 text-muted-foreground",
+                              ? "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
+                              : "bg-background border-border/30 text-muted-foreground",
                           isToday && "ring-2 ring-indigo-500 ring-offset-2 ring-offset-background"
                         )}
                       >
@@ -479,7 +482,7 @@ export function CandidateDashboardClient({
           <Card className="bg-card/50 backdrop-blur-sm border-border/40 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-semibold tracking-tight text-foreground">
-                Active & Upcoming Assessments
+                Active & Upcoming Tests
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -489,9 +492,9 @@ export function CandidateDashboardClient({
                     <EmptyMedia variant="icon" className="bg-blue-500/10 text-blue-500 rounded-full">
                       <BookOpen className="h-5 w-5" strokeWidth={1.5} />
                     </EmptyMedia>
-                    <EmptyTitle className="text-sm font-semibold">No active assessments</EmptyTitle>
+                    <EmptyTitle className="text-sm font-semibold">No active Tests</EmptyTitle>
                     <EmptyDescription className="text-xs">
-                      There are no active or upcoming mock assessments assigned by your institution at the moment.
+                      There are no active or upcoming mock Tests assigned by your institution at the moment.
                     </EmptyDescription>
                   </EmptyHeader>
                 </Empty>
@@ -564,7 +567,7 @@ export function CandidateDashboardClient({
 
         {/* ── COLUMN 2: Tasks & Applications Tracker (Span 1) ── */}
         <div className="space-y-6">
-          
+
           {/* Card: Quick Shortcuts */}
           <Card className="bg-card/50 backdrop-blur-sm border-border/40 shadow-sm">
             <CardHeader>
@@ -605,7 +608,7 @@ export function CandidateDashboardClient({
                     <Award className="h-4 w-4 text-emerald-500" strokeWidth={1.5} />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-foreground">Assessments</p>
+                    <p className="text-xs font-semibold text-foreground">Tests</p>
                     <p className="text-[10px] text-muted-foreground">View and take mock tests</p>
                   </div>
                 </div>
@@ -710,7 +713,7 @@ export function CandidateDashboardClient({
                               {new Date(app.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                             </span>
                           </div>
-                          
+
                           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground truncate">
                             <Building2 className="h-3 w-3 shrink-0 text-muted-foreground" strokeWidth={1.5} />
                             <span>{app.company_name}</span>
