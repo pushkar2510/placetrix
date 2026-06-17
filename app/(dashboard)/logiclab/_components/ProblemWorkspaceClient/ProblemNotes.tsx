@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils"
 
 import Editor from "@monaco-editor/react"
 import { createClient } from "@/lib/supabase/client"
+import { LANGUAGES } from "../../_constants"
 
 import {
   DropdownMenu,
@@ -136,8 +137,18 @@ export function ProblemNotes({ problemId, currentCode, currentLanguage, submissi
       const model = editor.getModel()
       const lineCount = model.getLineCount()
       const lastLineLength = model.getLineMaxColumn(lineCount)
+      const currentContent = model.getValue()
       
-      const newText = `\n\n\`\`\`${lang || 'javascript'}\n${codeToInsert}\n\`\`\`\n`
+      const targetLang = (lang || 'javascript').toLowerCase()
+      const escapedLang = targetLang.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const blockRegex = new RegExp(`(^|\\n)\\s*\`\`\`${escapedLang}\\b`, 'i')
+      
+      if (blockRegex.test(currentContent)) {
+        toast.error(`You have already attached a ${targetLang} solution!`)
+        return
+      }
+      
+      const newText = `\n\n\`\`\`${targetLang}\n${codeToInsert}\n\`\`\`\n`
       
       editor.executeEdits("my-source", [{
         range: {
@@ -181,7 +192,10 @@ export function ProblemNotes({ problemId, currentCode, currentLanguage, submissi
       
       if (error || !data) throw new Error("Submission code not found")
       
-      handleInsertAtEnd(data.code, "javascript")
+      const langObj = LANGUAGES.find((l: any) => l.id === data.language_id)
+      const langStr = langObj ? langObj.value : "javascript"
+      
+      handleInsertAtEnd(data.code, langStr)
     } catch (e: any) {
       toast.error("Failed to load submission: " + e.message)
     } finally {

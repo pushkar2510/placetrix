@@ -137,6 +137,74 @@ const truncateText = (text: string | null | undefined, limit = 5000) => {
   );
 };
 
+const renderTestcaseValue = (valStr: string) => {
+  try {
+    const parsed = JSON.parse(valStr);
+    
+    // 2D Array
+    if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
+      return (
+        <div className="mt-2 mb-3 overflow-x-auto w-full">
+          <div className="inline-flex flex-col items-center gap-[2px] py-1">
+            {parsed.map((row, i) => (
+              <div key={i} className="flex gap-[2px]">
+                {Array.isArray(row) ? row.map((cell: any, j: number) => (
+                  <div 
+                    key={j} 
+                    className="flex items-center justify-center min-w-[2.5rem] h-9 px-2 bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-[4px] font-mono text-[15px] text-zinc-800 dark:text-zinc-200 shadow-sm"
+                  >
+                    {(typeof cell === 'string' && cell === '.') || cell === null ? <span className="text-zinc-400">{cell === null ? 'null' : '.'}</span> : String(cell)}
+                  </div>
+                )) : (
+                  <div className="flex items-center justify-center h-9 px-3 bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-[4px] font-mono text-[15px] text-zinc-800 dark:text-zinc-200 shadow-sm">
+                    {String(row)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    
+    // 1D Array
+    if (Array.isArray(parsed)) {
+      if (parsed.length === 0) {
+        return <span className="font-mono text-zinc-500">[]</span>;
+      }
+      return (
+        <div className="mt-2 mb-3 overflow-x-auto w-full">
+          <div className="inline-flex flex-row gap-[2px] py-1">
+            {parsed.map((cell: any, j: number) => (
+              <div 
+                key={j} 
+                className="flex items-center justify-center min-w-[2.5rem] h-9 px-2 bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-[4px] font-mono text-[15px] text-zinc-800 dark:text-zinc-200 shadow-sm"
+              >
+                {(typeof cell === 'string' && cell === '.') || cell === null ? <span className="text-zinc-400">{cell === null ? 'null' : '.'}</span> : String(cell)}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    
+    // Fallback for strings and primitives: add a nice styling for strings to show quotes
+    if (typeof parsed === 'string') {
+      return <span className="break-all whitespace-pre-wrap font-mono text-emerald-600 dark:text-emerald-400">"{parsed}"</span>;
+    }
+    
+    // Booleans and numbers
+    if (typeof parsed === 'boolean') {
+      return <span className="font-mono text-blue-600 dark:text-blue-400">{String(parsed)}</span>;
+    }
+    if (typeof parsed === 'number') {
+      return <span className="font-mono text-amber-600 dark:text-amber-400">{String(parsed)}</span>;
+    }
+    
+  } catch(e) {}
+  return <span className="break-all whitespace-pre-wrap">{valStr}</span>;
+};
+
 export function ProblemWorkspaceClient({
   problem: initialProblem,
   sampleTestCases: initialSampleTestCases,
@@ -716,21 +784,8 @@ export function ProblemWorkspaceClient({
     return firstInput.startsWith("[") && firstInput.endsWith("]") && !firstInput.includes("\n");
   }, [initialSampleTestCases]);
 
-  const unwrapLegacyInput = React.useCallback((input: string) => {
-    const trimmed = input.trim();
-    if (trimmed.startsWith("[") && trimmed.endsWith("]") && !trimmed.includes("\n")) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          return parsed.map(arg => typeof arg === 'string' ? `"${arg}"` : JSON.stringify(arg)).join('\n');
-        }
-      } catch(e) {}
-    }
-    return input;
-  }, []);
-
   const [customInputs, setCustomInputs] = useState<string[]>(() =>
-    sampleTestCases.map((tc) => unwrapLegacyInput(tc.input)),
+    sampleTestCases.map((tc) => tc.input),
   );
   const [customExpectedOutputs, setCustomExpectedOutputs] = useState<string[]>(
     () => sampleTestCases.map((tc) => tc.expected_output || ""),
@@ -738,7 +793,7 @@ export function ProblemWorkspaceClient({
   const [activeTestcaseIndex, setActiveTestcaseIndex] = useState(0);
 
   React.useEffect(() => {
-    setCustomInputs(sampleTestCases.map((tc) => unwrapLegacyInput(tc.input)));
+    setCustomInputs(sampleTestCases.map((tc) => tc.input));
     setCustomExpectedOutputs(
       sampleTestCases.map((tc) => tc.expected_output || ""),
     );
@@ -1517,14 +1572,6 @@ export function ProblemWorkspaceClient({
                       <div className={cn('space-y-6', 'mt-8')}>
                         {sampleTestCases.map((tc, idx) => {
                           const paramNames = getParamNames();
-                          const formattedInput = unwrapLegacyInput(tc.input)
-                            .trim()
-                            .split("\n")
-                            .map(
-                              (val: string, i: number) =>
-                                `${paramNames[i] || `param${i + 1}`} = ${val}`,
-                            )
-                            .join(", ");
                           return (
                             <div key={tc.id} className="space-y-3">
                               <p className={cn('text-sm', 'font-bold', 'text-foreground')}>
@@ -1533,11 +1580,18 @@ export function ProblemWorkspaceClient({
                               <div className={cn('pl-3', 'border-l-2', 'border-zinc-300 dark:border-muted-foreground/30', 'py-1.5', 'font-mono', 'text-[13px]', 'text-zinc-900 dark:text-foreground/90', 'space-y-1.5', 'bg-zinc-100/40 dark:bg-muted/5', 'rounded-r-md')}>
                                 <div>
                                   <span className="font-bold">Input: </span>
-                                  <span>{formattedInput}</span>
+                                  <div className="flex flex-col space-y-2 mt-1">
+                                    {tc.input.trim().split("\n").map((val: string, i: number) => (
+                                      <div key={i} className={val.startsWith("[") ? "flex flex-col mt-1" : "flex items-center"}>
+                                        <span className="font-semibold mr-2 text-zinc-700 dark:text-muted-foreground whitespace-nowrap">{paramNames[i] || `param${i + 1}`} =</span>
+                                        {renderTestcaseValue(val)}
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                                 <div>
-                                  <span className="font-bold">Output: </span>
-                                  <span>{tc.expected_output}</span>
+                                  <span className="font-bold mr-2 block mb-1">Output:</span>
+                                  {renderTestcaseValue(tc.expected_output)}
                                 </div>
                                 {tc.explanation && (
                                   <div className="text-zinc-650 dark:text-muted-foreground/90">
@@ -2895,19 +2949,19 @@ export function ProblemWorkspaceClient({
                               <span className={cn('text-sm', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
                                 Output
                               </span>
-                              <pre
-                                className={`p-2.5 bg-muted/40 dark:bg-black/40 border border-zinc-200 dark:border-border/50 rounded-xl text-[15px] whitespace-pre-wrap max-h-32 overflow-y-auto leading-relaxed ${activeCase.passed ? "text-emerald-700 dark:text-emerald-400 font-medium" : "text-rose-700 dark:text-rose-400 font-bold"}`}
+                              <div
+                                className={`p-2.5 bg-muted/40 dark:bg-black/40 border border-zinc-200 dark:border-border/50 rounded-xl text-[15px] max-h-32 overflow-y-auto leading-relaxed ${activeCase.passed ? "text-emerald-700 dark:text-emerald-400 font-medium" : "text-rose-700 dark:text-rose-400 font-bold"}`}
                               >
-                                {truncateText(activeCase.actual || "(empty)")}
-                              </pre>
+                                {renderTestcaseValue(truncateText(activeCase.actual || "(empty)"))}
+                              </div>
                             </div>
                             <div>
                               <span className={cn('text-sm', 'text-zinc-600 dark:text-muted-foreground/80', 'uppercase', 'tracking-widest', 'font-bold', 'block', 'mb-1.5', 'select-none')}>
                                 Expected
                               </span>
-                              <pre className={cn('p-2.5', 'bg-muted/40', 'dark:bg-black/40', 'border', 'border-zinc-200', 'dark:border-border/50', 'rounded-xl', 'text-emerald-700', 'dark:text-emerald-400', 'text-[15px]', 'font-medium', 'whitespace-pre-wrap', 'max-h-32', 'overflow-y-auto', 'leading-relaxed')}>
-                                {truncateText(activeCase.expected || "(none)")}
-                              </pre>
+                              <div className={cn('p-2.5', 'bg-muted/40', 'dark:bg-black/40', 'border', 'border-zinc-200', 'dark:border-border/50', 'rounded-xl', 'text-emerald-700', 'dark:text-emerald-400', 'text-[15px]', 'font-medium', 'max-h-32', 'overflow-y-auto', 'leading-relaxed')}>
+                                {renderTestcaseValue(truncateText(activeCase.expected || "(none)"))}
+                              </div>
                             </div>
                           </div>
                           {/* Compile/Runtime Error inside case */}

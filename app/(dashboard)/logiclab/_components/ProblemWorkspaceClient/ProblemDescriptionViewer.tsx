@@ -22,8 +22,15 @@ export function ProblemDescriptionViewer({ content, isSpoilerMode = false }: { c
 
   if (!content) return null;
 
+  // Strip baked-in examples to prevent duplication with sampleTestCases
+  let cleanDesc = content;
+  const exampleMatch = cleanDesc.match(/(?:\n|^)(?:###\s*)?(?:\*\*)?Example(?:\s+1)?(?:\*\*)?[:\s]*(?:\n|-)/i);
+  if (exampleMatch && exampleMatch.index !== undefined) {
+    cleanDesc = cleanDesc.substring(0, exampleMatch.index).trim();
+  }
+
   // Replace custom operators to maintain backward compatibility
-  const formattedContent = content
+  const formattedContent = cleanDesc
     .replace(/<=/g, " ≤ ")
     .replace(/>=/g, " ≥ ")
     .replace(/!=/g, " ≠ ")
@@ -38,12 +45,12 @@ export function ProblemDescriptionViewer({ content, isSpoilerMode = false }: { c
           h1: ({node, ...props}) => <h1 className="text-[28px] leading-tight font-extrabold text-zinc-900 dark:text-zinc-50 mt-10 mb-5 tracking-tight first:mt-0" {...props} />,
           h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 mt-8 mb-4 tracking-tight first:mt-0" {...props} />,
           h3: ({node, ...props}) => <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-50 mt-6 mb-3 tracking-tight first:mt-0" {...props} />,
-          p: ({node, ...props}) => <p className="text-zinc-800 dark:text-zinc-200 leading-[1.7] text-[13px] my-4 first:mt-0" {...props} />,
+          p: ({node, ...props}) => <p className="text-zinc-800 dark:text-zinc-200 leading-[1.7] text-[15px] my-4 first:mt-0" {...props} />,
           a: ({node, ...props}) => <a className="text-blue-500 hover:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
           ul: ({node, ...props}) => <ul className="list-disc pl-6 space-y-1.5 text-zinc-800 dark:text-zinc-200 my-4 first:mt-0" {...props} />,
           ol: ({node, ...props}) => <ol className="list-decimal pl-6 space-y-1.5 text-zinc-800 dark:text-zinc-200 my-4 first:mt-0" {...props} />,
-          li: ({node, ...props}) => <li className="text-[13px]" {...props} />,
-          blockquote: ({node, ...props}) => <blockquote className="border-l-[3px] border-zinc-300 dark:border-zinc-700 pl-4 text-zinc-550 dark:text-zinc-400 text-[13px] italic my-4 first:mt-0" {...props} />,
+          li: ({node, ...props}) => <li className="text-[15px]" {...props} />,
+          blockquote: ({node, ...props}) => <blockquote className="border-l-[3px] border-zinc-300 dark:border-zinc-700 pl-4 text-zinc-550 dark:text-zinc-400 text-[15px] italic my-4 first:mt-0" {...props} />,
           hr: ({node, ...props}) => <hr className="border-zinc-200 dark:border-zinc-800 my-6" {...props} />,
           table: ({node, ...props}) => (
             <div className="overflow-x-auto my-4 first:mt-0 rounded-md border border-zinc-200 dark:border-zinc-800">

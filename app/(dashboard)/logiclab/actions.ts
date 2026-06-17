@@ -238,7 +238,7 @@ export async function fetchProblemsInfinite({
 }): Promise<{ problems: any[]; hasMore: boolean; totalCount: number }> {
   const supabase = (await createServerClient()) as any
   const { data, error } = await supabase.rpc('get_paginated_problems', {
-    p_user_id: userId,
+    p_user_id: userId || null,
     p_limit: limit,
     p_offset: offset,
     p_search: search,
