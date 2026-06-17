@@ -689,9 +689,27 @@ export function ProblemWorkspaceClient({
     }
   }, [isProblemListOpen]);
 
-  // Custom case state
+  const isLegacyFormat = React.useMemo(() => {
+    if (!initialSampleTestCases || initialSampleTestCases.length === 0) return false;
+    const firstInput = initialSampleTestCases[0].input.trim();
+    return firstInput.startsWith("[") && firstInput.endsWith("]") && !firstInput.includes("\n");
+  }, [initialSampleTestCases]);
+
+  const unwrapLegacyInput = React.useCallback((input: string) => {
+    const trimmed = input.trim();
+    if (trimmed.startsWith("[") && trimmed.endsWith("]") && !trimmed.includes("\n")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed.map(arg => typeof arg === 'string' ? `"${arg}"` : JSON.stringify(arg)).join('\n');
+        }
+      } catch(e) {}
+    }
+    return input;
+  }, []);
+
   const [customInputs, setCustomInputs] = useState<string[]>(() =>
-    sampleTestCases.map((tc) => tc.input),
+    sampleTestCases.map((tc) => unwrapLegacyInput(tc.input)),
   );
   const [customExpectedOutputs, setCustomExpectedOutputs] = useState<string[]>(
     () => sampleTestCases.map((tc) => tc.expected_output || ""),
@@ -699,7 +717,7 @@ export function ProblemWorkspaceClient({
   const [activeTestcaseIndex, setActiveTestcaseIndex] = useState(0);
 
   React.useEffect(() => {
-    setCustomInputs(sampleTestCases.map((tc) => tc.input));
+    setCustomInputs(sampleTestCases.map((tc) => unwrapLegacyInput(tc.input)));
     setCustomExpectedOutputs(
       sampleTestCases.map((tc) => tc.expected_output || ""),
     );
@@ -921,7 +939,13 @@ export function ProblemWorkspaceClient({
           language_id: selectedLang.id,
           problem_id: problem.id,
           mode: "problem",
-          custom_cases: customInputs,
+          custom_cases: customInputs.map(ci => {
+            if (isLegacyFormat) {
+              const lines = ci.split('\n').filter(l => l.trim().length > 0);
+              return `[${lines.join(",")}]`;
+            }
+            return ci;
+          }),
           custom_expected: customExpectedOutputs,
         }),
       });
@@ -1057,23 +1081,30 @@ export function ProblemWorkspaceClient({
   const topNavbarContent = (
     <div className={cn('relative', 'flex', 'items-center', 'justify-between', 'px-4', 'py-2', 'bg-zinc-100', 'dark:bg-zinc-950', 'shrink-0', 'w-full', 'select-none')}>
       {/* Left section: Navigation & Title */}
-      <div className={cn('flex', 'items-center', 'gap-3')}>
-        <div className={cn('flex', 'items-center', 'gap-1')}>
-          <Button
-            variant="outline"
-            size="icon"
-            asChild
-            className={cn('h-8', 'w-8')}
-            title={isDailyChallenge ? "Back to Daily Challenges" : "Back to Problems"}
-          >
-            <Link href={isDailyChallenge ? "/logiclab/dailychallenges" : "/logiclab"}>
-              <IconArrowLeft className={cn('h-4', 'w-4')} />
-            </Link>
-          </Button>
-        </div>
+      <div className={cn('flex', 'items-center', 'gap-1')}>
+        <Button
+          variant="outline"
+          size="icon"
+          asChild
+          className={cn('h-8', 'w-8')}
+          title={isDailyChallenge ? "Back to Daily Challenges" : "Back to Problems"}
+        >
+          <Link href={isDailyChallenge ? "/logiclab/dailychallenges" : "/logiclab"}>
+            <IconArrowLeft className={cn('h-4', 'w-4')} />
+          </Link>
+        </Button>
 
         {!isDailyChallenge && (
-          <div className={cn('flex', 'items-center', 'gap-1')}>
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsProblemListOpen(!isProblemListOpen)}
+              className={cn('h-8', 'w-8', 'text-zinc-600 dark:text-muted-foreground', 'hover:text-foreground', 'bg-background')}
+              title="Toggle Problem List"
+            >
+              <IconList className={cn('h-4', 'w-4')} />
+            </Button>
             <Button
               variant="outline"
               size="icon"
@@ -1094,7 +1125,7 @@ export function ProblemWorkspaceClient({
             >
               <IconChevronRight className={cn('h-4', 'w-4')} />
             </Button>
-          </div>
+          </>
         )}
       </div>
 
@@ -1337,17 +1368,6 @@ export function ProblemWorkspaceClient({
             <IconMaximize className={cn('h-4', 'w-4')} />
           )}
         </Button>
-        {!isDailyChallenge && (
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setIsProblemListOpen(!isProblemListOpen)}
-            className={cn('h-7', 'w-7', 'text-zinc-600 dark:text-muted-foreground', 'hover:text-foreground', 'bg-background')}
-            title="Toggle Problem List"
-          >
-            <IconList className={cn('h-4', 'w-4')} />
-          </Button>
-        )}
       </div>
     </div>
   );
@@ -1460,7 +1480,7 @@ export function ProblemWorkspaceClient({
                       <div className={cn('space-y-6', 'mt-8')}>
                         {sampleTestCases.map((tc, idx) => {
                           const paramNames = getParamNames();
-                          const formattedInput = tc.input
+                          const formattedInput = unwrapLegacyInput(tc.input)
                             .trim()
                             .split("\n")
                             .map(
@@ -1496,32 +1516,37 @@ export function ProblemWorkspaceClient({
                         })}
                       </div>
                     )}
-                    {/* Constraints */}
-                    <div className={cn('mt-8', 'space-y-3')}>
-                      <p className={cn('text-sm', 'font-bold', 'text-foreground')}>
-                        Constraints:
-                      </p>
-                      <ul className={cn('list-disc', 'pl-5', 'space-y-2', 'text-sm', 'text-zinc-800 dark:text-foreground/80')}>
-                        <li>
-                          <code className={cn('px-1.5', 'py-0.5', 'bg-zinc-100 dark:bg-muted/60', 'dark:bg-muted/40', 'rounded-md', 'text-xs', 'font-mono', 'border', 'border-border/50')}>
+                    {/* Constraints & Limits */}
+                    <div className={cn('mt-8', 'space-y-4')}>
+                      {problem.constraints && problem.constraints.length > 0 && (
+                        <div className="space-y-3">
+                          <p className={cn('text-sm', 'font-bold', 'text-foreground')}>
+                            Constraints:
+                          </p>
+                          <ul className={cn('list-disc', 'pl-5', 'space-y-2', 'text-sm', 'text-zinc-800 dark:text-foreground/80')}>
+                            {problem.constraints.map((c: string, i: number) => (
+                              <li key={i}>
+                                <code className={cn('px-1.5', 'py-0.5', 'bg-zinc-100 dark:bg-muted/40', 'rounded-md', 'text-xs', 'font-mono', 'border', 'border-border/50')}>
+                                  {c}
+                                </code>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      <div className="flex flex-wrap items-center gap-4 pt-2">
+                        {problem.time_limit && (
+                          <div className="text-[13px] font-mono text-zinc-600 dark:text-zinc-400">
                             Time Limit: {problem.time_limit}s
-                          </code>
-                        </li>
-                        <li>
-                          <code className={cn('px-1.5', 'py-0.5', 'bg-zinc-100 dark:bg-muted/60', 'dark:bg-muted/40', 'rounded-md', 'text-xs', 'font-mono', 'border', 'border-border/50')}>
+                          </div>
+                        )}
+                        {problem.memory_limit && (
+                          <div className="text-[13px] font-mono text-zinc-600 dark:text-zinc-400">
                             Memory Limit: {problem.memory_limit}MB
-                          </code>
-                        </li>
-                        {problem.constraints &&
-                          problem.constraints.length > 0 &&
-                          problem.constraints.map((c: string, i: number) => (
-                            <li key={i}>
-                              <code className={cn('px-1.5', 'py-0.5', 'bg-zinc-100 dark:bg-muted/60', 'dark:bg-muted/40', 'rounded-md', 'text-xs', 'font-mono', 'border', 'border-border/50')}>
-                                {c}
-                              </code>
-                            </li>
-                          ))}
-                      </ul>
+                          </div>
+                        )}
+                      </div>
                     </div>{" "}
                   </div>
                 </div>
@@ -3092,133 +3117,146 @@ export function ProblemWorkspaceClient({
       </div>
 
       {/* PROBLEM LIST DRAWER */}
-      <Sheet open={isProblemListOpen} onOpenChange={setIsProblemListOpen}>
-        <SheetContent side="right" className="w-[320px] p-0 gap-0">
-          <SheetHeader className="border-b px-4 py-3 shrink-0">
-            <div className="flex items-center justify-between pr-8">
-              <SheetTitle className="font-bold text-lg">Problem List</SheetTitle>
-              <span className="text-xs text-muted-foreground font-semibold tracking-wide">
-                {totalProblemsCount} Problems
-              </span>
-            </div>
-          </SheetHeader>
-          <SheetDescription className="sr-only">
-            List of coding challenges available on LogicLab.
-          </SheetDescription>
-
-          <div className="p-3 border-b shrink-0 bg-muted/20 flex flex-col gap-2">
-            {/* Search and filter controls */}
-            <div className="relative w-full">
-              <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search by title or ID..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 h-8 text-xs bg-background"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Select
-                value={statusFilter}
-                onValueChange={(v: any) => setStatusFilter(v)}
-              >
-                <SelectTrigger size="sm" className="flex-1 text-xs font-medium">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  sideOffset={4}
-                >
-                  <SelectGroup>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="unsolved">Unsolved</SelectItem>
-                    <SelectItem value="solved">Solved</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              <Select
-                value={difficultyFilter}
-                onValueChange={(v: any) => setDifficultyFilter(v)}
-              >
-                <SelectTrigger size="sm" className="flex-1 text-xs font-medium">
-                  <SelectValue placeholder="Difficulty" />
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  sideOffset={4}
-                >
-                  <SelectGroup>
-                    <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="easy">Easy</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="hard">Hard</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <ScrollArea
-            id="problem-list-scroll-area"
-            className="flex-1 w-full min-h-0"
+      {isProblemListOpen && (
+        <div 
+          className="absolute inset-0 bg-background/40 backdrop-blur-[1px] z-[9998]" 
+          onClick={() => setIsProblemListOpen(false)} 
+        />
+      )}
+      <div
+        className={cn(
+          "absolute top-0 left-0 h-full w-[320px] bg-background border-r shadow-2xl z-[9999] flex flex-col transition-transform duration-300 ease-in-out",
+          isProblemListOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="border-b px-4 py-3 shrink-0 relative flex items-center justify-between pr-8">
+          <h2 className="font-bold text-lg">Problem List</h2>
+          <span className="text-xs text-muted-foreground font-semibold tracking-wide">
+            {totalProblemsCount} Problems
+          </span>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="absolute right-2 top-2 h-7 w-7 rounded-md opacity-70 transition-opacity hover:opacity-100 text-muted-foreground" 
+            onClick={() => setIsProblemListOpen(false)}
           >
-            <div className="py-2">
-              {isLoadingProblems ? (
-                <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-20', 'gap-3')}>
-                  <div className={cn('size-6', 'border-2', 'border-emerald-500/20', 'border-t-emerald-500', 'rounded-full', 'animate-spin')} />
-                  <span className={cn('text-xs', 'text-muted-foreground', 'font-semibold', 'uppercase', 'tracking-wider')}>
-                    Loading...
-                  </span>
-                </div>
-              ) : problemList.length > 0 ? (
-                <>
-                  {problemList.map((p) => (
-                    <div
-                      key={p.id}
-                      id={p.id === problem.id ? "active-problem-link" : undefined}
-                      onClick={() => {
-                        handleNavigate(p.id);
-                        setIsProblemListOpen(false);
-                      }}
-                      className={`flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-muted/60 transition-colors ${p.id === problem.id ? "bg-muted border-l-2 border-emerald-500" : ""}`}
-                    >
-                      <div className={cn('flex', 'items-start', 'gap-3', 'pr-4')}>
-                        {p.isSolved ? (
-                          <IconCheck className={cn('size-4', 'text-emerald-500', 'shrink-0', 'mt-0.5')} />
-                        ) : (
-                          <div className={cn('size-4', 'shrink-0')} />
-                        )}
-                        <span
-                          className={`text-sm whitespace-normal break-words leading-tight ${p.id === problem.id ? "font-bold" : "font-medium"}`}
-                        >
-                          {p.number}. {p.title}
-                        </span>
-                      </div>
+            <IconX className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </Button>
+        </div>
+
+        <div className="p-3 border-b shrink-0 bg-muted/20 flex flex-col gap-2">
+          {/* Search and filter controls */}
+          <div className="relative w-full">
+            <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search by title or ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-8 text-xs bg-background"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Select
+              value={statusFilter}
+              onValueChange={(v: any) => setStatusFilter(v)}
+            >
+              <SelectTrigger size="sm" className="flex-1 text-xs font-medium">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent
+                position="popper"
+                sideOffset={4}
+              >
+                <SelectGroup>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="unsolved">Unsolved</SelectItem>
+                  <SelectItem value="solved">Solved</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <Select
+              value={difficultyFilter}
+              onValueChange={(v: any) => setDifficultyFilter(v)}
+            >
+              <SelectTrigger size="sm" className="flex-1 text-xs font-medium">
+                <SelectValue placeholder="Difficulty" />
+              </SelectTrigger>
+              <SelectContent
+                position="popper"
+                sideOffset={4}
+              >
+                <SelectGroup>
+                  <SelectItem value="all">All Levels</SelectItem>
+                  <SelectItem value="easy">Easy</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="hard">Hard</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <ScrollArea
+          id="problem-list-scroll-area"
+          className="flex-1 w-full min-h-0"
+        >
+          <div className="py-2">
+            {isLoadingProblems ? (
+              <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-20', 'gap-3')}>
+                <div className={cn('size-6', 'border-2', 'border-emerald-500/20', 'border-t-emerald-500', 'rounded-full', 'animate-spin')} />
+                <span className={cn('text-xs', 'text-muted-foreground', 'font-semibold', 'uppercase', 'tracking-wider')}>
+                  Loading...
+                </span>
+              </div>
+            ) : problemList.length > 0 ? (
+              <>
+                {problemList.map((p) => (
+                  <div
+                    key={p.id}
+                    id={p.id === problem.id ? "active-problem-link" : undefined}
+                    onClick={() => {
+                      handleNavigate(p.id);
+                      setIsProblemListOpen(false);
+                    }}
+                    className={`flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-muted/60 transition-colors ${p.id === problem.id ? "bg-muted border-l-2 border-emerald-500" : ""}`}
+                  >
+                    <div className={cn('flex', 'items-start', 'gap-3', 'pr-4')}>
+                      {p.isSolved ? (
+                        <IconCheck className={cn('size-4', 'text-emerald-500', 'shrink-0', 'mt-0.5')} />
+                      ) : (
+                        <div className={cn('size-4', 'shrink-0')} />
+                      )}
                       <span
-                        className={`text-xs font-bold shrink-0 ${p.difficulty === "Easy" ? "text-emerald-500" : p.difficulty === "Medium" ? "text-amber-500" : "text-rose-500"}`}
+                        className={`text-sm whitespace-normal break-words leading-tight ${p.id === problem.id ? "font-bold" : "font-medium"}`}
                       >
-                        {p.difficulty === "Medium" ? "Med." : p.difficulty}
+                        {p.number}. {p.title}
                       </span>
                     </div>
-                  ))}
-                  
-                  {/* Infinite Scroll Sentinel */}
-                  <div ref={sentinelRef} className="h-10 flex items-center justify-center">
-                    {isNextPageLoading && (
-                      <div className="size-4 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
-                    )}
+                    <span
+                      className={`text-xs font-bold shrink-0 ${p.difficulty === "Easy" ? "text-emerald-500" : p.difficulty === "Medium" ? "text-amber-500" : "text-rose-500"}`}
+                    >
+                      {p.difficulty === "Medium" ? "Med." : p.difficulty}
+                    </span>
                   </div>
-                </>
-              ) : (
-                <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-20', 'text-muted-foreground', 'text-sm')}>
-                  No problems found.
+                ))}
+                
+                {/* Infinite Scroll Sentinel */}
+                <div ref={sentinelRef} className="h-10 flex items-center justify-center">
+                  {isNextPageLoading && (
+                    <div className="size-4 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+                  )}
                 </div>
-              )}
-            </div>
-          </ScrollArea>
-        </SheetContent>
-      </Sheet>
+              </>
+            ) : (
+              <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-20', 'text-muted-foreground', 'text-sm')}>
+                No problems found.
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
       {/* Submit Confirmation Dialog */}
       <AlertDialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
         <AlertDialogContent>
