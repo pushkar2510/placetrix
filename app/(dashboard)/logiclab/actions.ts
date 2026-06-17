@@ -261,20 +261,14 @@ export async function fetchProblemsInfinite({
 
 // Cache execution-critical static data to eliminate DB reads on /run and /submit
 export const getCachedProblemExecutionData = async (problemId: string) => {
-  return unstable_cache(
-    async () => {
-      const adminSupabase = createAdminClient() as any
-      const { data: problems, error } = await adminSupabase
-        .from("logiclab_problems")
-        .select("driver_codes, time_limit, memory_limit, test_cases")
-        .eq("id", problemId)
-        
-      if (error || !problems || !problems.length) {
-        return null
-      }
-      return problems[0]
-    },
-    [`problem-execution-data-${problemId}`],
-    { revalidate: 31536000, tags: [`problem-execution-data-${problemId}`, "problem-execution-data"] }
-  )()
+  const adminSupabase = createAdminClient() as any
+  const { data: problems, error } = await adminSupabase
+    .from("logiclab_problems")
+    .select("driver_codes, time_limit, memory_limit, test_cases")
+    .eq("id", problemId)
+    
+  if (error || !problems || !problems.length) {
+    return null
+  }
+  return problems[0]
 }

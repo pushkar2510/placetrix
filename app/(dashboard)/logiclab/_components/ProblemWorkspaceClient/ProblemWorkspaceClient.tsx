@@ -781,7 +781,7 @@ export function ProblemWorkspaceClient({
   const isLegacyFormat = React.useMemo(() => {
     if (!initialSampleTestCases || initialSampleTestCases.length === 0) return false;
     const firstInput = initialSampleTestCases[0].input.trim();
-    return firstInput.startsWith("[") && firstInput.endsWith("]") && !firstInput.includes("\n");
+    return firstInput.startsWith("[") && firstInput.endsWith("]") && !firstInput.includes("\n") && !firstInput.startsWith("[[");
   }, [initialSampleTestCases]);
 
   const [customInputs, setCustomInputs] = useState<string[]>(() =>
@@ -1031,13 +1031,7 @@ export function ProblemWorkspaceClient({
           language_id: selectedLang.id,
           problem_id: problem.id,
           mode: "problem",
-          custom_cases: customInputs.map(ci => {
-            if (isLegacyFormat) {
-              const lines = ci.split('\n').filter(l => l.trim().length > 0);
-              return `[${lines.join(",")}]`;
-            }
-            return ci;
-          }),
+          custom_cases: customInputs.map(ci => ci.trim()),
           custom_expected: customExpectedOutputs,
         }),
       });

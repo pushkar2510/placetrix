@@ -33,7 +33,10 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
     .eq("id", id)
     .single()
 
-  if (error || !problem) notFound()
+  if (error || !problem) {
+    console.error("404 Triggered! Error:", error, "Problem:", problem);
+    notFound()
+  }
 
   // Extract test cases from the embedded problem.test_cases column
   let parsedTestCases: any[] = problem.test_cases || []

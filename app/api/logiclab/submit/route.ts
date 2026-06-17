@@ -152,8 +152,8 @@ export async function POST(req: NextRequest) {
         const lines = driverCode.split("\n")
         const includes = lines.filter((line: string) => line.trim().startsWith("#include") || line.trim().startsWith("using "))
         const nonIncludes = lines.filter((line: string) => !line.trim().startsWith("#include") && !line.trim().startsWith("using "))
-        lineOffset = 12 + includes.length + 2
-        finalSource = "#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\n#include <map>\n#include <set>\n#include <unordered_map>\n#include <unordered_set>\n#include <queue>\n#include <stack>\n#include <cmath>\nusing namespace std;\n" + includes.join("\n") + "\n\n" + code + "\n\n" + nonIncludes.join("\n")
+        lineOffset = 16 + includes.length + 2
+        finalSource = "#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\n#include <map>\n#include <set>\n#include <unordered_map>\n#include <unordered_set>\n#include <queue>\n#include <stack>\n#include <cmath>\n#include <climits>\n#include <limits>\n#include <numeric>\n#include <utility>\nusing namespace std;\n" + includes.join("\n") + "\n\n" + code + "\n\n" + nonIncludes.join("\n")
       } else {
         finalSource = code + "\n\n" + driverCode
       }
@@ -422,3 +422,5 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+
+// Force rebuild
