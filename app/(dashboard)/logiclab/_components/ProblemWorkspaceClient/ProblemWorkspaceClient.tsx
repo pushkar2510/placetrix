@@ -206,10 +206,31 @@ export function ProblemWorkspaceClient({
         } catch { }
       }
 
-      setCode(
-        parsedBoilerplates[String(selectedLang.id)] ||
-        `// Write your ${selectedLang.name} solution here\n`,
-      );
+      const key = isDailyChallenge
+        ? `logiclab_daily_challenge_${dailyChallengeId}_code_${selectedLang.value}`
+        : `logiclab_problem_${targetId}_code_${selectedLang.value}`;
+      
+      const savedData = localStorage.getItem(key);
+      let loadedCode = null;
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData);
+          if (parsed.code && parsed.timestamp && Date.now() - parsed.timestamp < 10 * 60 * 60 * 1000) {
+            loadedCode = parsed.code;
+          }
+        } catch (e) {
+          // Ignore legacy plain-text format to enforce expiration
+        }
+      }
+
+      if (loadedCode) {
+        setCode(loadedCode);
+      } else {
+        setCode(
+          parsedBoilerplates[String(selectedLang.id)] ||
+          `// Write your ${selectedLang.name} solution here\n`,
+        );
+      }
       setActiveTab("description");
       setSubmitResult(null);
       setRunResult(null);
@@ -729,9 +750,22 @@ export function ProblemWorkspaceClient({
     const key = isDailyChallenge
       ? `logiclab_daily_challenge_${dailyChallengeId}_code_${selectedLang.value}`
       : `logiclab_problem_${problem.id}_code_${selectedLang.value}`;
-    const savedCode = localStorage.getItem(key);
-    if (savedCode) {
-      setCode(savedCode);
+      
+    const savedData = localStorage.getItem(key);
+    let loadedCode = null;
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        if (parsed.code && parsed.timestamp && Date.now() - parsed.timestamp < 10 * 60 * 60 * 1000) {
+          loadedCode = parsed.code;
+        }
+      } catch (e) {
+        // Ignore legacy plain-text format to enforce expiration
+      }
+    }
+
+    if (loadedCode) {
+      setCode(loadedCode);
     } else {
       setCode(
         parsedBoilerplates[String(selectedLang.id)] ||
@@ -754,7 +788,10 @@ export function ProblemWorkspaceClient({
       const key = isDailyChallenge
         ? `logiclab_daily_challenge_${dailyChallengeId}_code_${selectedLang.value}`
         : `logiclab_problem_${problem.id}_code_${selectedLang.value}`;
-      localStorage.setItem(key, code);
+      localStorage.setItem(key, JSON.stringify({
+        code,
+        timestamp: Date.now()
+      }));
     }
   }, [code, problem.id, dailyChallengeId, isDailyChallenge, selectedLang.value]);
 
