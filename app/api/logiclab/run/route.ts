@@ -100,8 +100,8 @@ export async function POST(req: NextRequest) {
         finalSource = "import java.util.*;\nimport java.io.*;\n" + imports.join("\n") + "\n\n" + source_code + "\n\n" + nonImports.join("\n")
       } else if (langKey === "71") { // Python
         const merged = source_code + "\n\n" + driverCode
-        lineOffset = 5
-        finalSource = "import sys\nimport json\nimport math\nimport collections\nfrom typing import *\n" + merged
+        lineOffset = 6
+        finalSource = "from __future__ import annotations\nimport sys\nimport json\nimport math\nimport collections\nfrom typing import *\n" + merged
       } else if (langKey === "54") { // C++
         const lines = driverCode.split("\n")
         const includes = lines.filter((line: string) => line.trim().startsWith("#include") || line.trim().startsWith("using "))
@@ -157,43 +157,63 @@ export async function POST(req: NextRequest) {
 
       const runTestCase = async (tc: any, i: number) => {
         const encodedStdin = Buffer.from(tc.input || "").toString("base64")
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 15000)
+        let retries = 3
+        let delay = 500
 
-        try {
-          const response = await fetch(submissionsUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify({
-              source_code: encodedSource,
-              language_id,
-              stdin: encodedStdin,
-              cpu_time_limit: timeLimit,
-              memory_limit: memoryLimit,
-            }),
-            signal: controller.signal,
-          })
-          clearTimeout(timeoutId)
+        while (retries > 0) {
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 15000)
 
-          const textResponse = await response.text()
-          let data
           try {
-            data = JSON.parse(textResponse)
-          } catch {
-            return { index: i + 1, tc, error: "Judge0 service error (invalid JSON response)." }
-          }
-          
-          if (!response.ok) {
-            return { index: i + 1, tc, error: `Judge0 error: ${data.error || response.statusText}` }
-          }
-          
-          return { index: i + 1, tc, data }
-        } catch (err: any) {
-          clearTimeout(timeoutId)
-          if (err.name === 'AbortError') return { index: i + 1, tc, error: "Judge0 service timed out." }
-          return { index: i + 1, tc, error: err.message }
+            const response = await fetch(submissionsUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify({
+                source_code: encodedSource,
+                language_id,
+                stdin: encodedStdin,
+                cpu_time_limit: timeLimit,
+                memory_limit: memoryLimit,
+              }),
+              signal: controller.signal,
+            })
+            clearTimeout(timeoutId)
+
+            const textResponse = await response.text()
+            let data
+            try {
+              data = JSON.parse(textResponse)
+            } catch {
+              return { index: i + 1, tc, error: "Judge0 service error (invalid JSON response)." }
+            }
+
+            if (!response.ok) {
+              if (response.status === 429 || response.status >= 500) {
+                retries--
+                if (retries > 0) {
+                  await new Promise((resolve) => setTimeout(resolve, delay))
+                  delay *= 2
+                  continue
+                }
+              }
+              return { index: i + 1, tc, error: `Judge0 error: ${data.error || response.statusText}` }
+            }
+
+            return { index: i + 1, tc, data }
+          } catch (err: any) {
+            clearTimeout(timeoutId)
+            retries--
+            if (retries > 0) {
+              await new Promise((resolve) => setTimeout(resolve, delay))
+              delay *= 2
+              continue
+            }
+            if (err.name === 'AbortError') return { index: i + 1, tc, error: "Judge0 service timed out." }
+            return { index: i + 1, tc, error: err.message }
         }
       }
+      return { index: i + 1, tc, error: "Unknown execution error" }
+    }
 
       const testCasePromises = sampleTestCases.map((tc, i) => limit(() => runTestCase(tc, i)))
       const executedResults = await Promise.all(testCasePromises)
@@ -282,47 +302,66 @@ export async function POST(req: NextRequest) {
       })
     } else {
       const encodedStdin = Buffer.from(finalStdin || "").toString("base64")
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000)
+      let retries = 3
+      let delay = 500
 
-      try {
-        const response = await fetch(submissionsUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({
-            source_code: encodedSource,
-            language_id,
-            stdin: encodedStdin,
-          }),
-          signal: controller.signal,
-        })
-        clearTimeout(timeoutId)
+      while (retries > 0) {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 15000)
 
-        const textResponse = await response.text()
-        let data
         try {
-          data = JSON.parse(textResponse)
-        } catch {
-          return NextResponse.json({ success: false, error: "Judge0 JSON parse error" }, { status: 500 })
-        }
+          const response = await fetch(submissionsUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({
+              source_code: encodedSource,
+              language_id,
+              stdin: encodedStdin,
+            }),
+            signal: controller.signal,
+          })
+          clearTimeout(timeoutId)
 
-        if (!response.ok) {
-          return NextResponse.json({ success: false, error: data.error || response.statusText }, { status: response.status })
-        }
+          const textResponse = await response.text()
+          let data
+          try {
+            data = JSON.parse(textResponse)
+          } catch {
+            return NextResponse.json({ success: false, error: "Judge0 JSON parse error" }, { status: 500 })
+          }
 
-        return NextResponse.json({
-          success: true,
-          stdout: decode(data.stdout),
-          stderr: decode(data.stderr),
-          compile_output: decode(data.compile_output),
-          message: decode(data.message),
-          status: data.status || { id: 3, description: "Accepted" },
-          time: data.time || "0.00",
-          memory: data.memory || "0",
-        })
-      } catch (err: any) {
-        clearTimeout(timeoutId)
-        return NextResponse.json({ success: false, error: err.message }, { status: 500 })
+          if (!response.ok) {
+            if (response.status === 429 || response.status >= 500) {
+              retries--
+              if (retries > 0) {
+                await new Promise((resolve) => setTimeout(resolve, delay))
+                delay *= 2
+                continue
+              }
+            }
+            return NextResponse.json({ success: false, error: data.error || response.statusText }, { status: response.status })
+          }
+
+          return NextResponse.json({
+            success: true,
+            stdout: decode(data.stdout),
+            stderr: decode(data.stderr),
+            compile_output: decode(data.compile_output),
+            message: decode(data.message),
+            status: data.status || { id: 3, description: "Accepted" },
+            time: data.time || "0.00",
+            memory: data.memory || "0",
+          })
+        } catch (err: any) {
+          clearTimeout(timeoutId)
+          retries--
+          if (retries > 0) {
+            await new Promise((resolve) => setTimeout(resolve, delay))
+            delay *= 2
+            continue
+          }
+          return NextResponse.json({ success: false, error: err.message }, { status: 500 })
+        }
       }
     }
   } catch (error: any) {

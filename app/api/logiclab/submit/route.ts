@@ -146,8 +146,8 @@ export async function POST(req: NextRequest) {
         finalSource = "import java.util.*;\nimport java.io.*;\n" + imports.join("\n") + "\n\n" + code + "\n\n" + nonImports.join("\n")
       } else if (langKey === "71") { // Python
         const merged = code + "\n\n" + driverCode
-        lineOffset = 5
-        finalSource = "import sys\nimport json\nimport math\nimport collections\nfrom typing import *\n" + merged
+        lineOffset = 6
+        finalSource = "from __future__ import annotations\nimport sys\nimport json\nimport math\nimport collections\nfrom typing import *\n" + merged
       } else if (langKey === "54") { // C++
         const lines = driverCode.split("\n")
         const includes = lines.filter((line: string) => line.trim().startsWith("#include") || line.trim().startsWith("using "))
@@ -182,50 +182,70 @@ export async function POST(req: NextRequest) {
 
     const runTestCase = async (tc: any, i: number) => {
       const encodedStdin = Buffer.from(tc.input || "").toString("base64")
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000)
+      let retries = 3
+      let delay = 500
 
-      try {
-        const response = await fetch(
-          `${judge0Endpoint}/submissions?wait=true&base64_encoded=true`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify({
-              source_code: encodedSource,
-              language_id,
-              stdin: encodedStdin,
-              cpu_time_limit: timeLimit,
-              memory_limit: memoryLimit,
-            }),
-            signal: controller.signal,
-          }
-        )
-        clearTimeout(timeoutId)
+      while (retries > 0) {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 15000)
 
-        const textResponse = await response.text()
-        let data
         try {
-          data = JSON.parse(textResponse)
-        } catch {
-          return { index: i + 1, tc, error: "Judge0 service error (invalid JSON response)." }
-        }
+          const response = await fetch(
+            `${judge0Endpoint}/submissions?wait=true&base64_encoded=true`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              body: JSON.stringify({
+                source_code: encodedSource,
+                language_id,
+                stdin: encodedStdin,
+                cpu_time_limit: timeLimit,
+                memory_limit: memoryLimit,
+              }),
+              signal: controller.signal,
+            }
+          )
+          clearTimeout(timeoutId)
 
-        if (!response.ok) {
-          return { index: i + 1, tc, error: `Judge0 error: ${data.error || response.statusText}` }
-        }
+          const textResponse = await response.text()
+          let data
+          try {
+            data = JSON.parse(textResponse)
+          } catch {
+            return { index: i + 1, tc, error: "Judge0 service error (invalid JSON response)." }
+          }
 
-        return { index: i + 1, tc, data }
-      } catch (err: any) {
-        clearTimeout(timeoutId)
-        if (err.name === 'AbortError') {
-          return { index: i + 1, tc, error: "Judge0 service timed out." }
+          if (!response.ok) {
+            if (response.status === 429 || response.status >= 500) {
+              retries--
+              if (retries > 0) {
+                await new Promise((resolve) => setTimeout(resolve, delay))
+                delay *= 2
+                continue
+              }
+            }
+            return { index: i + 1, tc, error: `Judge0 error: ${data.error || response.statusText}` }
+          }
+
+          return { index: i + 1, tc, data }
+        } catch (err: any) {
+          clearTimeout(timeoutId)
+          retries--
+          if (retries > 0) {
+            await new Promise((resolve) => setTimeout(resolve, delay))
+            delay *= 2
+            continue
+          }
+          if (err.name === 'AbortError') {
+            return { index: i + 1, tc, error: "Judge0 service timed out." }
+          }
+          return { index: i + 1, tc, error: err.message }
         }
-        return { index: i + 1, tc, error: err.message }
       }
+      return { index: i + 1, tc, error: "Unknown execution error" }
     }
 
     const testCasePromises = testCases.map((tc, i) => limit(() => runTestCase(tc, i)))
