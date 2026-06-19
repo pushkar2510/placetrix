@@ -151,3 +151,23 @@ export async function toggleUpvote(noteId: string) {
   if (error) return { success: false, error: error.message }
   return { success: true, isUpvoted: data }
 }
+
+export async function getSubmissionCode(submissionId: string, isDailyChallenge: boolean) {
+  const supabase = (await createClient()) as any
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { code: null, error: "Unauthorized" }
+
+  const table = isDailyChallenge ? "logiclab_daily_challenge_submissions" : "logiclab_problem_submissions"
+  const { data, error } = await supabase
+    .from(table)
+    .select("code, language_id")
+    .eq("id", submissionId)
+    .eq("user_id", user.id)
+    .single()
+
+  if (error || !data) {
+    return { code: null, error: error?.message || "Submission code not found." }
+  }
+
+  return { code: data.code, languageId: data.language_id, error: null }
+}

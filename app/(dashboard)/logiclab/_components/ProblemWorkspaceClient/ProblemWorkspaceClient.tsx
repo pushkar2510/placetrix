@@ -49,6 +49,14 @@ import {
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { getProblemDataSPA, fetchProblemsInfinite } from "../../actions";
+import { getSubmissionCode } from "../../problems/[id]/notes-actions";
+import Prism from "prismjs";
+import "prismjs/components/prism-java";
+import "prismjs/components/prism-python";
+import "prismjs/components/prism-c";
+import "prismjs/components/prism-cpp";
+import "prismjs/components/prism-javascript";
+import "prismjs/components/prism-typescript";
 import { buildStorageUrl } from "@/lib/storage";
 import { useMonaco } from "@monaco-editor/react";
 import {
@@ -238,6 +246,7 @@ export function ProblemWorkspaceClient({
   const [nextProblemId, setNextProblemId] = useState(initialNextProblemId);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [mobileActiveTab, setMobileActiveTab] = useState<"description" | "submissions" | "notes">("description");
 
   useEffect(() => {
     setIsMounted(true);
@@ -970,21 +979,67 @@ export function ProblemWorkspaceClient({
     setLoadingCode(true);
     setViewingCode("");
     try {
-      const supabase = createClient();
-      const { data, error } = (await (supabase as any)
-        .from(isDailyChallenge ? "logiclab_daily_challenge_submissions" : "logiclab_problem_submissions" as any)
-        .select("code, language_id")
-        .eq("id", sub.id)
-        .single()) as any;
-      if (error || !data) {
-        throw new Error(error?.message || "Submission code not found.");
+      const res = await getSubmissionCode(sub.id, !!isDailyChallenge);
+      if (res.error || !res.code) {
+        throw new Error(res.error || "Submission code not found.");
       }
-      setViewingCode(data.code);
+      setViewingCode(res.code);
     } catch (err: any) {
       toast.error(err?.message || "Failed to load submission code.");
       setViewingSubmission(null);
     } finally {
       setLoadingCode(false);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      if (successful) {
+        toast.success("Copied to clipboard!");
+      } else {
+        toast.error("Failed to copy code.");
+      }
+    } catch (err) {
+      toast.error("Failed to copy code.");
+    }
+  };
+
+  const handleCopyToClipboard = (text: string) => {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => toast.success("Copied to clipboard!"))
+        .catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  };
+
+  const getHighlightedCode = (codeText: string, langId: number) => {
+    const langObj = LANGUAGES.find((l) => l.id === langId);
+    let lang = langObj ? langObj.value : "javascript";
+    
+    if (lang === 'js') lang = 'javascript';
+    if (lang === 'ts') lang = 'typescript';
+    if (lang === 'py') lang = 'python';
+    if (lang === 'c++') lang = 'cpp';
+    
+    try {
+      if (Prism.languages[lang]) {
+        return Prism.highlight(codeText, Prism.languages[lang], lang);
+      }
+      return Prism.highlight(codeText, Prism.languages.javascript, 'javascript');
+    } catch {
+      return codeText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
   };
 
@@ -1769,12 +1824,7 @@ export function ProblemWorkspaceClient({
                                       Restore
                                     </button>
                                     <button
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(
-                                          viewingCode,
-                                        );
-                                        toast.success("Copied!");
-                                      }}
+                                      onClick={() => handleCopyToClipboard(viewingCode)}
                                       className={cn('bg-muted', 'hover:bg-accent', 'text-foreground', 'border', 'border-border', 'px-2.5', 'py-1', 'rounded-md', 'text-[10px]', 'font-bold', 'transition-all', 'shadow-sm')}
                                     >
                                       Copy
@@ -3020,19 +3070,301 @@ export function ProblemWorkspaceClient({
           : "h-[100dvh] relative",
       )}
     >
-      {/* Mobile/Tablet Screen Warning Panel */}
-      <div className="flex md:hidden flex-1 items-center justify-center p-6 bg-zinc-100 dark:bg-zinc-950">
-        <Empty className="border-0 max-w-sm">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <IconDeviceLaptop />
-            </EmptyMedia>
-            <EmptyTitle>Desktop Only Feature</EmptyTitle>
-            <EmptyDescription>
-              This functionality is available only on large screen devices like a laptop. We are working on our Android app, and mobile functionality will be coming soon!
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+      {/* Mobile/Tablet Screen Workspace */}
+      <div className="flex md:hidden flex-col flex-1 min-h-0 overflow-hidden bg-zinc-100 dark:bg-zinc-950">
+        {/* Sticky Mobile Header */}
+        <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-2 bg-zinc-100 dark:bg-zinc-950 border-b border-border/50 shrink-0 select-none">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              asChild
+              className="h-8 w-8"
+              title={isDailyChallenge ? "Back to Daily Challenges" : "Back to Problems"}
+            >
+              <Link href={isDailyChallenge ? "/logiclab/dailychallenges" : "/logiclab"}>
+                <IconArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+            <span className="text-sm font-bold text-foreground truncate max-w-[180px]">
+              {problem.number ? `${problem.number}. ` : ""}{problem.title}
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-1.5">
+            <span
+              className={cn(
+                "px-2 py-0.5 rounded-full text-[10px] font-semibold border",
+                problem.difficulty === "Easy"
+                  ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
+                  : problem.difficulty === "Medium"
+                    ? "text-amber-500 bg-amber-500/10 border-amber-500/20"
+                    : "text-rose-500 bg-rose-500/10 border-rose-500/20",
+              )}
+            >
+              {problem.difficulty || "Hard"}
+            </span>
+          </div>
+        </div>
+
+        {/* Mobile Tab Selector */}
+        <div className="flex bg-card shrink-0 border-b border-border/50">
+          <button
+            onClick={() => setMobileActiveTab("description")}
+            className={cn(
+              "flex-1 flex items-center justify-center py-2.5 text-[11px] font-bold uppercase tracking-wider border-b-2 transition-all",
+              mobileActiveTab === "description"
+                ? "text-foreground border-foreground bg-zinc-100/50 dark:bg-zinc-900/50"
+                : "text-muted-foreground border-transparent hover:text-foreground"
+            )}
+          >
+            <IconFileDescription className="h-3.5 w-3.5 mr-1" />
+            Desc
+          </button>
+          <button
+            onClick={() => setMobileActiveTab("submissions")}
+            className={cn(
+              "flex-1 flex items-center justify-center py-2.5 text-[11px] font-bold uppercase tracking-wider border-b-2 transition-all",
+              mobileActiveTab === "submissions"
+                ? "text-foreground border-foreground bg-zinc-100/50 dark:bg-zinc-900/50"
+                : "text-muted-foreground border-transparent hover:text-foreground"
+            )}
+          >
+            <IconHistory className="h-3.5 w-3.5 mr-1" />
+            Submits ({submissions.length})
+          </button>
+          <button
+            onClick={() => setMobileActiveTab("notes")}
+            className={cn(
+              "flex-1 flex items-center justify-center py-2.5 text-[11px] font-bold uppercase tracking-wider border-b-2 transition-all",
+              mobileActiveTab === "notes"
+                ? "text-foreground border-foreground bg-zinc-100/50 dark:bg-zinc-900/50"
+                : "text-muted-foreground border-transparent hover:text-foreground"
+            )}
+          >
+            <IconFileText className="h-3.5 w-3.5 mr-1" />
+            Notes
+          </button>
+        </div>
+
+        {/* Mobile Scrollable Panel Content */}
+        <div className="flex-1 overflow-y-auto min-h-0 bg-card p-4">
+          {mobileActiveTab === "description" && (
+            <div className="space-y-6">
+              {/* Title & Tags */}
+              <div className="space-y-3">
+                <h1 className="text-lg font-bold text-foreground leading-tight">
+                  {problem.number ? `${problem.number}. ` : ""}{problem.title}
+                </h1>
+                <div className="flex flex-wrap items-center gap-1.5 select-none">
+                  {problem.tags && problem.tags.length > 0 && problem.tags.map((tag: string, i: number) => (
+                    <span key={i} className="px-2 py-0.5 bg-muted/60 border border-border/50 text-zinc-650 dark:text-muted-foreground rounded-full text-[10px] font-semibold">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Description Markdown */}
+              <div className="text-sm text-zinc-900 dark:text-foreground/90 leading-relaxed mt-2 select-text">
+                <ProblemDescriptionViewer content={problem.description} />
+              </div>
+
+              {/* Sample Test Cases */}
+              {sampleTestCases.length > 0 && (
+                <div className="space-y-4 pt-4 border-t border-border/40">
+                  <h3 className="text-sm font-bold text-foreground">Examples</h3>
+                  {sampleTestCases.map((tc, idx) => {
+                    const paramNames = getParamNames();
+                    return (
+                      <div key={tc.id} className="space-y-2.5">
+                        <p className="text-xs font-bold text-zinc-550 dark:text-muted-foreground">
+                          Example {idx + 1}:
+                        </p>
+                        <div className="pl-3 border-l-2 border-zinc-300 dark:border-muted-foreground/30 py-1.5 font-mono text-[12px] text-zinc-900 dark:text-foreground/90 space-y-1.5 bg-zinc-100/40 dark:bg-muted/5 rounded-r-md">
+                          <div>
+                            <span className="font-bold text-zinc-850 dark:text-zinc-300">Input: </span>
+                            <div className="flex flex-col space-y-1.5 mt-1">
+                              {tc.input.trim().split("\n").map((val: string, i: number) => (
+                                <div key={i} className={val.startsWith("[") ? "flex flex-col mt-1" : "flex items-center"}>
+                                  <span className="font-semibold mr-1.5 text-zinc-550 dark:text-muted-foreground whitespace-nowrap">{paramNames[i] || `param${i + 1}`} =</span>
+                                  {renderTestcaseValue(val)}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="font-bold text-zinc-850 dark:text-zinc-300 mr-1.5 block mb-1">Output:</span>
+                            {renderTestcaseValue(tc.expected_output)}
+                          </div>
+                          {tc.explanation && (
+                            <div className="text-zinc-650 dark:text-muted-foreground/90">
+                              <span className="font-bold text-zinc-850 dark:text-zinc-300">
+                                Explanation:{" "}
+                              </span>
+                              <span>{tc.explanation}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Constraints */}
+              <div className="space-y-3.5 pt-4 border-t border-border/40">
+                {problem.constraints && problem.constraints.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-foreground">
+                      Constraints:
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1.5 text-xs text-zinc-800 dark:text-foreground/80">
+                      {problem.constraints.map((c: string, i: number) => (
+                        <li key={i}>
+                          <code className="px-1.5 py-0.5 bg-zinc-100 dark:bg-muted/40 rounded-md text-[11px] font-mono border border-border/50">
+                            {c}
+                          </code>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  {problem.time_limit && (
+                    <div className="text-xs font-mono text-zinc-650 dark:text-zinc-400">
+                      Time Limit: {problem.time_limit}s
+                    </div>
+                  )}
+                  {problem.memory_limit && (
+                    <div className="text-xs font-mono text-zinc-650 dark:text-zinc-400">
+                      Memory Limit: {problem.memory_limit}MB
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {mobileActiveTab === "submissions" && (
+            <div className="space-y-2 select-text">
+              {submissions.length > 0 ? (
+                submissions.map((sub) => {
+                  const isExpanded = viewingSubmission?.id === sub.id;
+                  const canViewCode = sub.status === "Accepted";
+                  return (
+                    <div key={sub.id} className="space-y-1">
+                      <div
+                        onClick={() => {
+                          if (canViewCode) {
+                            if (isExpanded) {
+                              setViewingSubmission(null);
+                            } else {
+                              handleViewPastSubmission(sub);
+                            }
+                          }
+                        }}
+                        className={`flex items-center justify-between p-3 rounded-lg border ${sub.status === "Accepted" ? "bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/5 cursor-pointer" : "bg-card border-border hover:bg-muted/60"} transition-all group`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {sub.status === "Accepted" ? (
+                            <IconCircleCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+                          ) : (
+                            <IconCircleX className="h-4 w-4 text-rose-500 shrink-0" />
+                          )}
+                          <div>
+                            <p className={`text-xs font-bold ${sub.status === "Accepted" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"} flex items-center gap-1`}>
+                              {sub.status}
+                              {canViewCode && (
+                                <span className="text-[9px] text-muted-foreground font-normal">
+                                  {isExpanded ? "(Hide)" : "(View code)"}
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground/85">
+                              {sub.passed_count}/{sub.total_count} passed ·{" "}
+                              {LANGUAGES.find((l) => l.id === sub.language_id)?.name || "Unknown"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                            {sub.runtime !== null && (
+                              <span className="flex items-center gap-0.5">
+                                <IconClock className="h-3 w-3" />
+                                {sub.runtime}s
+                              </span>
+                            )}
+                            {sub.memory !== null && (
+                              <span className="flex items-center gap-0.5">
+                                <IconCpu className="h-3 w-3" />
+                                {formatMemory(sub.memory, true)}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[8px] text-muted-foreground/60 mt-0.5">
+                            {new Date(sub.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {isExpanded && (
+                        <div className="border border-border/60 rounded-lg overflow-hidden shadow-sm mt-1">
+                          {loadingCode ? (
+                            <div className="p-4 text-center text-[10px] uppercase tracking-widest font-bold text-muted-foreground animate-pulse bg-zinc-50 dark:bg-zinc-950">
+                              Loading code...
+                            </div>
+                          ) : (
+                            <div className="w-full relative bg-zinc-50 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-zinc-800/80 rounded-lg overflow-hidden">
+                              <pre className="p-4 overflow-auto font-mono text-[11.5px] text-black dark:text-zinc-100 max-h-[300px] whitespace-pre-wrap break-all">
+                                <code
+                                  className={`language-${
+                                    LANGUAGES.find((l) => l.id === sub.language_id)?.value || "javascript"
+                                  }`}
+                                  dangerouslySetInnerHTML={{
+                                    __html: getHighlightedCode(viewingCode || "// Code not available", sub.language_id)
+                                  }}
+                                />
+                              </pre>
+                              <div className="absolute top-2 right-2 flex gap-1.5 opacity-85 hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => handleCopyToClipboard(viewingCode)}
+                                  className="bg-muted hover:bg-accent text-foreground border border-border px-2 py-0.5 rounded text-[9px] font-bold transition-all shadow-sm"
+                                >
+                                  Copy
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 gap-2 select-none">
+                  <IconHistory className="h-8 w-8 text-muted-foreground/20" />
+                  <p className="text-[10px] text-muted-foreground/45 uppercase font-bold tracking-widest">
+                    No submissions yet
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {mobileActiveTab === "notes" && (
+            <div className="h-[450px] flex flex-col relative overflow-hidden">
+              <ProblemNotes 
+                problemId={problem.id} 
+                currentCode={code} 
+                currentLanguage={selectedLang.name} 
+                submissions={submissions}
+                isDailyChallenge={isDailyChallenge}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Large Screen Desktop IDE */}

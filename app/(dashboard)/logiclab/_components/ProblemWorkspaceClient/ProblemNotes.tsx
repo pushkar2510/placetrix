@@ -15,6 +15,7 @@ import { ProblemDescriptionViewer } from "./ProblemDescriptionViewer"
 import { cn } from "@/lib/utils"
 
 import Editor from "@monaco-editor/react"
+import { useTheme } from "next-themes"
 import { createClient } from "@/lib/supabase/client"
 import { LANGUAGES } from "../../_constants"
 
@@ -47,6 +48,8 @@ interface ProblemNotesProps {
 }
 
 export function ProblemNotes({ problemId, currentCode, currentLanguage, submissions, isDailyChallenge }: ProblemNotesProps) {
+  const { resolvedTheme } = useTheme()
+  const monacoTheme = resolvedTheme === "light" ? "vs" : "vs-dark"
   const [showCommunityNotes, setShowCommunityNotes] = useState(false)
 
   // Personal Note State
@@ -312,11 +315,31 @@ export function ProblemNotes({ problemId, currentCode, currentLanguage, submissi
   }
 
   return (
-    <div className={cn('flex-1', 'h-full', 'w-full', 'flex', 'flex-col', 'bg-card', 'overflow-hidden', 'min-h-0')}>
+    <div className={cn('flex-1', 'h-full', 'w-full', 'flex', 'flex-col', 'bg-card', 'overflow-hidden', 'min-h-0', 'text-foreground')}>
+      {/* Mobile-only Notes/Community tab switcher */}
+      <div className="flex md:hidden bg-muted/20 shrink-0 border-b border-border/40 p-1.5 gap-2">
+        <Button
+          variant={!showCommunityNotes ? "secondary" : "ghost"}
+          size="sm"
+          onClick={() => setShowCommunityNotes(false)}
+          className="flex-1 text-[11px] font-bold h-8"
+        >
+          Write Note
+        </Button>
+        <Button
+          variant={showCommunityNotes ? "secondary" : "ghost"}
+          size="sm"
+          onClick={() => setShowCommunityNotes(true)}
+          className="flex-1 text-[11px] font-bold h-8"
+        >
+          Community Notes
+        </Button>
+      </div>
+
       {!showCommunityNotes ? (
         <>
-          {/* Minimalist LeetCode Toolbar */}
-          <div className={cn('flex', 'items-center', 'gap-2', 'px-4', 'py-2', 'shrink-0', 'border-b', 'border-border/10')}>
+          {/* Minimalist LeetCode Toolbar - Hidden on Mobile to prevent clutter */}
+          <div className={cn('hidden', 'md:flex', 'items-center', 'gap-2', 'px-4', 'py-2', 'shrink-0', 'border-b', 'border-border/10')}>
             <div className={cn('flex', 'items-center', 'gap-1')}>
               <Button variant="ghost" size="icon" className={cn('h-6', 'w-6', 'rounded', 'text-zinc-500', 'hover:text-zinc-300', 'hover:bg-zinc-800/50')} onClick={() => insertFormat("### ")} title="Heading">
                 <span className={cn('font-serif', 'font-bold', 'text-[13px]')}>H</span>
@@ -329,7 +352,7 @@ export function ProblemNotes({ problemId, currentCode, currentLanguage, submissi
               </Button>
             </div>
             
-            <div className={cn('w-px', 'h-3', 'bg-zinc-700', 'mx-1')} />
+            <div className={cn('w-px', 'h-3', 'bg-border', 'mx-1')} />
             
             <div className={cn('flex', 'items-center', 'gap-1')}>
               <Button variant="ghost" size="icon" className={cn('h-6', 'w-6', 'rounded', 'text-zinc-500', 'hover:text-zinc-300', 'hover:bg-zinc-800/50')} onClick={() => insertFormat("- ")} title="Bulleted List">
@@ -340,7 +363,7 @@ export function ProblemNotes({ problemId, currentCode, currentLanguage, submissi
               </Button>
             </div>
 
-            <div className={cn('w-px', 'h-3', 'bg-zinc-700', 'mx-1')} />
+            <div className={cn('w-px', 'h-3', 'bg-border', 'mx-1')} />
 
             <div className={cn('flex', 'items-center', 'gap-1')}>
               <Button variant="ghost" size="icon" className={cn('h-6', 'w-6', 'rounded', 'text-zinc-500', 'hover:text-zinc-300', 'hover:bg-zinc-800/50', 'font-serif', 'font-bold', 'text-[14px]', 'leading-none', 'pb-1')} onClick={() => insertFormat("> ")} title="Quote">
@@ -354,72 +377,86 @@ export function ProblemNotes({ problemId, currentCode, currentLanguage, submissi
               </Button>
             </div>
 
-            <div className={cn('w-px', 'h-3', 'bg-zinc-700', 'mx-2')} />
+            <div className={cn('w-px', 'h-3', 'bg-border', 'mx-2')} />
             
             <Button variant="ghost" size="icon" className={cn("h-6 w-6 rounded", previewMode ? "text-emerald-500 hover:text-emerald-400 bg-emerald-500/10" : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50")} onClick={() => setPreviewMode(!previewMode)} title="Preview">
               <Eye className={cn('w-4', 'h-4')} />
             </Button>
             
             <div className={cn('ml-auto', 'flex', 'items-center', 'gap-3')}>
-              <Button variant="link" size="sm" onClick={() => setShowCommunityNotes(true)} className={cn('h-auto', 'p-0', 'text-zinc-500', 'hover:text-zinc-300', 'text-[11px]')}>
-                Community Notes <Globe className={cn('w-3', 'h-3', 'ml-1')} />
+              <Button variant="link" size="sm" onClick={() => setShowCommunityNotes(true)} className={cn('h-auto', 'p-0', 'text-muted-foreground', 'hover:text-foreground', 'text-[11px]')}>
+                Community Notes
               </Button>
             </div>
           </div>
           
           {/* Editor / Preview Area */}
-          <div className={cn('flex-1', 'flex', 'flex-col', 'overflow-hidden', 'outline-none', 'min-h-0', 'bg-[#1e1e1e]', 'relative')}>
+          <div className={cn('flex-1', 'flex', 'flex-col', 'overflow-hidden', 'outline-none', 'min-h-0', 'bg-white dark:bg-[#1e1e1e]', 'relative')}>
             {isLoadingPersonal ? (
               <div className={cn('flex', 'items-center', 'justify-center', 'flex-1')}>
-                <Loader2 className={cn('w-6', 'h-6', 'animate-spin', 'text-zinc-600')} />
+                <Loader2 className={cn('w-6', 'h-6', 'animate-spin', 'text-muted-foreground')} />
               </div>
             ) : (
               <>
                 {previewMode ? (
-                  <div className={cn('flex-1', 'px-5', 'pt-0', 'pb-4', 'overflow-y-auto', 'md-notes-preview')}>
+                  <div className={cn('flex-1', 'px-5', 'pt-3', 'pb-4', 'overflow-y-auto', 'md-notes-preview')}>
                     {personalContent 
                       ? <ProblemDescriptionViewer content={personalContent} />
-                      : <span className={cn('italic', 'text-zinc-500', 'text-[13px]')}>Nothing to preview</span>}
+                      : <span className={cn('italic', 'text-muted-foreground', 'text-[13px]')}>Nothing to preview</span>}
                   </div>
                 ) : (
-                  <div className={cn('relative', 'flex-1', 'min-h-0')}>
-                    {!personalContent && (
-                      <div className={cn('absolute', 'top-0', 'left-5', 'text-zinc-500/50', 'text-[13px]', 'font-mono', 'pointer-events-none', 'z-10')}>
-                        Write your notes here... (Markdown supported)
-                      </div>
-                    )}
-                    <Editor
-                      value={personalContent}
-                      onChange={(value) => setPersonalContent(value || "")}
-                      language="markdown"
-                      theme="vs-dark"
-                      onMount={(editor) => monacoEditorRef.current = editor}
-                      options={{
-                        minimap: { enabled: false },
-                        automaticLayout: true,
-                        wordWrap: "on",
-                        lineNumbers: "off",
-                        folding: false,
-                        glyphMargin: false,
-                        lineDecorationsWidth: 20,
-                        lineNumbersMinChars: 0,
-                        renderLineHighlight: "none",
-                        scrollbar: { vertical: "auto", horizontal: "auto" },
-                        padding: { top: 0, bottom: 16 },
-                        fontSize: 13,
-                        fontFamily: "var(--font-mono), monospace",
-                        scrollBeyondLastLine: false,
-                        overviewRulerBorder: false,
-                        hideCursorInOverviewRuler: true
-                      }}
-                      className={cn('h-full', 'w-full')}
-                    />
+                  <div className={cn('relative', 'flex-1', 'min-h-0', 'flex', 'flex-col')}>
+                    {/* Mobile textarea editor (no Monaco) */}
+                    <div className="flex md:hidden flex-1 p-3">
+                      <textarea
+                        ref={textareaRef}
+                        value={personalContent}
+                        onChange={(e) => setPersonalContent(e.target.value)}
+                        placeholder="Write your notes here... (Markdown supported)"
+                        className="w-full h-full font-mono text-[13px] bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800/80 focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 rounded-md p-3 resize-none outline-none"
+                      />
+                    </div>
+
+                    {/* Desktop Monaco editor */}
+                    <div className="hidden md:block relative flex-1 min-h-0">
+                      {!personalContent && (
+                        <div className={cn('absolute', 'top-0', 'left-5', 'text-zinc-500/50', 'text-[13px]', 'font-mono', 'pointer-events-none', 'z-10')}>
+                          Write your notes here... (Markdown supported)
+                        </div>
+                      )}
+                      <Editor
+                        value={personalContent}
+                        onChange={(value) => setPersonalContent(value || "")}
+                        language="markdown"
+                        theme={monacoTheme}
+                        onMount={(editor) => monacoEditorRef.current = editor}
+                        options={{
+                          minimap: { enabled: false },
+                          automaticLayout: true,
+                          wordWrap: "on",
+                          lineNumbers: "off",
+                          folding: false,
+                          glyphMargin: false,
+                          lineDecorationsWidth: 20,
+                          lineNumbersMinChars: 0,
+                          renderLineHighlight: "none",
+                          scrollbar: { vertical: "auto", horizontal: "auto" },
+                          padding: { top: 0, bottom: 16 },
+                          fontSize: 13,
+                          fontFamily: "var(--font-mono), monospace",
+                          scrollBeyondLastLine: false,
+                          overviewRulerBorder: false,
+                          hideCursorInOverviewRuler: true
+                        }}
+                        className={cn('h-full', 'w-full')}
+                      />
+                    </div>
                   </div>
                 )}
 
 
                 {/* LeetCode Style Footer absolute at bottom right */}
-                <div className={cn('absolute', 'bottom-0', 'left-0', 'right-0', 'flex', 'items-center', 'justify-end', 'px-5', 'py-3', 'pointer-events-none', 'bg-gradient-to-t', 'from-[#1e1e1e]', 'to-transparent', 'pt-8')}>
+                <div className={cn('absolute', 'bottom-0', 'left-0', 'right-0', 'flex', 'items-center', 'justify-end', 'px-5', 'py-3', 'pointer-events-none', 'bg-gradient-to-t', 'from-white dark:from-[#1e1e1e]', 'to-transparent', 'pt-8')}>
                   <div className={cn('flex', 'items-center', 'gap-2', 'pointer-events-auto')}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -427,7 +464,7 @@ export function ProblemNotes({ problemId, currentCode, currentLanguage, submissi
                           variant="ghost"
                           size="sm"
                           disabled={!hasSolved || isFetchingCode}
-                          className={cn('h-7', 'text-[11px]', 'px-3', 'rounded-md', 'border', 'text-zinc-300', 'bg-zinc-800/80', 'border-zinc-700/50', 'hover:bg-zinc-700/80')}
+                          className={cn('h-7', 'text-[11px]', 'px-3', 'rounded-md', 'border', 'text-zinc-800 dark:text-zinc-300', 'bg-zinc-100 dark:bg-zinc-800/80', 'border-zinc-200 dark:border-zinc-700/50', 'hover:bg-zinc-200 dark:hover:bg-zinc-700/80')}
                           title={!hasSolved ? "Solve the problem first to attach code" : "Attach Code"}
                         >
                           {isFetchingCode ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Code className={cn('w-3.5', 'h-3.5', 'mr-1.5')} />}
@@ -435,19 +472,19 @@ export function ProblemNotes({ problemId, currentCode, currentLanguage, submissi
                         </Button>
                       </DropdownMenuTrigger>
                       {hasSolved && (
-                        <DropdownMenuContent align="end" className="w-56 bg-zinc-900 border-zinc-800">
-                          <DropdownMenuLabel className="text-xs text-zinc-400 font-bold uppercase tracking-widest">Attach Code</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={handleInsertCurrentCode} className="text-zinc-200 focus:bg-zinc-800 focus:text-white cursor-pointer text-sm">
+                        <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
+                          <DropdownMenuLabel className="text-xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-widest">Attach Code</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={handleInsertCurrentCode} className="text-foreground dark:text-zinc-200 focus:bg-zinc-100 dark:focus:bg-zinc-800 focus:text-zinc-900 dark:focus:text-white cursor-pointer text-sm">
                             <Code className="w-3.5 h-3.5 mr-2" />
                             Current Editor Code
                           </DropdownMenuItem>
                           
                           {submissions && submissions.filter((s: any) => s.status === 'Accepted').length > 0 && (
                             <>
-                              <DropdownMenuSeparator className="bg-zinc-800" />
-                              <DropdownMenuLabel className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Past Submissions</DropdownMenuLabel>
+                              <DropdownMenuSeparator className="bg-zinc-100 dark:bg-zinc-800" />
+                              <DropdownMenuLabel className="text-xs text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest">Past Submissions</DropdownMenuLabel>
                               {submissions.filter((s: any) => s.status === 'Accepted').map((sub: any) => (
-                                <DropdownMenuItem key={sub.id} onClick={() => handleInsertPastSubmission(sub)} className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer text-sm">
+                                <DropdownMenuItem key={sub.id} onClick={() => handleInsertPastSubmission(sub)} className="text-zinc-800 dark:text-zinc-300 focus:bg-zinc-100 dark:focus:bg-zinc-800 focus:text-zinc-900 dark:focus:text-white cursor-pointer text-sm">
                                   <FileText className="w-3.5 h-3.5 mr-2" />
                                   Accepted ({new Date(sub.created_at).toLocaleDateString()})
                                 </DropdownMenuItem>
@@ -462,13 +499,13 @@ export function ProblemNotes({ problemId, currentCode, currentLanguage, submissi
                     <AlertDialog open={isPublicDialogOpen} onOpenChange={setIsPublicDialogOpen}>
                       <AlertDialogTrigger asChild>
                         <Button 
-                          variant="ghost"
+                          variant="ghost" 
                           size="sm"
                           disabled={!hasSolved}
                           className={cn("h-7 text-[11px] px-3 rounded-md border", 
                             isPublic 
                               ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20" 
-                              : "text-zinc-300 bg-zinc-800/80 border-zinc-700/50 hover:bg-zinc-700/80"
+                              : "text-foreground dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800/80 border-zinc-200 dark:border-zinc-700/50 hover:bg-zinc-200 dark:hover:bg-zinc-700/80"
                           )}
                           title={!hasSolved ? "Solve the problem to share your notes" : "Toggle public visibility"}
                         >
@@ -476,19 +513,19 @@ export function ProblemNotes({ problemId, currentCode, currentLanguage, submissi
                           {isPublic ? "Public Note" : "Make Public"}
                         </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+                      <AlertDialogContent className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-50">
                         <AlertDialogHeader>
-                          <AlertDialogTitle className="text-zinc-100">
+                          <AlertDialogTitle className="text-zinc-900 dark:text-zinc-100">
                             {isPublic ? "Make Note Private?" : "Make Note Public?"}
                           </AlertDialogTitle>
-                          <AlertDialogDescription className="text-zinc-400">
+                          <AlertDialogDescription className="text-muted-foreground">
                             {isPublic 
                               ? "Your note will be removed from the Community Notes feed and will only be visible to you."
                               : "Your note will be visible to everyone in the Community Notes feed who has solved this problem. Ensure your note does not contain unmarked spoilers."}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel className="bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-zinc-100">Cancel</AlertDialogCancel>
+                          <AlertDialogCancel className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-zinc-100">Cancel</AlertDialogCancel>
                           <AlertDialogAction 
                             onClick={async () => {
                               const newPublicState = !isPublic;
@@ -515,12 +552,12 @@ export function ProblemNotes({ problemId, currentCode, currentLanguage, submissi
         </>
       ) : (
         <div className={cn('flex-1', 'flex', 'flex-col', 'overflow-y-auto', 'outline-none', 'bg-muted/10')}>
-          <div className={cn('flex', 'items-center', 'justify-between', 'p-4', 'pb-2', 'sticky', 'top-0', 'bg-card/95', 'backdrop-blur', 'z-10', 'border-b', 'border-border/50')}>
+          <div className={cn('hidden md:flex', 'items-center', 'justify-between', 'p-4', 'pb-2', 'sticky', 'top-0', 'bg-card/95', 'backdrop-blur', 'z-10', 'border-b', 'border-border/50')}>
             <Button variant="ghost" size="sm" onClick={() => setShowCommunityNotes(false)} className={cn('h-8', '-ml-2', 'text-muted-foreground')}>
               <ArrowLeft className={cn('w-4', 'h-4', 'mr-1.5')} /> Back to Editor
             </Button>
-            <h2 className={cn('text-sm', 'font-semibold', 'flex', 'items-center', 'gap-2', 'text-muted-foreground')}>
-              Community Notes <Globe className={cn('w-4', 'h-4')} />
+            <h2 className={cn('text-sm', 'font-semibold', 'flex', 'items-center', 'text-muted-foreground')}>
+              Community Notes
             </h2>
           </div>
 

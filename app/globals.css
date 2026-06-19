@@ -430,3 +430,37 @@
   background-size: 200% 100%;
   animation: shimmer-sweep 1.6s ease-in-out infinite;
 }
+
+/* Style Prism tokens in light mode for readability on light backgrounds */
+html:not(.dark) pre[class*="language-"],
+html:not(.dark) code[class*="language-"] {
+  color: #000000 !important;
+  background: transparent !important;
+}
+html:not(.dark) .token.punctuation,
+html:not(.dark) .token.operator {
+  color: #000000 !important;
+}
+html:not(.dark) .token.comment {
+  color: #696c77 !important;
+}
+html:not(.dark) .token.keyword {
+  color: #0070f3 !important;
+}
+html:not(.dark) .token.string,
+html:not(.dark) .token.char {
+  color: #02823a !important;
+}
+html:not(.dark) .token.number,
+html:not(.dark) .token.boolean {
+  color: #d11515 !important;
+}
+html:not(.dark) .token.function,
+html:not(.dark) .token.class-name {
+  color: #a31515 !important;
+}
+html:not(.dark) .token.builtin,
+html:not(.dark) .token.property,
+html:not(.dark) .token.variable {
+  color: #000000 !important;
+}

@@ -116,22 +116,22 @@ export function ProblemDescriptionViewer({ content, isSpoilerMode = false }: { c
               }
 
               return (
-                <div className={cn('my-4', 'rounded-xl', 'overflow-hidden', 'border', 'border-zinc-800/80', 'bg-[#0a0a0a]', 'shadow-inner')}>
-                  <div className={cn('flex', 'items-center', 'px-3', 'py-2.5', 'bg-[#18181b]', 'border-b', 'border-zinc-800', 'select-none', 'justify-between')}>
+                <div className={cn('my-4', 'rounded-xl', 'overflow-hidden', 'border border-zinc-200 dark:border-zinc-800/80', 'bg-zinc-50 dark:bg-[#0a0a0a]', 'shadow-inner')}>
+                  <div className={cn('flex', 'items-center', 'px-3', 'py-2.5', 'bg-zinc-100 dark:bg-[#18181b]', 'border-b border-zinc-200 dark:border-zinc-800', 'select-none', 'justify-between')}>
                     <div className={cn('flex', 'gap-1.5', 'mr-3')}>
                       <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-red-500/80')} />
                       <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-yellow-500/80')} />
                       <div className={cn('w-2.5', 'h-2.5', 'rounded-full', 'bg-emerald-500/80')} />
                     </div>
                     {lang && (
-                      <span className={cn('text-[10px]', 'text-zinc-400', 'uppercase', 'tracking-widest', 'font-bold')}>
+                      <span className={cn('text-[10px]', 'text-zinc-500 dark:text-zinc-400', 'uppercase', 'tracking-widest', 'font-bold')}>
                         {lang}
                       </span>
                     )}
                   </div>
                   <div className={cn('relative')}>
                     <div className={cn('p-4', 'max-h-96', 'overflow-x-auto', 'scrollbar-thin')}>
-                      <pre className={cn('text-[13px]', 'whitespace-pre', 'leading-[1.7]', 'font-medium', 'font-mono', 'm-0', 'bg-transparent', `language-${effectiveLang}`)}>
+                      <pre className={cn('text-[13px]', 'whitespace-pre', 'leading-[1.7]', 'font-medium', 'font-mono', 'm-0', 'bg-transparent', 'text-black dark:text-zinc-100', `language-${effectiveLang}`)}>
                         {mounted ? (
                           <code className={`language-${effectiveLang}`} dangerouslySetInnerHTML={{ __html: highlightedCode }} />
                         ) : (
