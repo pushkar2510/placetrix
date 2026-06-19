@@ -166,7 +166,32 @@ export function CreateCourseClient({ initialCourse, initialModules = [], adminPr
       const latexFigure = `\n\n\\begin{figure}[h]\n  \\centering\n  \\includegraphics{${localUrl}}\n  \\caption{Attachment}\n\\end{figure}\n`
 
       const currentContent = modules[index].content ?? ""
-      updateModuleField(index, "content", currentContent + latexFigure)
+
+      const textarea = document.getElementById(`module-content-${index}`) as HTMLTextAreaElement | null
+      let newContent = currentContent + latexFigure
+
+      if (textarea) {
+        const start = textarea.selectionStart
+        const end = textarea.selectionEnd
+        const before = currentContent.substring(0, start)
+        const after = currentContent.substring(end)
+        newContent = before + latexFigure + after
+
+        // Cache vertical and horizontal scroll positions
+        const savedScrollTop = textarea.scrollTop
+        const savedScrollLeft = textarea.scrollLeft
+
+        // Restore focus, cursor, and scroll offsets after React state updates content
+        const newCursorPos = start + latexFigure.length
+        setTimeout(() => {
+          textarea.focus({ preventScroll: true })
+          textarea.setSelectionRange(newCursorPos, newCursorPos)
+          textarea.scrollTop = savedScrollTop
+          textarea.scrollLeft = savedScrollLeft
+        }, 50)
+      }
+
+      updateModuleField(index, "content", newContent)
       toast.success("Image added locally! Submit to save changes to storage.")
     } catch (err: any) {
       toast.error(err.message ?? "Failed to stage module image.")
