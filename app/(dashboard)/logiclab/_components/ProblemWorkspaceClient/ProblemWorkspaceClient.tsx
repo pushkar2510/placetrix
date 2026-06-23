@@ -1571,9 +1571,10 @@ export function ProblemWorkspaceClient({
         </TabsList>
 
         {/* Tab Content */}
-        <ScrollArea className={cn('flex-1', 'w-full', 'min-h-0', '[&_[data-slot=scroll-area-scrollbar]]:hidden', '[&_[data-radix-scroll-area-viewport]>div]:h-full')}>
-          <div className="flex-1 w-full h-full flex flex-col">
-            <TabsContent value="description" className={cn('mt-0', 'outline-none', 'p-5')}>
+        <div className="flex-1 w-full min-h-0 flex flex-col relative">
+          <TabsContent value="description" className={cn('mt-0', 'outline-none', 'flex-1', 'w-full', 'min-h-0', 'flex', 'flex-col')}>
+            <ScrollArea className="flex-1 w-full [&_[data-slot=scroll-area-scrollbar]]:hidden">
+              <div className="p-5">
               {isTransitioning ? (
                 <div className={cn('flex', 'flex-col', 'w-full', 'space-y-4', 'pt-2')}>
                   <div className={cn('h-6', 'animate-shimmer', 'rounded-md', 'w-1/3', 'mb-4')} />
@@ -1691,8 +1692,12 @@ export function ProblemWorkspaceClient({
                   </div>
                 </div>
               )}
-            </TabsContent>
-            <TabsContent value="submissions" className={cn('mt-0', 'outline-none', 'p-5')}>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+          <TabsContent value="submissions" className={cn('container-pane-submissions', 'mt-0', 'outline-none', 'flex-1', 'w-full', 'min-h-0', 'flex', 'flex-col')}>
+            <ScrollArea className="flex-1 w-full [&_[data-slot=scroll-area-scrollbar]]:hidden">
+              <div className="p-5">
               {isTransitioning ? (
                 <div className={cn('flex', 'flex-col', 'w-full', 'space-y-4', 'pt-2')}>
                   <div className={cn('h-16', 'animate-shimmer', 'rounded-lg', 'w-full', 'mb-2')} />
@@ -1717,7 +1722,7 @@ export function ProblemWorkspaceClient({
                                 }
                               }
                             }}
-                            className={`flex items-center justify-between p-3 rounded-lg border ${sub.status === "Accepted" ? "bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/5 cursor-pointer" : "bg-card border-border hover:bg-muted/60"} transition-all group`}
+                            className={`flex items-center justify-between row-submission-item p-3 rounded-lg border ${sub.status === "Accepted" ? "bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/5 cursor-pointer" : "bg-card border-border hover:bg-muted/60"} transition-all group`}
                             title={
                               canViewCode
                                 ? "Click to view submitted code"
@@ -1847,11 +1852,15 @@ export function ProblemWorkspaceClient({
                   )}
                 </div>
               )}
-            </TabsContent>
-            <TabsContent
-              value="submission_result"
-              className={cn('mt-0', 'outline-none', 'h-full')}
-            >
+              </div>
+            </ScrollArea>
+          </TabsContent>
+          <TabsContent
+            value="submission_result"
+            className={cn('mt-0', 'outline-none', 'flex-1', 'w-full', 'min-h-0', 'flex', 'flex-col')}
+          >
+            <ScrollArea className="flex-1 w-full [&_[data-slot=scroll-area-scrollbar]]:hidden">
+              <div className="p-5">
               {submitting ? (
                 <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'py-20', 'gap-4', 'animate-pulse', 'select-none')}>
                   <div className="relative">
@@ -2003,10 +2012,10 @@ export function ProblemWorkspaceClient({
 
                   const svgWidth = 500;
                   const svgHeight = 160;
-                  const paddingLeft = 45;
-                  const paddingRight = 20;
-                  const paddingTop = 20;
-                  const paddingBottom = 30;
+                  const paddingLeft = 38;
+                  const paddingRight = 10;
+                  const paddingTop = 15;
+                  const paddingBottom = 25;
 
                   const chartWidth = svgWidth - paddingLeft - paddingRight;
                   const chartHeight = svgHeight - paddingTop - paddingBottom;
@@ -2037,7 +2046,7 @@ export function ProblemWorkspaceClient({
                     : (calibratedPoints.length > 0 ? calibratedPoints[calibratedPoints.length - 1] : null);
 
                   return (
-                    <div className={cn('space-y-4', 'select-none', 'animate-in', 'fade-in-50', 'duration-300', 'pr-1', 'select-text')}>
+                    <div className={cn('container-pane-accepted', 'space-y-4', 'select-none', 'animate-in', 'fade-in-50', 'duration-300', 'pr-1', 'select-text')}>
                       {/* Header row */}
                       <div className={cn('flex', 'flex-col', 'sm:flex-row', 'sm:items-center', 'justify-between', 'gap-3', 'border-b', 'border-border/40', 'pb-3', 'select-none')}>
                         <div className="space-y-1">
@@ -2068,7 +2077,7 @@ export function ProblemWorkspaceClient({
                       </div>
 
                       {/* Metrics cards row */}
-                      <div className={cn('grid', 'grid-cols-2', 'gap-4', 'select-none')}>
+                      <div className={cn('grid', 'grid-cols-2', 'grid-metrics-accepted', 'gap-4', 'select-none')}>
                         {/* Runtime Card */}
                         <div className={cn('bg-zinc-100/70 dark:bg-zinc-900/45', 'border', 'border-border/60', 'rounded-lg', 'p-3.5', 'flex', 'flex-col', 'gap-1', 'hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors shadow-sm')}>
                           <span className={cn('text-zinc-500 dark:text-muted-foreground/60', 'text-[10px]', 'font-bold', 'uppercase', 'tracking-wider', 'flex', 'items-center', 'gap-1')}>
@@ -2264,7 +2273,7 @@ export function ProblemWorkspaceClient({
                         </div>
 
                         {/* Interactive Profiler Summary Bar */}
-                        <div className="grid grid-cols-4 gap-2 pt-2.5 border-t border-border/40 text-center text-xs select-none">
+                        <div className="grid grid-cols-4 grid-summary-accepted gap-2 pt-2.5 border-t border-border/40 text-center text-xs select-none">
                           <div className="flex flex-col items-center">
                             <span className="text-zinc-500 dark:text-muted-foreground/60 text-[9px] uppercase font-bold tracking-wider">
                               {hoveredScalingPoint ? `Test Case #${activeDetailPoint.index}` : "Peak Test Case"}
@@ -2494,18 +2503,19 @@ export function ProblemWorkspaceClient({
                   </div>
                 </div>
               ) : null}
-            </TabsContent>
-            <TabsContent value="notes" className={cn('mt-0', 'outline-none', 'flex-1', 'w-full', 'overflow-hidden', 'relative', 'flex', 'flex-col')}>
-              <ProblemNotes 
-                problemId={problem.id} 
-                currentCode={code} 
-                currentLanguage={selectedLang.name} 
-                submissions={submissions}
-                isDailyChallenge={isDailyChallenge}
-              />
-            </TabsContent>
-          </div>
-        </ScrollArea>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+          <TabsContent value="notes" className={cn('mt-0', 'outline-none', 'flex-1', 'w-full', 'overflow-hidden', 'relative', 'flex', 'flex-col')}>
+            <ProblemNotes 
+              problemId={problem.id} 
+              currentCode={code} 
+              currentLanguage={selectedLang.name} 
+              submissions={submissions}
+              isDailyChallenge={isDailyChallenge}
+            />
+          </TabsContent>
+        </div>
       </Tabs>
     </div>
   );
@@ -3296,9 +3306,21 @@ export function ProblemWorkspaceClient({
           </button>
         </div>
 
-        {/* Mobile Scrollable Panel Content */}
-        <div className="flex-1 overflow-y-auto min-h-0 bg-card p-4">
-          {mobileActiveTab === "description" && (
+        {/* Mobile Panel Content */}
+        {mobileActiveTab === "notes" ? (
+          /* Notes tab: no padding, no scroll wrapper — ProblemNotes manages its own layout */
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <ProblemNotes 
+              problemId={problem.id} 
+              currentCode={code} 
+              currentLanguage={selectedLang.name} 
+              submissions={submissions}
+              isDailyChallenge={isDailyChallenge}
+            />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto min-h-0 bg-card p-4">
+            {mobileActiveTab === "description" && (
             <div className="space-y-6">
               {/* Title & Tags */}
               <div className="space-y-3">
@@ -3397,7 +3419,7 @@ export function ProblemWorkspaceClient({
           )}
 
           {mobileActiveTab === "submissions" && (
-            <div className="space-y-2 select-text">
+            <div className="container-pane-submissions space-y-2 select-text">
               {submissions.length > 0 ? (
                 submissions.map((sub) => {
                   const isExpanded = viewingSubmission?.id === sub.id;
@@ -3414,7 +3436,7 @@ export function ProblemWorkspaceClient({
                             }
                           }
                         }}
-                        className={`flex items-center justify-between p-3 rounded-lg border ${sub.status === "Accepted" ? "bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/5 cursor-pointer" : "bg-card border-border hover:bg-muted/60"} transition-all group`}
+                        className={`flex items-center justify-between row-submission-item p-3 rounded-lg border ${sub.status === "Accepted" ? "bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/5 cursor-pointer" : "bg-card border-border hover:bg-muted/60"} transition-all group`}
                       >
                         <div className="flex items-center gap-3">
                           {sub.status === "Accepted" ? (
@@ -3501,19 +3523,10 @@ export function ProblemWorkspaceClient({
               )}
             </div>
           )}
+          </div>
+        )}
 
-          {mobileActiveTab === "notes" && (
-            <div className="h-[450px] flex flex-col relative overflow-hidden">
-              <ProblemNotes 
-                problemId={problem.id} 
-                currentCode={code} 
-                currentLanguage={selectedLang.name} 
-                submissions={submissions}
-                isDailyChallenge={isDailyChallenge}
-              />
-            </div>
-          )}
-        </div>
+
       </div>
 
       {/* Large Screen Desktop IDE */}
@@ -3852,3 +3865,4 @@ export function ProblemWorkspaceClient({
     </div>
   );
 }
+

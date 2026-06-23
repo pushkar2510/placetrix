@@ -3,15 +3,16 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
-export async function getPersonalNote(problemId: string) {
+export async function getPersonalNote(problemId: string, isDailyChallenge?: boolean) {
   const supabase = (await createClient()) as any
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { note: null, error: "Unauthorized" }
 
   // Check if user has solved
+  const submissionTable = isDailyChallenge ? "logiclab_daily_challenge_submissions" : "logiclab_problem_submissions"
   const { data: solvedData } = await supabase
-    .from("logiclab_problem_submissions")
+    .from(submissionTable)
     .select("status")
     .eq("user_id", user.id)
     .eq("problem_id", problemId)
@@ -64,15 +65,16 @@ export async function savePersonalNote(params: {
   return { success: true }
 }
 
-export async function getCommunityNotes(problemId: string) {
+export async function getCommunityNotes(problemId: string, isDailyChallenge?: boolean) {
   const supabase = (await createClient()) as any
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { notes: [], error: "Unauthorized" }
 
   // 1. Check if the user has solved this problem
+  const submissionTable = isDailyChallenge ? "logiclab_daily_challenge_submissions" : "logiclab_problem_submissions"
   const { data: solvedData } = await supabase
-    .from("logiclab_problem_submissions")
+    .from(submissionTable)
     .select("status")
     .eq("user_id", user.id)
     .eq("problem_id", problemId)

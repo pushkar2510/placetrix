@@ -1,15 +1,14 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import { getPersonalNote, savePersonalNote, getCommunityNotes, toggleUpvote } from "../../problems/[id]/notes-actions"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { 
+import { Skeleton } from "@/components/ui/skeleton"
+import {
   Loader2, Lock, ThumbsUp, Code, FileText, Globe, ArrowLeft,
-  Bold, Italic, List, ListOrdered, Quote, Heading, Link as LinkIcon, Eye, EyeOff 
+  List, ListOrdered, Link as LinkIcon, Eye, EyeOff,
+  CheckCircle2, PenLine,
 } from "lucide-react"
 import { ProblemDescriptionViewer } from "./ProblemDescriptionViewer"
 import { cn } from "@/lib/utils"
@@ -47,576 +46,644 @@ interface ProblemNotesProps {
   isDailyChallenge?: boolean
 }
 
+// ── Skeletons ─────────────────────────────────────────────────────────────────
+function NotesSkeleton() {
+  return (
+    <div className="flex flex-col gap-3 p-5 flex-1">
+      <Skeleton className="h-5 w-2/5 bg-muted/60" />
+      <Skeleton className="h-3.5 w-full bg-muted/40" />
+      <Skeleton className="h-3.5 w-5/6 bg-muted/40" />
+      <Skeleton className="h-3.5 w-4/5 bg-muted/40" />
+      <Skeleton className="h-3.5 w-full bg-muted/40" />
+      <Skeleton className="h-3.5 w-3/4 bg-muted/40" />
+      <div className="mt-4">
+        <Skeleton className="h-3.5 w-1/3 bg-muted/60 mb-2" />
+        <Skeleton className="h-20 w-full rounded-lg bg-muted/40" />
+      </div>
+      <div className="mt-2">
+        <Skeleton className="h-3.5 w-1/4 bg-muted/60 mb-2" />
+        <Skeleton className="h-3.5 w-full bg-muted/40" />
+        <Skeleton className="h-3.5 w-5/6 bg-muted/40 mt-1" />
+      </div>
+    </div>
+  )
+}
+
+function CommunityNotesSkeleton() {
+  return (
+    <div className="flex flex-col gap-4 p-4">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="rounded-xl border border-border/50 overflow-hidden">
+          <div className="flex items-center gap-2 p-3 border-b border-border/30 bg-muted/20">
+            <Skeleton className="h-6 w-6 rounded-full bg-muted/60" />
+            <Skeleton className="h-3.5 w-24 bg-muted/50" />
+            <Skeleton className="h-3.5 w-16 bg-muted/30 ml-2" />
+          </div>
+          <div className="p-4 flex flex-col gap-2">
+            <Skeleton className="h-3.5 w-full bg-muted/40" />
+            <Skeleton className="h-3.5 w-5/6 bg-muted/40" />
+            <Skeleton className="h-3.5 w-4/5 bg-muted/40" />
+            <Skeleton className="h-3.5 w-2/3 bg-muted/40" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Empty state shown when note has no content yet ────────────────────────────
+function EmptyNoteState({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center flex-1 select-none gap-4 px-8 text-center">
+      <div className="w-12 h-12 rounded-2xl bg-muted/40 border border-border/40 flex items-center justify-center">
+        <PenLine className="w-5 h-5 text-muted-foreground/50" />
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-foreground/70">No notes yet</p>
+        <p className="text-xs text-muted-foreground/60 leading-relaxed max-w-[200px]">
+          Write your approach, key insights, or paste your solution to save for later.
+        </p>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-8 text-xs rounded-lg px-4 border-dashed"
+        onClick={onStart}
+      >
+        Start writing
+      </Button>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 export function ProblemNotes({ problemId, currentCode, currentLanguage, submissions, isDailyChallenge }: ProblemNotesProps) {
   const { resolvedTheme } = useTheme()
   const monacoTheme = resolvedTheme === "light" ? "vs" : "vs-dark"
   const [showCommunityNotes, setShowCommunityNotes] = useState(false)
 
-  // Personal Note State
+  // ── Note state ────────────────────────────────────────────────────────────
   const [personalContent, setPersonalContent] = useState("")
+  const [savedContent, setSavedContent] = useState("")       // mirrors last DB save
   const [isPublic, setIsPublic] = useState(false)
+  const [savedIsPublic, setSavedIsPublic] = useState(false)  // mirrors last DB save
   const [isPublicDialogOpen, setIsPublicDialogOpen] = useState(false)
   const [attachedCode, setAttachedCode] = useState<string | null>(null)
   const [attachedLanguage, setAttachedLanguage] = useState<string | null>(null)
   const [previewMode, setPreviewMode] = useState(false)
-  
+  const [startedWriting, setStartedWriting] = useState(false) // tracks if user clicked "Start writing"
+
+  // ── Save state ────────────────────────────────────────────────────────────
   const [isSaving, setIsSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "dirty">("idle")
   const [isLoadingPersonal, setIsLoadingPersonal] = useState(true)
   const [hasSolved, setHasSolved] = useState(false)
+  const [isFetchingCode, setIsFetchingCode] = useState(false)
 
-  // Community Notes State
+  // ── Community state ───────────────────────────────────────────────────────
   const [communityNotes, setCommunityNotes] = useState<any[]>([])
   const [upvotedIds, setUpvotedIds] = useState<Set<string>>(new Set())
   const [isLoadingCommunity, setIsLoadingCommunity] = useState(false)
+  const [hasLoadedCommunity, setHasLoadedCommunity] = useState(false)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const monacoEditorRef = useRef<any>(null)
 
-  // Load Personal Note
+  // ── Dirty tracking ─────────────────────────────────────────────────────────
+  const isDirty = personalContent !== savedContent || isPublic !== savedIsPublic
+
   useEffect(() => {
-    async function load() {
-      const res = await getPersonalNote(problemId)
-      if (res.note) {
-        let loadedContent = res.note.content || ""
-        if (res.note.attached_code) {
-          const codeBlock = `\n\n\`\`\`${res.note.attached_language || 'javascript'}\n${res.note.attached_code}\n\`\`\``;
-          if (!loadedContent) {
-            loadedContent = codeBlock.trim();
-          } else if (!loadedContent.includes(res.note.attached_code)) {
-            loadedContent += codeBlock;
-          }
-        }
-        setPersonalContent(loadedContent)
-        setIsPublic(res.note.is_public ?? false)
-        setAttachedCode(res.note.attached_code || null)
-        setAttachedLanguage(res.note.attached_language || null)
-      }
-      setHasSolved(res.hasSolved ?? false)
-      setIsLoadingPersonal(false)
-    }
-    load()
+    if (saveStatus === "saved" && isDirty) setSaveStatus("dirty")
+  }, [personalContent, isPublic])
+
+  // ── Reset on problem change ───────────────────────────────────────────────
+  useEffect(() => {
+    setCommunityNotes([])
+    setHasLoadedCommunity(false)
+    setPersonalContent("")
+    setSavedContent("")
+    setIsPublic(false)
+    setSavedIsPublic(false)
+    setAttachedCode(null)
+    setAttachedLanguage(null)
+    setSaveStatus("idle")
+    setStartedWriting(false)
+    setPreviewMode(false)
   }, [problemId])
 
-  // Load Community Notes
+  // ── Load personal note ────────────────────────────────────────────────────
   useEffect(() => {
-    if (showCommunityNotes) {
+    async function load() {
+      setIsLoadingPersonal(true)
+      try {
+        const res = await getPersonalNote(problemId, isDailyChallenge)
+        if (res.note) {
+          let loadedContent = res.note.content || ""
+          if (res.note.attached_code) {
+            const codeBlock = `\n\n\`\`\`${res.note.attached_language || "javascript"}\n${res.note.attached_code}\n\`\`\``
+            if (!loadedContent) loadedContent = codeBlock.trim()
+            else if (!loadedContent.includes(res.note.attached_code)) loadedContent += codeBlock
+          }
+          setPersonalContent(loadedContent)
+          setSavedContent(loadedContent)
+          const pub = res.note.is_public ?? false
+          setIsPublic(pub)
+          setSavedIsPublic(pub)
+          setAttachedCode(res.note.attached_code || null)
+          setAttachedLanguage(res.note.attached_language || null)
+          if (loadedContent) {
+            setSaveStatus("saved")
+            setStartedWriting(true)
+          }
+        }
+        setHasSolved(res.hasSolved ?? false)
+      } catch (err) {
+        console.error("Failed to load personal note:", err)
+      } finally {
+        setIsLoadingPersonal(false)
+      }
+    }
+    load()
+  }, [problemId, isDailyChallenge])
+
+  // ── Load community notes ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (showCommunityNotes && !hasLoadedCommunity) {
       async function load() {
         setIsLoadingCommunity(true)
-        const res = await getCommunityNotes(problemId)
+        const res = await getCommunityNotes(problemId, isDailyChallenge)
         if (!res.error) {
           setCommunityNotes(res.notes)
           setUpvotedIds(new Set(res.upvotedNoteIds as string[]))
+          setHasLoadedCommunity(true)
         }
         setIsLoadingCommunity(false)
       }
       load()
     }
-  }, [showCommunityNotes, problemId])
+  }, [showCommunityNotes, problemId, hasLoadedCommunity, isDailyChallenge])
 
-  const handleSave = async (override?: { isPublic?: boolean, attachedCode?: string | null }) => {
+  // ── Save (explicit only — no auto-save) ──────────────────────────────────
+  const handleSave = useCallback(async (override?: { isPublic?: boolean }) => {
+    if (isSaving) return
     setIsSaving(true)
-    
+
+    let currentAttachedCode = attachedCode
+    let currentAttachedLanguage = attachedLanguage
+    if (currentAttachedCode && !personalContent.includes(currentAttachedCode)) {
+      currentAttachedCode = null
+      currentAttachedLanguage = null
+      setAttachedCode(null)
+      setAttachedLanguage(null)
+    }
+
     const currentIsPublic = override?.isPublic !== undefined ? override.isPublic : isPublic
-    const currentAttachedCode = override?.attachedCode !== undefined ? override.attachedCode : attachedCode
 
     const res = await savePersonalNote({
       problemId,
       content: personalContent,
       isPublic: currentIsPublic,
       attachedCode: currentAttachedCode,
-      attachedLanguage
+      attachedLanguage: currentAttachedLanguage,
     })
-    
-    if (!res.success) {
-      toast.error(res.error || "Failed to save note")
+
+    if (res.success) {
+      setSavedContent(personalContent)
+      setSavedIsPublic(currentIsPublic)
+      setSaveStatus("saved")
+      toast.success(currentIsPublic ? "Note saved & published!" : "Note saved!")
+      // Only invalidate community cache when visibility changes
+      if (currentIsPublic !== savedIsPublic) setHasLoadedCommunity(false)
+    } else {
+      toast.error(res.error || "Failed to save")
     }
     setIsSaving(false)
+  }, [isSaving, attachedCode, attachedLanguage, personalContent, isPublic, problemId, savedIsPublic])
+
+  // ── Content change → mark dirty ───────────────────────────────────────────
+  const handleContentChange = (value: string) => {
+    setPersonalContent(value)
+    if (saveStatus === "saved") setSaveStatus("dirty")
+    else if (saveStatus === "idle" && value) setSaveStatus("dirty")
   }
 
-  const [isFetchingCode, setIsFetchingCode] = useState(false)
-
+  // ── Code attachment ───────────────────────────────────────────────────────
   const handleInsertAtEnd = (codeToInsert: string, lang: string) => {
-    if (monacoEditorRef.current && codeToInsert) {
+    const targetLang = (lang || "javascript").toLowerCase()
+    const newBlock = `\n\n\`\`\`${targetLang}\n${codeToInsert}\n\`\`\`\n`
+
+    if (monacoEditorRef.current) {
       const editor = monacoEditorRef.current
       const model = editor.getModel()
-      const lineCount = model.getLineCount()
-      const lastLineLength = model.getLineMaxColumn(lineCount)
       const currentContent = model.getValue()
-      
-      const targetLang = (lang || 'javascript').toLowerCase()
-      const escapedLang = targetLang.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      const blockRegex = new RegExp(`(^|\\n)\\s*\`\`\`${escapedLang}\\b`, 'i')
-      
-      if (blockRegex.test(currentContent)) {
-        toast.error(`You have already attached a ${targetLang} solution!`)
-        return
+      const escapedLang = targetLang.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      if (new RegExp(`(^|\\n)\\s*\`\`\`${escapedLang}\\b`, "i").test(currentContent)) {
+        toast.error(`Already attached a ${targetLang} solution!`); return
       }
-      
-      const newText = `\n\n\`\`\`${targetLang}\n${codeToInsert}\n\`\`\`\n`
-      
+      const lineCount = model.getLineCount()
+      const lastCol = model.getLineMaxColumn(lineCount)
       editor.executeEdits("my-source", [{
-        range: {
-          startLineNumber: lineCount,
-          startColumn: lastLineLength,
-          endLineNumber: lineCount,
-          endColumn: lastLineLength
-        },
-        text: newText,
-        forceMoveMarkers: true
+        range: { startLineNumber: lineCount, startColumn: lastCol, endLineNumber: lineCount, endColumn: lastCol },
+        text: newBlock, forceMoveMarkers: true,
       }])
       editor.revealLine(lineCount + 5)
       editor.focus()
-      toast.success("Code inserted into your notes!")
+    } else if (textareaRef.current) {
+      handleContentChange(personalContent + newBlock)
     } else {
-      toast.error("No code to attach.")
+      toast.error("No editor found."); return
     }
+    setAttachedCode(codeToInsert)
+    setAttachedLanguage(lang)
+    if (saveStatus === "saved") setSaveStatus("dirty")
+    toast.success("Code inserted!")
   }
 
   const handleInsertCurrentCode = () => {
-    if (!hasSolved) {
-      toast.error("You must solve the problem first to attach code.")
-      return
-    }
+    if (!hasSolved) { toast.error("Solve the problem first."); return }
     handleInsertAtEnd(currentCode, currentLanguage)
   }
 
   const handleInsertPastSubmission = async (sub: any) => {
-    if (!hasSolved) {
-      toast.error("You must solve the problem first to attach code.")
-      return
-    }
+    if (!hasSolved) { toast.error("Solve the problem first."); return }
     setIsFetchingCode(true)
     try {
       const supabase = createClient()
       const { data, error } = await supabase
         .from(isDailyChallenge ? "logiclab_daily_challenge_submissions" : "logiclab_problem_submissions")
-        .select("code, language_id")
-        .eq("id", sub.id)
-        .single()
-      
-      if (error || !data) throw new Error("Submission code not found")
-      
+        .select("code, language_id").eq("id", sub.id).single()
+      if (error || !data) throw new Error("Submission not found")
       const langObj = LANGUAGES.find((l: any) => l.id === data.language_id)
-      const langStr = langObj ? langObj.value : "javascript"
-      
-      handleInsertAtEnd(data.code, langStr)
+      handleInsertAtEnd(data.code, langObj ? langObj.value : "javascript")
     } catch (e: any) {
-      toast.error("Failed to load submission: " + e.message)
+      toast.error("Failed: " + e.message)
     } finally {
       setIsFetchingCode(false)
     }
   }
 
+  // ── Upvote ─────────────────────────────────────────────────────────────────
   const handleUpvote = async (noteId: string) => {
     const isUpvoted = upvotedIds.has(noteId)
-    setUpvotedIds(prev => {
-      const next = new Set(prev)
-      if (isUpvoted) next.delete(noteId)
-      else next.add(noteId)
-      return next
-    })
-    
-    setCommunityNotes(notes => notes.map(n => {
-      if (n.id === noteId) {
-        return { ...n, upvotes_count: n.upvotes_count + (isUpvoted ? -1 : 1) }
-      }
-      return n
-    }))
-
+    setUpvotedIds((prev) => { const n = new Set(prev); isUpvoted ? n.delete(noteId) : n.add(noteId); return n })
+    setCommunityNotes((notes) => notes.map((n) => n.id === noteId ? { ...n, upvotes_count: n.upvotes_count + (isUpvoted ? -1 : 1) } : n))
     const res = await toggleUpvote(noteId)
     if (!res.success) {
       toast.error("Failed to upvote")
-      setUpvotedIds(prev => {
-        const next = new Set(prev)
-        if (isUpvoted) next.add(noteId)
-        else next.delete(noteId)
-        return next
-      })
-      setCommunityNotes(notes => notes.map(n => {
-        if (n.id === noteId) {
-          return { ...n, upvotes_count: n.upvotes_count + (isUpvoted ? 1 : -1) }
-        }
-        return n
-      }))
+      setUpvotedIds((prev) => { const n = new Set(prev); isUpvoted ? n.add(noteId) : n.delete(noteId); return n })
+      setCommunityNotes((notes) => notes.map((n) => n.id === noteId ? { ...n, upvotes_count: n.upvotes_count + (isUpvoted ? 1 : -1) } : n))
     }
   }
 
-  const monacoEditorRef = useRef<any>(null)
-  const lastSavedContentRef = useRef(personalContent)
-  const lastStateRef = useRef({ isPublic })
-
-  // Debounced Auto-Save
-  useEffect(() => {
-    if (isLoadingPersonal) {
-      lastSavedContentRef.current = personalContent
-      lastStateRef.current = { isPublic }
-      return
-    }
-    
-    const contentChanged = personalContent !== lastSavedContentRef.current
-    const stateChanged = isPublic !== lastStateRef.current.isPublic
-    
-    if (!contentChanged && !stateChanged) return
-    
-    const delay = stateChanged && !contentChanged ? 0 : 1500
-    
-    const handler = setTimeout(() => {
-      handleSave()
-      lastSavedContentRef.current = personalContent
-      lastStateRef.current = { isPublic }
-    }, delay)
-    
-    return () => clearTimeout(handler)
-  }, [personalContent, isPublic])
-
-  const insertFormat = (prefix: string, suffix: string = "") => {
+  // ── Format insertion ───────────────────────────────────────────────────────
+  const insertFormat = (prefix: string, suffix = "") => {
     if (monacoEditorRef.current) {
       const editor = monacoEditorRef.current
       const selection = editor.getSelection()
       const text = editor.getModel().getValueInRange(selection)
-      
-      const newText = prefix + text + suffix
-      editor.executeEdits("my-source", [{
-        range: selection,
-        text: newText,
-        forceMoveMarkers: true
-      }])
+      editor.executeEdits("my-source", [{ range: selection, text: prefix + text + suffix, forceMoveMarkers: true }])
       editor.focus()
-      
-      if (text.length === 0) {
-        const pos = editor.getPosition()
-        editor.setPosition({ lineNumber: pos.lineNumber, column: pos.column - suffix.length })
-      } else {
-        editor.setSelection({
-           startLineNumber: selection.startLineNumber,
-           startColumn: selection.startColumn + prefix.length,
-           endLineNumber: selection.endLineNumber,
-           endColumn: selection.startLineNumber === selection.endLineNumber 
-              ? selection.endColumn + prefix.length 
-              : selection.endColumn
-        })
-      }
+      if (!text) { const pos = editor.getPosition(); editor.setPosition({ lineNumber: pos.lineNumber, column: pos.column - suffix.length }) }
+      if (saveStatus === "saved") setSaveStatus("dirty")
       return
     }
-
-    const textarea = textareaRef.current
-    if (!textarea) return
-
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const selectedText = personalContent.substring(start, end)
-    
-    const newText = personalContent.substring(0, start) + prefix + selectedText + suffix + personalContent.substring(end)
-    setPersonalContent(newText)
-    
-    setTimeout(() => {
-      textarea.focus()
-      textarea.setSelectionRange(start + prefix.length, end + prefix.length)
-    }, 0)
+    const ta = textareaRef.current
+    if (!ta) return
+    const s = ta.selectionStart, e = ta.selectionEnd
+    const selected = personalContent.substring(s, e)
+    handleContentChange(personalContent.substring(0, s) + prefix + selected + suffix + personalContent.substring(e))
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(s + prefix.length, e + prefix.length) }, 0)
   }
 
+  // ── Save button label + style ──────────────────────────────────────────────
+  const saveLabel = isSaving ? "Saving…" : isDirty ? "Save" : saveStatus === "saved" ? "Saved ✓" : "Save"
+  const saveVariant: "default" | "outline" | "secondary" = isDirty ? "default" : "outline"
+
+  // ── Shared: Attach Code dropdown ───────────────────────────────────────────
+  const attachCodeDropdown = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" disabled={!hasSolved || isFetchingCode}
+          className="h-7 text-[12px] px-3 rounded-md font-medium shrink-0"
+          title={!hasSolved ? "Solve the problem first" : "Attach Code"}>
+          {isFetchingCode ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Attach Code"}
+        </Button>
+      </DropdownMenuTrigger>
+      {hasSolved && (
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Attach Code</DropdownMenuLabel>
+          <DropdownMenuItem onClick={handleInsertCurrentCode} className="cursor-pointer text-sm">
+            <Code className="w-3.5 h-3.5 mr-2 opacity-60" /> Current Editor Code
+          </DropdownMenuItem>
+          {submissions && submissions.filter((s: any) => s.status === "Accepted").length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Past Submissions</DropdownMenuLabel>
+              {submissions.filter((s: any) => s.status === "Accepted").map((sub: any) => (
+                <DropdownMenuItem key={sub.id} onClick={() => handleInsertPastSubmission(sub)} className="cursor-pointer text-sm">
+                  <FileText className="w-3.5 h-3.5 mr-2 opacity-60" />
+                  Accepted ({new Date(sub.created_at).toLocaleDateString()})
+                </DropdownMenuItem>
+              ))}
+            </>
+          )}
+        </DropdownMenuContent>
+      )}
+    </DropdownMenu>
+  )
+
+  // ── Shared: Make Public dialog ─────────────────────────────────────────────
+  const makePublicDialog = (
+    <AlertDialog open={isPublicDialogOpen} onOpenChange={setIsPublicDialogOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant={isPublic ? "default" : "outline"} size="sm"
+          disabled={!hasSolved}
+          className={cn("h-7 text-[12px] px-3 rounded-md font-medium shrink-0",
+            isPublic && "bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500")}
+          title={!hasSolved ? "Solve the problem to share your notes" : "Toggle visibility"}>
+          {isPublic ? "Public" : "Make Public"}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent className="bg-card border-border text-foreground">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{isPublic ? "Make Note Private?" : "Make Note Public?"}</AlertDialogTitle>
+          <AlertDialogDescription className="text-muted-foreground">
+            {isPublic
+              ? "Your note will be removed from Community Notes and only visible to you."
+              : "Your note will be visible to everyone who has solved this problem. This will also save any unsaved changes."}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              const newState = !isPublic
+              setIsPublic(newState)
+              // Explicit user action — save immediately with new visibility
+              await handleSave({ isPublic: newState })
+            }}
+            className={isPublic ? "bg-red-500 hover:bg-red-600 text-white" : "bg-emerald-500 hover:bg-emerald-600 text-white"}>
+            {isPublic ? "Make Private" : "Make Public & Save"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+
+  // ── Formatting toolbar ─────────────────────────────────────────────────────
+  const formattingToolbar = (
+    <div className="flex items-center gap-0.5 shrink-0">
+      <Button variant="ghost" size="icon" className="h-7 w-7 rounded font-serif font-bold text-[13px] text-muted-foreground hover:text-foreground" onClick={() => insertFormat("### ")} title="Heading">H</Button>
+      <Button variant="ghost" size="icon" className="h-7 w-7 rounded font-serif font-bold text-[13px] text-muted-foreground hover:text-foreground" onClick={() => insertFormat("**", "**")} title="Bold">B</Button>
+      <Button variant="ghost" size="icon" className="h-7 w-7 rounded font-serif italic text-[13px] text-muted-foreground hover:text-foreground" onClick={() => insertFormat("*", "*")} title="Italic">I</Button>
+      <div className="w-px h-4 bg-border mx-0.5" />
+      <Button variant="ghost" size="icon" className="h-7 w-7 rounded text-muted-foreground hover:text-foreground" onClick={() => insertFormat("- ")} title="Bullet List"><List className="w-3.5 h-3.5" /></Button>
+      <Button variant="ghost" size="icon" className="h-7 w-7 rounded text-muted-foreground hover:text-foreground" onClick={() => insertFormat("1. ")} title="Numbered List"><ListOrdered className="w-3.5 h-3.5" /></Button>
+      <div className="w-px h-4 bg-border mx-0.5" />
+      <Button variant="ghost" size="icon" className="h-7 w-7 rounded font-mono text-[11px] text-muted-foreground hover:text-foreground" onClick={() => insertFormat("```\n", "\n```")} title="Code Block">{"{}"}</Button>
+      <Button variant="ghost" size="icon" className="h-7 w-7 rounded text-muted-foreground hover:text-foreground" onClick={() => insertFormat("[", "](url)")} title="Link"><LinkIcon className="w-3.5 h-3.5" /></Button>
+    </div>
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className={cn('flex-1', 'h-full', 'w-full', 'flex', 'flex-col', 'bg-card', 'overflow-hidden', 'min-h-0', 'text-foreground')}>
-      {/* Mobile-only Notes/Community tab switcher */}
-      <div className="flex md:hidden bg-muted/20 shrink-0 border-b border-border/40 p-1.5 gap-2">
-        <Button
-          variant={!showCommunityNotes ? "secondary" : "ghost"}
-          size="sm"
-          onClick={() => setShowCommunityNotes(false)}
-          className="flex-1 text-[11px] font-bold h-8"
-        >
-          Write Note
-        </Button>
-        <Button
-          variant={showCommunityNotes ? "secondary" : "ghost"}
-          size="sm"
-          onClick={() => setShowCommunityNotes(true)}
-          className="flex-1 text-[11px] font-bold h-8"
-        >
-          Community Notes
-        </Button>
-      </div>
-
+    <div className="flex-1 h-full w-full flex flex-col bg-card overflow-hidden min-h-0 text-foreground">
       {!showCommunityNotes ? (
-        <>
-          {/* Minimalist LeetCode Toolbar - Hidden on Mobile to prevent clutter */}
-          <div className={cn('hidden', 'md:flex', 'items-center', 'gap-2', 'px-4', 'py-2', 'shrink-0', 'border-b', 'border-border/10')}>
-            <div className={cn('flex', 'items-center', 'gap-1')}>
-              <Button variant="ghost" size="icon" className={cn('h-6', 'w-6', 'rounded', 'text-zinc-500', 'hover:text-zinc-300', 'hover:bg-zinc-800/50')} onClick={() => insertFormat("### ")} title="Heading">
-                <span className={cn('font-serif', 'font-bold', 'text-[13px]')}>H</span>
-              </Button>
-              <Button variant="ghost" size="icon" className={cn('h-6', 'w-6', 'rounded', 'text-zinc-500', 'hover:text-zinc-300', 'hover:bg-zinc-800/50', 'font-serif', 'font-bold', 'text-[13px]')} onClick={() => insertFormat("**", "**")} title="Bold">
-                B
-              </Button>
-              <Button variant="ghost" size="icon" className={cn('h-6', 'w-6', 'rounded', 'text-zinc-500', 'hover:text-zinc-300', 'hover:bg-zinc-800/50', 'font-serif', 'italic', 'text-[13px]')} onClick={() => insertFormat("*", "*")} title="Italic">
-                I
-              </Button>
-            </div>
-            
-            <div className={cn('w-px', 'h-3', 'bg-border', 'mx-1')} />
-            
-            <div className={cn('flex', 'items-center', 'gap-1')}>
-              <Button variant="ghost" size="icon" className={cn('h-6', 'w-6', 'rounded', 'text-zinc-500', 'hover:text-zinc-300', 'hover:bg-zinc-800/50')} onClick={() => insertFormat("- ")} title="Bulleted List">
-                <List className={cn('w-3.5', 'h-3.5')} />
-              </Button>
-              <Button variant="ghost" size="icon" className={cn('h-6', 'w-6', 'rounded', 'text-zinc-500', 'hover:text-zinc-300', 'hover:bg-zinc-800/50')} onClick={() => insertFormat("1. ")} title="Numbered List">
-                <ListOrdered className={cn('w-3.5', 'h-3.5')} />
-              </Button>
-            </div>
+        <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
 
-            <div className={cn('w-px', 'h-3', 'bg-border', 'mx-1')} />
-
-            <div className={cn('flex', 'items-center', 'gap-1')}>
-              <Button variant="ghost" size="icon" className={cn('h-6', 'w-6', 'rounded', 'text-zinc-500', 'hover:text-zinc-300', 'hover:bg-zinc-800/50', 'font-serif', 'font-bold', 'text-[14px]', 'leading-none', 'pb-1')} onClick={() => insertFormat("> ")} title="Quote">
-                “
-              </Button>
-              <Button variant="ghost" size="icon" className={cn('h-6', 'w-6', 'rounded', 'text-zinc-500', 'hover:text-zinc-300', 'hover:bg-zinc-800/50', 'font-mono', 'text-[11px]')} onClick={() => insertFormat("```\n", "\n```")} title="Code Block">
-                {"{}"}
-              </Button>
-              <Button variant="ghost" size="icon" className={cn('h-6', 'w-6', 'rounded', 'text-zinc-500', 'hover:text-zinc-300', 'hover:bg-zinc-800/50')} onClick={() => insertFormat("[", "](url)")} title="Link">
-                <LinkIcon className={cn('w-3.5', 'h-3.5')} />
-              </Button>
-            </div>
-
-            <div className={cn('w-px', 'h-3', 'bg-border', 'mx-2')} />
-            
-            <Button variant="ghost" size="icon" className={cn("h-6 w-6 rounded", previewMode ? "text-emerald-500 hover:text-emerald-400 bg-emerald-500/10" : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50")} onClick={() => setPreviewMode(!previewMode)} title="Preview">
-              <Eye className={cn('w-4', 'h-4')} />
+          {/* ── Desktop toolbar ── */}
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 shrink-0 border-b border-border/20">
+            {formattingToolbar}
+            <div className="w-px h-4 bg-border mx-1" />
+            <Button variant="ghost" size="icon"
+              className={cn("h-7 w-7 rounded", previewMode ? "text-emerald-500 bg-emerald-500/10" : "text-muted-foreground hover:text-foreground")}
+              onClick={() => setPreviewMode(!previewMode)} title={previewMode ? "Exit Preview" : "Preview"}>
+              {previewMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </Button>
-            
-            <div className={cn('ml-auto', 'flex', 'items-center', 'gap-3')}>
-              <Button variant="link" size="sm" onClick={() => setShowCommunityNotes(true)} className={cn('h-auto', 'p-0', 'text-muted-foreground', 'hover:text-foreground', 'text-[11px]')}>
-                Community Notes
+            <div className="ml-auto flex items-center gap-2">
+              {/* Dirty indicator */}
+              {isDirty && !isSaving && (
+                <span className="text-[10px] text-amber-500 flex items-center gap-1 font-medium select-none">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                  Unsaved changes
+                </span>
+              )}
+              {isPublic && !isDirty && (
+                <span className="text-[10px] text-emerald-500 font-semibold border border-emerald-500/30 bg-emerald-500/10 rounded px-1.5 py-0.5 flex items-center gap-1">
+                  <Globe className="w-3 h-3" /> Public
+                </span>
+              )}
+              <Button variant="link" size="sm" onClick={() => setShowCommunityNotes(true)} className="h-auto p-0 text-muted-foreground hover:text-foreground text-[11px]">
+                Community
               </Button>
             </div>
           </div>
-          
-          {/* Editor / Preview Area */}
-          <div className={cn('flex-1', 'flex', 'flex-col', 'overflow-hidden', 'outline-none', 'min-h-0', 'bg-white dark:bg-[#1e1e1e]', 'relative')}>
+
+          {/* ── Mobile toolbar ── */}
+          <div className="flex md:hidden items-center gap-1 px-2 py-1.5 shrink-0 border-b border-border/20 overflow-x-auto">
+            {formattingToolbar}
+            <div className="w-px h-4 bg-border mx-0.5 shrink-0" />
+            <Button variant="ghost" size="icon"
+              className={cn("h-7 w-7 rounded shrink-0", previewMode ? "text-emerald-500 bg-emerald-500/10" : "text-muted-foreground hover:text-foreground")}
+              onClick={() => setPreviewMode(!previewMode)}>
+              {previewMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </Button>
+          </div>
+
+          {/* ── Editor / Preview area ── */}
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white dark:bg-[#1e1e1e] relative">
             {isLoadingPersonal ? (
-              <div className={cn('flex', 'items-center', 'justify-center', 'flex-1')}>
-                <Loader2 className={cn('w-6', 'h-6', 'animate-spin', 'text-muted-foreground')} />
+              <NotesSkeleton />
+            ) : previewMode ? (
+              <div className="flex-1 min-h-0 overflow-y-auto px-5 pt-3 pb-4">
+                {personalContent
+                  ? <ProblemDescriptionViewer content={personalContent} />
+                  : <span className="italic text-muted-foreground text-[13px]">Nothing to preview</span>}
               </div>
+            ) : !startedWriting && !personalContent ? (
+              /* ── Empty state ── */
+              <EmptyNoteState onStart={() => {
+                setStartedWriting(true)
+                setTimeout(() => {
+                  textareaRef.current?.focus()
+                  monacoEditorRef.current?.focus()
+                }, 50)
+              }} />
             ) : (
               <>
-                {previewMode ? (
-                  <div className={cn('flex-1', 'px-5', 'pt-3', 'pb-4', 'overflow-y-auto', 'md-notes-preview')}>
-                    {personalContent 
-                      ? <ProblemDescriptionViewer content={personalContent} />
-                      : <span className={cn('italic', 'text-muted-foreground', 'text-[13px]')}>Nothing to preview</span>}
-                  </div>
-                ) : (
-                  <div className={cn('relative', 'flex-1', 'min-h-0', 'flex', 'flex-col')}>
-                    {/* Mobile textarea editor (no Monaco) */}
-                    <div className="flex md:hidden flex-1 p-3">
-                      <textarea
-                        ref={textareaRef}
-                        value={personalContent}
-                        onChange={(e) => setPersonalContent(e.target.value)}
-                        placeholder="Write your notes here... (Markdown supported)"
-                        className="w-full h-full font-mono text-[13px] bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800/80 focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 rounded-md p-3 resize-none outline-none"
-                      />
+                {/* Mobile textarea */}
+                <textarea
+                  ref={textareaRef}
+                  value={personalContent}
+                  onChange={(e) => handleContentChange(e.target.value)}
+                  placeholder="Write your notes here… (Markdown supported)"
+                  autoFocus={startedWriting && !personalContent}
+                  className="flex md:hidden flex-1 w-full font-mono text-[13px] bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100 p-4 resize-none outline-none border-0 min-h-0"
+                  style={{ height: "100%" }}
+                />
+                {/* Desktop Monaco */}
+                <div className="hidden md:flex flex-1 min-h-0 flex-col relative">
+                  {!personalContent && (
+                    <div className="absolute top-1 left-5 text-zinc-500/40 text-[13px] font-mono pointer-events-none z-10">
+                      Write your notes here… (Markdown supported)
                     </div>
-
-                    {/* Desktop Monaco editor */}
-                    <div className="hidden md:block relative flex-1 min-h-0">
-                      {!personalContent && (
-                        <div className={cn('absolute', 'top-0', 'left-5', 'text-zinc-500/50', 'text-[13px]', 'font-mono', 'pointer-events-none', 'z-10')}>
-                          Write your notes here... (Markdown supported)
-                        </div>
-                      )}
-                      <Editor
-                        value={personalContent}
-                        onChange={(value) => setPersonalContent(value || "")}
-                        language="markdown"
-                        theme={monacoTheme}
-                        onMount={(editor) => monacoEditorRef.current = editor}
-                        options={{
-                          minimap: { enabled: false },
-                          automaticLayout: true,
-                          wordWrap: "on",
-                          lineNumbers: "off",
-                          folding: false,
-                          glyphMargin: false,
-                          lineDecorationsWidth: 20,
-                          lineNumbersMinChars: 0,
-                          renderLineHighlight: "none",
-                          scrollbar: { vertical: "auto", horizontal: "auto" },
-                          padding: { top: 0, bottom: 16 },
-                          fontSize: 13,
-                          fontFamily: "var(--font-mono), monospace",
-                          scrollBeyondLastLine: false,
-                          overviewRulerBorder: false,
-                          hideCursorInOverviewRuler: true
-                        }}
-                        className={cn('h-full', 'w-full')}
-                      />
-                    </div>
-                  </div>
-                )}
-
-
-                {/* LeetCode Style Footer absolute at bottom right */}
-                <div className={cn('absolute', 'bottom-0', 'left-0', 'right-0', 'flex', 'items-center', 'justify-end', 'px-5', 'py-3', 'pointer-events-none', 'bg-gradient-to-t', 'from-white dark:from-[#1e1e1e]', 'to-transparent', 'pt-8')}>
-                  <div className={cn('flex', 'items-center', 'gap-2', 'pointer-events-auto')}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost"
-                          size="sm"
-                          disabled={!hasSolved || isFetchingCode}
-                          className={cn('h-7', 'text-[11px]', 'px-3', 'rounded-md', 'border', 'text-zinc-800 dark:text-zinc-300', 'bg-zinc-100 dark:bg-zinc-800/80', 'border-zinc-200 dark:border-zinc-700/50', 'hover:bg-zinc-200 dark:hover:bg-zinc-700/80')}
-                          title={!hasSolved ? "Solve the problem first to attach code" : "Attach Code"}
-                        >
-                          {isFetchingCode ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Code className={cn('w-3.5', 'h-3.5', 'mr-1.5')} />}
-                          Attach Code
-                        </Button>
-                      </DropdownMenuTrigger>
-                      {hasSolved && (
-                        <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
-                          <DropdownMenuLabel className="text-xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-widest">Attach Code</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={handleInsertCurrentCode} className="text-foreground dark:text-zinc-200 focus:bg-zinc-100 dark:focus:bg-zinc-800 focus:text-zinc-900 dark:focus:text-white cursor-pointer text-sm">
-                            <Code className="w-3.5 h-3.5 mr-2" />
-                            Current Editor Code
-                          </DropdownMenuItem>
-                          
-                          {submissions && submissions.filter((s: any) => s.status === 'Accepted').length > 0 && (
-                            <>
-                              <DropdownMenuSeparator className="bg-zinc-100 dark:bg-zinc-800" />
-                              <DropdownMenuLabel className="text-xs text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest">Past Submissions</DropdownMenuLabel>
-                              {submissions.filter((s: any) => s.status === 'Accepted').map((sub: any) => (
-                                <DropdownMenuItem key={sub.id} onClick={() => handleInsertPastSubmission(sub)} className="text-zinc-800 dark:text-zinc-300 focus:bg-zinc-100 dark:focus:bg-zinc-800 focus:text-zinc-900 dark:focus:text-white cursor-pointer text-sm">
-                                  <FileText className="w-3.5 h-3.5 mr-2" />
-                                  Accepted ({new Date(sub.created_at).toLocaleDateString()})
-                                </DropdownMenuItem>
-                              ))}
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      )}
-                    </DropdownMenu>
-
-                    {/* Make Public Button */}
-                    <AlertDialog open={isPublicDialogOpen} onOpenChange={setIsPublicDialogOpen}>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          disabled={!hasSolved}
-                          className={cn("h-7 text-[11px] px-3 rounded-md border", 
-                            isPublic 
-                              ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20" 
-                              : "text-foreground dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800/80 border-zinc-200 dark:border-zinc-700/50 hover:bg-zinc-200 dark:hover:bg-zinc-700/80"
-                          )}
-                          title={!hasSolved ? "Solve the problem to share your notes" : "Toggle public visibility"}
-                        >
-                          {isPublic ? <Globe className={cn('w-3.5', 'h-3.5', 'mr-1.5')} /> : <Lock className={cn('w-3.5', 'h-3.5', 'mr-1.5')} />}
-                          {isPublic ? "Public Note" : "Make Public"}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-50">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="text-zinc-900 dark:text-zinc-100">
-                            {isPublic ? "Make Note Private?" : "Make Note Public?"}
-                          </AlertDialogTitle>
-                          <AlertDialogDescription className="text-muted-foreground">
-                            {isPublic 
-                              ? "Your note will be removed from the Community Notes feed and will only be visible to you."
-                              : "Your note will be visible to everyone in the Community Notes feed who has solved this problem. Ensure your note does not contain unmarked spoilers."}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-zinc-100">Cancel</AlertDialogCancel>
-                          <AlertDialogAction 
-                            onClick={async () => {
-                              const newPublicState = !isPublic;
-                              setIsPublic(newPublicState);
-                              lastStateRef.current.isPublic = newPublicState;
-                              await handleSave({ isPublic: newPublicState });
-                              if (newPublicState) {
-                                setShowCommunityNotes(true);
-                              }
-                            }}
-                            className={isPublic ? "bg-red-500 hover:bg-red-600 text-white" : "bg-emerald-500 hover:bg-emerald-600 text-white"}
-                          >
-                            {isPublic ? "Make Private" : "Make Public"}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-
-                  </div>
+                  )}
+                  <Editor
+                    value={personalContent}
+                    onChange={(v) => handleContentChange(v || "")}
+                    language="markdown"
+                    theme={monacoTheme}
+                    onMount={(editor) => { monacoEditorRef.current = editor; if (startedWriting && !personalContent) editor.focus() }}
+                    options={{
+                      minimap: { enabled: false },
+                      automaticLayout: true,
+                      wordWrap: "on",
+                      lineNumbers: "off",
+                      folding: false,
+                      glyphMargin: false,
+                      lineDecorationsWidth: 20,
+                      lineNumbersMinChars: 0,
+                      renderLineHighlight: "none",
+                      scrollbar: { vertical: "auto", horizontal: "auto" },
+                      padding: { top: 4, bottom: 80 },
+                      fontSize: 13,
+                      fontFamily: "var(--font-mono), monospace",
+                      scrollBeyondLastLine: false,
+                      overviewRulerBorder: false,
+                      hideCursorInOverviewRuler: true,
+                    }}
+                    className="h-full w-full"
+                  />
                 </div>
               </>
             )}
-          </div>
-        </>
-      ) : (
-        <div className={cn('flex-1', 'flex', 'flex-col', 'overflow-y-auto', 'outline-none', 'bg-muted/10')}>
-          <div className={cn('hidden md:flex', 'items-center', 'justify-between', 'p-4', 'pb-2', 'sticky', 'top-0', 'bg-card/95', 'backdrop-blur', 'z-10', 'border-b', 'border-border/50')}>
-            <Button variant="ghost" size="sm" onClick={() => setShowCommunityNotes(false)} className={cn('h-8', '-ml-2', 'text-muted-foreground')}>
-              <ArrowLeft className={cn('w-4', 'h-4', 'mr-1.5')} /> Back to Editor
-            </Button>
-            <h2 className={cn('text-sm', 'font-semibold', 'flex', 'items-center', 'text-muted-foreground')}>
-              Community Notes
-            </h2>
+
+            {/* Desktop floating footer */}
+            {!isLoadingPersonal && (startedWriting || !!personalContent) && (
+              <div className="hidden md:flex absolute bottom-0 left-0 right-0 items-center justify-end px-5 py-3 pointer-events-none bg-gradient-to-t from-white dark:from-[#1e1e1e] to-transparent pt-8">
+                <div className="pointer-events-auto flex items-center gap-2">
+                  <Button
+                    variant={saveVariant}
+                    size="sm"
+                    disabled={isSaving || (!isDirty && saveStatus === "saved")}
+                    onClick={() => handleSave()}
+                    className={cn(
+                      "h-7 text-[12px] px-4 rounded-md font-medium transition-all",
+                      isDirty && "shadow-sm"
+                    )}>
+                    {isSaving ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Saving…</> : saveLabel}
+                  </Button>
+                  {attachCodeDropdown}
+                  {makePublicDialog}
+                </div>
+              </div>
+            )}
           </div>
 
-          {isLoadingCommunity ? (
-            <div className={cn('flex', 'items-center', 'justify-center', 'h-32')}>
-              <Loader2 className={cn('w-6', 'h-6', 'animate-spin', 'text-muted-foreground')} />
-            </div>
-          ) : communityNotes.length === 0 ? (
-            <div className={cn('flex', 'flex-col', 'items-center', 'justify-center', 'h-full', 'text-muted-foreground', 'p-8', 'text-center', 'gap-2')}>
-              <Globe className={cn('w-10', 'h-10', 'opacity-20')} />
-              <p>No community notes available for this problem yet.</p>
-              <p className={cn('text-sm', 'opacity-70')}>Be the first to share your notes!</p>
-            </div>
-          ) : (
-            <div className={cn('flex', 'flex-col', 'gap-4', 'p-4')}>
-              {!hasSolved && (
-                <div className={cn('bg-blue-500/10', 'text-blue-600', 'dark:text-blue-400', 'p-3', 'rounded-lg', 'border', 'border-blue-500/20', 'text-sm', 'flex', 'items-start', 'gap-3')}>
-                  <Lock className={cn('w-5', 'h-5', 'shrink-0', 'mt-0.5')} />
-                  <p>You haven't solved this problem yet. Attached code solutions in community notes are hidden to prevent spoilers.</p>
-                </div>
-              )}
-              
-              {communityNotes.map((note) => (
-                <div key={note.id} className={cn('bg-card', 'border', 'border-border/50', 'rounded-xl', 'overflow-hidden', 'shadow-sm')}>
-                  <div className={cn('flex', 'items-center', 'justify-between', 'p-3', 'border-b', 'border-border/30', 'bg-muted/20')}>
-                    <div className={cn('flex', 'items-center', 'gap-2')}>
-                      <div className={cn('w-6', 'h-6', 'rounded-full', 'bg-primary/20', 'flex', 'items-center', 'justify-center', 'text-xs', 'font-bold', 'text-primary', 'shrink-0')}>
-                        {((note.profiles as any)?.display_name || (note.profiles as any)?.[0]?.display_name)?.charAt(0)?.toUpperCase() || "U"}
-                      </div>
-                      <span className={cn('text-sm', 'font-medium')}>{((note.profiles as any)?.display_name || (note.profiles as any)?.[0]?.display_name) || "Unknown User"}</span>
-                      <span className={cn('text-xs', 'text-muted-foreground', 'ml-2')}>
-                        {new Date(note.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className={cn(
-                        "h-8 gap-1.5 px-2", 
-                        upvotedIds.has(note.id) && "text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-600"
-                      )}
-                      onClick={() => handleUpvote(note.id)}
-                    >
-                      <ThumbsUp className={cn('w-3.5', 'h-3.5')} />
-                      <span className={cn('text-xs', 'font-semibold')}>{note.upvotes_count}</span>
-                    </Button>
-                  </div>
-                  
-                  <div className="p-4">
-                    {note.content ? (
-                      <ProblemDescriptionViewer content={note.content} isSpoilerMode={!hasSolved} />
-                    ) : (
-                      <p className={cn('italic', 'text-muted-foreground', 'text-sm')}>No description provided.</p>
-                    )}
-                  </div>
-                </div>
-              ))}
+          {/* ── Mobile sticky footer ── */}
+          {!isLoadingPersonal && (startedWriting || !!personalContent) && (
+            <div className="flex md:hidden shrink-0 items-center border-t border-border/30 bg-card px-2 py-2 gap-2">
+              {/* Save — left */}
+              <Button
+                variant={saveVariant}
+                size="sm"
+                disabled={isSaving || (!isDirty && saveStatus === "saved")}
+                onClick={() => handleSave()}
+                className={cn("h-8 text-[12px] px-3 rounded-md font-medium shrink-0 transition-all", isDirty && "shadow-sm")}>
+                {isSaving
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : isDirty
+                    ? "Save"
+                    : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+              </Button>
+
+              {/* Attach Code — center */}
+              <div className="flex-1 flex justify-center">
+                {attachCodeDropdown}
+              </div>
+
+              {/* Make Public + Community — right */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {makePublicDialog}
+                <Button
+                  variant="ghost" size="sm"
+                  onClick={() => setShowCommunityNotes(true)}
+                  className="h-8 w-8 p-0 rounded-md text-muted-foreground hover:text-foreground border border-border/50 shrink-0">
+                  <Globe className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             </div>
           )}
+        </div>
+      ) : (
+        // ── COMMUNITY NOTES VIEW ──────────────────────────────────────────────
+        <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 shrink-0 bg-card/95 backdrop-blur border-b border-border/50">
+            <Button variant="ghost" size="sm" onClick={() => setShowCommunityNotes(false)} className="h-8 -ml-2 text-muted-foreground gap-1 text-xs">
+              <ArrowLeft className="w-4 h-4" /> Editor
+            </Button>
+            <h2 className="text-sm font-semibold text-muted-foreground">Community Notes</h2>
+            <div className="w-16" />
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {isLoadingCommunity ? (
+              <CommunityNotesSkeleton />
+            ) : communityNotes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8 text-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-muted/40 border border-border/40 flex items-center justify-center">
+                  <Globe className="w-5 h-5 opacity-40" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold text-sm">No community notes yet</p>
+                  <p className="text-xs opacity-60">Be the first to make your note public.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4 p-4">
+                {!hasSolved && (
+                  <div className="bg-blue-500/10 text-blue-600 dark:text-blue-400 p-3 rounded-lg border border-blue-500/20 text-sm flex items-start gap-3">
+                    <Lock className="w-5 h-5 shrink-0 mt-0.5" />
+                    <p>Solve this problem to see attached code in community notes.</p>
+                  </div>
+                )}
+                {communityNotes.map((note) => (
+                  <div key={note.id} className="bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm">
+                    <div className="flex items-center justify-between p-3 border-b border-border/30 bg-muted/20">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                          {((note.profiles as any)?.display_name || (note.profiles as any)?.[0]?.display_name)?.charAt(0)?.toUpperCase() || "U"}
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium block leading-tight">
+                            {((note.profiles as any)?.display_name || (note.profiles as any)?.[0]?.display_name) || "Unknown User"}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(note.updated_at || note.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost" size="sm"
+                        className={cn("h-8 gap-1.5 px-2 rounded-lg", upvotedIds.has(note.id) && "text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-600")}
+                        onClick={() => handleUpvote(note.id)}>
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                        <span className="text-xs font-semibold">{note.upvotes_count}</span>
+                      </Button>
+                    </div>
+                    <div className="p-4">
+                      {note.content
+                        ? <ProblemDescriptionViewer content={note.content} isSpoilerMode={!hasSolved} />
+                        : <p className="italic text-muted-foreground text-sm">No content provided.</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

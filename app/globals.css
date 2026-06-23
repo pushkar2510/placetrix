@@ -464,3 +464,125 @@ html:not(.dark) .token.property,
 html:not(.dark) .token.variable {
   color: #000000 !important;
 }
+/* --- Resizable Panels Container Responsiveness for Accepted submissions --- */
+.container-pane-accepted {
+  container-type: inline-size;
+}
+
+@container (max-width: 480px) {
+  /* Stack stats cards under 480px pane width */
+  .grid-metrics-accepted {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  
+  /* Make the profiler detail panel wrap into 2 columns under 480px pane width */
+  .grid-summary-accepted {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+}
+
+@container (max-width: 320px) {
+  /* Make the profiler detail panel stack completely vertical under 320px pane width */
+  .grid-summary-accepted {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+}
+
+/* --- Resizable Panels Container Responsiveness for Submissions --- */
+.container-pane-submissions {
+  container-type: inline-size;
+}
+
+@container (max-width: 440px) {
+  /* Change submissions list item to a vertical column layout */
+  .row-submission-item {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+  
+  .row-submission-item > .text-right {
+    text-align: left !important;
+    margin-left: 28px !important; /* aligns with text next to status icon */
+  }
+  
+  .row-submission-item > .text-right > div {
+    justify-content: flex-start !important;
+    gap: 12px !important;
+  }
+}
+
+/* --- Resizable Panels Container Responsiveness for Notes --- */
+.container-pane-notes {
+  container-type: inline-size;
+}
+
+/* Base style for note button icons when text is shown vs hidden */
+.notes-btn-icon {
+  margin-right: 6px;
+}
+
+.notes-back-icon {
+  margin-right: 6px;
+}
+
+@container (max-width: 480px) {
+  /* Hide the lists formatting group to save space */
+  .notes-toolbar-group-2,
+  .notes-toolbar-divider-2 {
+    display: none !important;
+  }
+}
+
+@container (max-width: 380px) {
+  /* Hide formatting groups to leave only Preview and Community Link */
+  .notes-toolbar-group-1,
+  .notes-toolbar-divider-1,
+  .notes-toolbar-group-3,
+  .notes-toolbar-divider-3 {
+    display: none !important;
+  }
+}
+
+@container (max-width: 300px) {
+  /* Hide Community Notes text button/link, keep preview icon */
+  .notes-toolbar-community-container {
+    display: none !important;
+  }
+}
+
+@container (max-width: 280px) {
+  /* Hide text labels inside footer action buttons */
+  .notes-btn-text {
+    display: none !important;
+  }
+  .notes-btn-icon {
+    margin-right: 0 !important;
+  }
+  /* Adjust paddings for action buttons */
+  .container-pane-notes .notes-footer .h-7 {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  .notes-footer {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  
+  /* Hide Back to Editor text, keep only arrow */
+  .notes-back-text {
+    display: none !important;
+  }
+  .notes-back-icon {
+    margin-right: 0 !important;
+  }
+  
+  /* Hide Community Title to avoid clash with back arrow */
+  .notes-community-title {
+    display: none !important;
+  }
+}
+
