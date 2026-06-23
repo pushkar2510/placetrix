@@ -14,6 +14,23 @@ interface TestCaseResult {
   consoleOutput?: string
 }
 
+function estimateInputSize(input: string): number {
+  if (!input) return 0;
+  const trimmed = input.trim();
+  
+  // Clean brackets and commas commonly used in array serializations
+  const tokens = trimmed.split(/[\s,\[\]{}]+/);
+  const validTokens = tokens.filter(t => t.length > 0);
+  
+  // If we have multiple elements (like an array/list), return the token count
+  if (validTokens.length > 3) {
+    return validTokens.length;
+  }
+  
+  // For strings and single/double inputs, return the character length
+  return trimmed.length;
+}
+
 function getDeterministicMetrics(code: string, languageId: number | string) {
   let h = 0
   const cleanCode = code || ""
@@ -296,8 +313,12 @@ export async function POST(req: NextRequest) {
       const statusDesc = data.status?.description || "Unknown"
 
       const metrics = getDeterministicMetrics(code, language_id)
-      const tcMemory = metrics.memoryKb
-      const tcTime = metrics.timeMs / 1000
+      const tcMemory = (data && data.memory !== null && data.memory !== undefined)
+        ? Math.round(parseFloat(data.memory))
+        : metrics.memoryKb
+      const tcTime = (data && data.time !== null && data.time !== undefined)
+        ? parseFloat(data.time)
+        : (metrics.timeMs / 1000)
 
       const tcResult: TestCaseResult = {
         index,
@@ -355,6 +376,15 @@ export async function POST(req: NextRequest) {
       overallStatus = "Accepted"
     }
 
+    // Estimate and format time series
+    const timeSeriesData = results.map((r, idx) => ({
+      index: r.index,
+      inputSize: estimateInputSize(testCases[idx]?.input || r.input),
+      time: Math.round(parseFloat(r.time) * 1000), // convert seconds to milliseconds
+      memory: Math.round(parseFloat(r.memory)), // in KB
+      passed: r.passed
+    }))
+
     // 5. Save submission to database
     const submission: any = {
       problem_id,
@@ -366,7 +396,7 @@ export async function POST(req: NextRequest) {
       memory: parseFloat((maxMemory / 1024).toFixed(1)),
       passed_count: passedCount,
       total_count: testCases.length,
-      failed_test_case_info: failedInfo,
+      failed_test_case_info: overallStatus === "Accepted" ? { time_series: timeSeriesData } : failedInfo,
     }
 
     let savedSubmission = null
@@ -418,10 +448,11 @@ export async function POST(req: NextRequest) {
       total_count: testCases.length,
       runtime: parseFloat(totalTime.toFixed(3)),
       memory: parseFloat((maxMemory / 1024).toFixed(1)),
-      failed_test_case_info: failedInfo,
+      failed_test_case_info: overallStatus === "Accepted" ? { time_series: timeSeriesData } : failedInfo,
       submission_id: savedSubmission?.id || null,
       save_error: saveError?.message || null,
       lineOffset,
+      time_series: timeSeriesData,
       cases: sampleCases.map((sc) => ({
         index: sc.index,
         passed: sc.passed,
