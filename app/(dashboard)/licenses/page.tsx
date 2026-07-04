@@ -24,6 +24,13 @@ export default async function LicensesPage() {
       ? inst.institute_licenses[0]
       : inst.institute_licenses || null;
 
+    const now = new Date();
+    const endsAt = lic?.ends_at ? new Date(lic.ends_at) : null;
+    const effectiveStatus =
+      lic?.status === "active" && endsAt && endsAt < now
+        ? "expired"
+        : (lic?.status || null);
+
     return {
       id: inst.id,
       institute_name: inst.institute_name,
@@ -31,7 +38,7 @@ export default async function LicensesPage() {
       license: lic
         ? {
             id: lic.id,
-            status: lic.status,
+            status: effectiveStatus,
             plan_name: lic.plan_name,
             starts_at: lic.starts_at,
             ends_at: lic.ends_at,
@@ -42,7 +49,7 @@ export default async function LicensesPage() {
   });
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-8 md:px-8 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-6 px-4 py-8 md:px-8 w-full">
       <div className="flex flex-col gap-1.5">
         <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">
           License Management

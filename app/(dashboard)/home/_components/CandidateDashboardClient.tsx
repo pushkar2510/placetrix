@@ -35,6 +35,8 @@ import {
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { LicenseBanner } from "@/components/license/LicenseBanner"
+import { Suspense } from "react"
 
 interface ProblemStats {
   total: number
@@ -197,6 +199,7 @@ export function CandidateDashboardClient({
 
   return (
     <div className="flex flex-col gap-6 px-4 py-8 md:px-8 w-full animate-in fade-in duration-500">
+      <Suspense><LicenseBanner /></Suspense>
       {/* ─── Hero Welcome Banner (Using Card) ─── */}
       <Card className="relative overflow-hidden border-border/40 bg-card/50 backdrop-blur-sm shadow-sm py-6">
 

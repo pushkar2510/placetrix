@@ -24,6 +24,7 @@ export default async function DashboardLayout({
         <LicenseProvider
             license={license}
             isAdmin={profile?.account_type === "admin"}
+            user={profile}
         >
             <DashboardShell
                 sidebar={<AppSidebar user={profile} />}

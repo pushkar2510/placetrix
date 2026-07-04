@@ -17,6 +17,7 @@ import {
   CircleHelp,
   Home,
   LogOut,
+  Lock,
   Search,
   Settings,
   ShieldCheck,
@@ -67,6 +68,8 @@ import { useSidebarHoverContext } from "@/components/sidebar-hover-context"
 import { useTheme } from "next-themes"
 import { buildStorageUrl } from "@/lib/storage"
 import { version } from "@/package.json"
+import { useLicense } from "@/components/license/LicenseProvider"
+import { toast } from "sonner"
 
 
 type NavItem = {
@@ -357,18 +360,26 @@ export function NavUser({ user }: { user: UserProfile | null }) {
 export function NavMain({ items }: { items: NavItem[] }) {
   const pathname = usePathname()
   const { setOpenMobile } = useSidebar()
+  const { isActive: isLicenseActive, isAdmin, user } = useLicense()
+
+  const isCandidateUnverified = user?.account_type === "candidate" && user?.institute_verified !== true
+  const hasAccess = isAdmin || (isLicenseActive && !isCandidateUnverified)
 
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
           {items.map((item, index) => {
+            const isPremium = item.url !== "/home"
+            const isLocked = isPremium && !hasAccess
+
             if (item.items && item.items.length > 0) {
               return (
                 <Collapsible
                   key={item.title}
                   asChild
-                  defaultOpen={item.items.some(
+                  disabled={isLocked}
+                  defaultOpen={!isLocked && item.items.some(
                     (subItem) =>
                       pathname === subItem.url ||
                       pathname.startsWith(subItem.url + "/")
@@ -380,36 +391,57 @@ export function NavMain({ items }: { items: NavItem[] }) {
                     className="animate-nav-in"
                   >
                     <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip={item.title}>
-                        <item.icon className="transition-transform duration-200" />
-                        <span>{item.title}</span>
-                        <ChevronRight className="ml-auto transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] group-data-[state=open]/collapsible:rotate-90 size-4 shrink-0" />
+                      <SidebarMenuButton 
+                        tooltip={item.title}
+                        onClick={(e) => {
+                          if (isLocked) {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            const reason = isCandidateUnverified 
+                              ? "Your account is pending approval by your college TPO."
+                              : "Your institution does not have an active license."
+                            toast.error(`Feature Locked`, {
+                              description: reason
+                            })
+                          }
+                        }}
+                        className={cn(isLocked && "opacity-60 cursor-not-allowed")}
+                      >
+                        {isLocked ? (
+                          <Lock className="size-4 text-muted-foreground shrink-0" />
+                        ) : (
+                          <item.icon className="transition-transform duration-200" />
+                        )}
+                        <span className={cn(isLocked && "text-muted-foreground font-normal")}>{item.title}</span>
+                        {!isLocked && <ChevronRight className="ml-auto transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] group-data-[state=open]/collapsible:rotate-90 size-4 shrink-0" />}
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="collapsible-content" suppressHydrationWarning>
-                      <SidebarMenuSub suppressHydrationWarning>
-                        {item.items.map((subItem) => {
-                          const isSubActive = pathname === subItem.url || pathname.startsWith(subItem.url + "/")
-                          return (
-                            <SidebarMenuSubItem key={subItem.title}>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={isSubActive}
-                               className={cn(
-                                  "transition-all duration-200",
-                                  isSubActive &&
-                                  "bg-sidebar-accent/50 text-sidebar-accent-foreground font-semibold"
-                                )}
-                              >
-                                <Link href={subItem.url} onClick={() => setOpenMobile(false)}>
-                                  <span>{subItem.title}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          )
-                        })}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
+                    {!isLocked && (
+                      <CollapsibleContent className="collapsible-content" suppressHydrationWarning>
+                        <SidebarMenuSub suppressHydrationWarning>
+                          {item.items.map((subItem) => {
+                            const isSubActive = pathname === subItem.url || pathname.startsWith(subItem.url + "/")
+                            return (
+                              <SidebarMenuSubItem key={subItem.title}>
+                                <SidebarMenuSubButton
+                                  asChild
+                                  isActive={isSubActive}
+                                 className={cn(
+                                    "transition-all duration-200",
+                                    isSubActive &&
+                                    "bg-sidebar-accent/50 text-sidebar-accent-foreground font-semibold"
+                                  )}
+                                >
+                                  <Link href={subItem.url} onClick={() => setOpenMobile(false)}>
+                                    <span>{subItem.title}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            )
+                          })}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    )}
                   </SidebarMenuItem>
                 </Collapsible>
               )
@@ -423,20 +455,39 @@ export function NavMain({ items }: { items: NavItem[] }) {
               >
                 <SidebarMenuButton
                   tooltip={item.title}
-                  asChild
-                  isActive={isActive}
+                  asChild={!isLocked}
+                  isActive={isActive && !isLocked}
+                  onClick={(e) => {
+                    if (isLocked) {
+                      e.preventDefault()
+                      const reason = isCandidateUnverified 
+                        ? "Your account is pending approval by your college TPO."
+                        : "Your institution does not have an active license."
+                      toast.error(`Feature Locked`, {
+                        description: reason
+                      })
+                    }
+                  }}
                   className={cn(
                     "transition-all duration-200",
-                    isActive &&
-                    "bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold"
+                    isActive && !isLocked &&
+                    "bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold",
+                    isLocked && "opacity-60 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground"
                   )}
                 >
-                  <Link href={item.url} onClick={() => setOpenMobile(false)}>
-                    <item.icon className="transition-transform duration-200" />
-                    <span className="truncate">{item.title}</span>
-                  </Link>
+                  {isLocked ? (
+                    <div className="flex items-center gap-2 w-full">
+                      <Lock className="size-4 text-muted-foreground shrink-0" />
+                      <span className="truncate text-muted-foreground font-normal">{item.title}</span>
+                    </div>
+                  ) : (
+                    <Link href={item.url} onClick={() => setOpenMobile(false)}>
+                      <item.icon className="transition-transform duration-200" />
+                      <span className="truncate">{item.title}</span>
+                    </Link>
+                  )}
                 </SidebarMenuButton>
-                {item.badge && (
+                {item.badge && !isLocked && (
                   <SidebarMenuBadge className="italic">
                     {item.badge}
                   </SidebarMenuBadge>

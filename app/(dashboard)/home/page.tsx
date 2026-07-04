@@ -355,20 +355,17 @@ export default async function HomePage() {
     };
 
     return (
-      <>
-        <Suspense><LicenseBanner /></Suspense>
-        <CandidateDashboardClient
-          profile={candidateProfile}
-          stats={testStats}
-          globalStats={globalStats}
-          streakStats={streakStats}
-          activityCalendar={activityCalendar}
-          jobApplications={jobApplications}
-          liveTests={liveTests}
-          upcomingTests={upcomingTests}
-          todayStr={todayStr}
-        />
-      </>
+      <CandidateDashboardClient
+        profile={candidateProfile}
+        stats={testStats}
+        globalStats={globalStats}
+        streakStats={streakStats}
+        activityCalendar={activityCalendar}
+        jobApplications={jobApplications}
+        liveTests={liveTests}
+        upcomingTests={upcomingTests}
+        todayStr={todayStr}
+      />
     );
   }
 

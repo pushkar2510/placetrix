@@ -67,7 +67,9 @@ export function LicensesClient({ initialInstitutes }: LicensesClientProps) {
 
   const handleOpenDialog = (inst: InstituteWithLicense) => {
     setSelectedInstitute(inst);
-    setStatus(inst.license?.status ?? "pending");
+    // If the dynamic status is "expired", it represents an underlying DB status of "active"
+    const formStatus = inst.license?.status === "expired" ? "active" : (inst.license?.status ?? "pending");
+    setStatus(formStatus);
     setPlanName(inst.license?.plan_name ?? "Standard");
     setStartsAt(inst.license?.starts_at ? new Date(inst.license.starts_at).toISOString().split("T")[0] : "");
     setEndsAt(inst.license?.ends_at ? new Date(inst.license.ends_at).toISOString().split("T")[0] : "");
@@ -78,6 +80,11 @@ export function LicensesClient({ initialInstitutes }: LicensesClientProps) {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedInstitute) return;
+
+    if (startsAt && endsAt && new Date(endsAt) < new Date(startsAt)) {
+      toast.error("End date cannot be earlier than start date");
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -91,14 +98,14 @@ export function LicensesClient({ initialInstitutes }: LicensesClientProps) {
         };
 
         const result = await upsertInstituteLicense(payload);
-        if (result.success) {
+        if (result.success && result.license) {
           toast.success("License successfully updated for " + selectedInstitute.institute_name);
-          
-          // Update local state
+
+          // Update local state with the returned calculated license data
           setInstitutes((prev) =>
             prev.map((inst) =>
               inst.id === selectedInstitute.id
-                ? { ...inst, license: { ...payload } }
+                ? { ...inst, license: result.license }
                 : inst
             )
           );
@@ -123,6 +130,12 @@ export function LicensesClient({ initialInstitutes }: LicensesClientProps) {
         return (
           <Badge variant="destructive" className="font-medium border-0 px-2.5 py-0.5">
             Expired
+          </Badge>
+        );
+      case "revoked":
+        return (
+          <Badge variant="destructive" className="bg-rose-600 hover:bg-rose-600 font-medium border-0 px-2.5 py-0.5">
+            Revoked
           </Badge>
         );
       case "pending":
@@ -162,16 +175,17 @@ export function LicensesClient({ initialInstitutes }: LicensesClientProps) {
         </div>
       </div>
 
-      {/* Institutes Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Institutes List */}
+      <div className="flex flex-col gap-3 w-full">
         {filteredInstitutes.map((inst) => {
           const hasLicense = !!inst.license;
           return (
-            <Card key={inst.id} className="overflow-hidden hover:shadow-md transition-shadow">
-              <CardContent className="p-5 flex flex-col justify-between h-full min-h-[220px]">
-                <div className="space-y-3.5">
-                  <div className="flex items-start justify-between gap-4">
-                    <h3 className="font-semibold text-base line-clamp-2 text-foreground">
+            <Card key={inst.id} className="py-0 overflow-hidden hover:shadow-sm transition-shadow">
+              <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {/* Left: Info */}
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-semibold text-base truncate text-foreground">
                       {inst.institute_name}
                     </h3>
                     <div className="shrink-0">
@@ -180,38 +194,37 @@ export function LicensesClient({ initialInstitutes }: LicensesClientProps) {
                   </div>
 
                   {hasLicense ? (
-                    <div className="space-y-2 text-xs text-muted-foreground pt-1">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
                         <Sparkles className="h-3.5 w-3.5 text-primary" />
                         <span>Plan: <strong>{inst.license?.plan_name}</strong></span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5" />
                         <span>
-                          {formatDate(inst.license?.starts_at)} - {formatDate(inst.license?.ends_at)}
+                          {formatDate(inst.license?.starts_at ?? null)} - {formatDate(inst.license?.ends_at ?? null)}
                         </span>
                       </div>
                       {inst.license?.notes && (
-                        <div className="flex items-start gap-2 bg-muted/50 p-2 rounded mt-1 border border-border/50">
-                          <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground/80" />
-                          <p className="line-clamp-2 leading-relaxed text-[11px] text-muted-foreground">
-                            {inst.license?.notes}
-                          </p>
+                        <div className="flex items-center gap-1.5 text-muted-foreground/80 max-w-md truncate">
+                          <Info className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                          <span className="truncate">{inst.license?.notes}</span>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground/80 italic pt-1">
+                    <p className="text-xs text-muted-foreground/60 italic">
                       No active subscription setup yet.
                     </p>
                   )}
                 </div>
 
-                <div className="pt-4 mt-auto">
+                {/* Right: Actions */}
+                <div className="shrink-0 flex items-center gap-3">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full gap-1.5 h-9"
+                    className="gap-1.5 h-9"
                     onClick={() => handleOpenDialog(inst)}
                   >
                     <Edit2 className="h-3.5 w-3.5" />
@@ -224,7 +237,7 @@ export function LicensesClient({ initialInstitutes }: LicensesClientProps) {
         })}
 
         {filteredInstitutes.length === 0 && (
-          <div className="col-span-full py-12 text-center text-muted-foreground bg-muted/30 rounded-lg border border-dashed">
+          <div className="py-12 text-center text-muted-foreground bg-muted/30 rounded-lg border border-dashed">
             No colleges match your search.
           </div>
         )}
@@ -262,14 +275,14 @@ export function LicensesClient({ initialInstitutes }: LicensesClientProps) {
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   License Status
                 </label>
-                <Select value={status} onValueChange={(val) => setStatus(val as LicenseStatus)}>
+                <Select value={status ?? undefined} onValueChange={(val) => setStatus(val as LicenseStatus)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select license status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="expired">Expired</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="revoked">Revoked</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

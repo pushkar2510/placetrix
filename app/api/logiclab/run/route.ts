@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { getCachedProblemExecutionData } from "@/app/(dashboard)/logiclab/actions"
+import { getCachedProblemExecutionData } from "@/app/(dashboard)/(licensed)/logiclab/actions"
 
 function getDeterministicMetrics(code: string, languageId: number | string) {
   let h = 0

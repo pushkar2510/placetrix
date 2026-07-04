@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 
 // --- Types ---
 
-export type LicenseStatus = "active" | "expired" | "pending" | null;
+export type LicenseStatus = "active" | "expired" | "pending" | "revoked" | null;
 
 export interface InstituteLicense {
   status: LicenseStatus;
@@ -39,11 +39,17 @@ export async function getInstituteLicense(
     }
 
     const now = new Date();
+    const startsAt = data.starts_at ? new Date(data.starts_at) : null;
     const endsAt = data.ends_at ? new Date(data.ends_at) : null;
-    const effectiveStatus: LicenseStatus =
-      data.status === "active" && endsAt && endsAt < now
-        ? "expired"
-        : (data.status as LicenseStatus);
+
+    let effectiveStatus: LicenseStatus = data.status as LicenseStatus;
+    if (data.status === "active") {
+      if (startsAt && startsAt > now) {
+        effectiveStatus = "pending";
+      } else if (endsAt && endsAt < now) {
+        effectiveStatus = "expired";
+      }
+    }
 
     return {
       status: effectiveStatus,
@@ -75,14 +81,38 @@ export async function requireActiveLicense(
 ): Promise<InstituteLicense | null> {
   if (profile.account_type === "admin") return null;
 
+  // Student verification gate: candidates must be verified by TPO to access features
+  if (profile.account_type === "candidate" && profile.institute_verified !== true) {
+    redirect("/home");
+  }
+
   const license = await getLicenseForProfile(profile);
   const status = license?.status ?? null;
 
   if (status !== "active") {
-    redirect(`/home?license=${status ?? "none"}`);
+    redirect("/home");
   }
 
   return license;
+}
+
+// --- verifyActiveLicense ---
+// Helper for API routes and server actions to check active license without Next.js redirects.
+// Throws an error if the user's institute has no active license.
+export async function verifyActiveLicense(): Promise<void> {
+  const { getUserProfile } = await import("./profile");
+  const profile = await getUserProfile();
+  if (!profile) throw new Error("Unauthorized");
+  if (profile.account_type === "admin") return; // bypass
+
+  if (profile.account_type === "candidate" && profile.institute_verified !== true) {
+    throw new Error("Student verification required");
+  }
+
+  const license = await getLicenseForProfile(profile);
+  if (license?.status !== "active") {
+    throw new Error("Active institution subscription required");
+  }
 }
 
 // --- Admin Server Actions ---
@@ -130,8 +160,12 @@ export async function upsertInstituteLicense(payload: {
   const profile = await getUserProfileAdminCheck();
   if (!profile) throw new Error("Unauthorized");
 
+  if (payload.starts_at && payload.ends_at && new Date(payload.ends_at) < new Date(payload.starts_at)) {
+    throw new Error("End date cannot be earlier than start date");
+  }
+
   const supabase = await createClient();
-  const { error } = await (supabase as any)
+  const { data, error } = await (supabase as any)
     .from("institute_licenses")
     .upsert({
       institute_id: payload.institute_id,
@@ -141,7 +175,9 @@ export async function upsertInstituteLicense(payload: {
       ends_at: payload.ends_at,
       notes: payload.notes,
       updated_at: new Date().toISOString(),
-    }, { onConflict: "institute_id" });
+    }, { onConflict: "institute_id" })
+    .select("id, status, plan_name, starts_at, ends_at, notes")
+    .single();
 
   if (error) {
     console.error("[upsertInstituteLicense] Database error:", error);
@@ -149,7 +185,31 @@ export async function upsertInstituteLicense(payload: {
   }
 
   revalidatePath("/licenses");
-  return { success: true };
+
+  const now = new Date();
+  const startsAt = data.starts_at ? new Date(data.starts_at) : null;
+  const endsAt = data.ends_at ? new Date(data.ends_at) : null;
+
+  let effectiveStatus: LicenseStatus = data.status as LicenseStatus;
+  if (data.status === "active") {
+    if (startsAt && startsAt > now) {
+      effectiveStatus = "pending";
+    } else if (endsAt && endsAt < now) {
+      effectiveStatus = "expired";
+    }
+  }
+
+  return {
+    success: true,
+    license: {
+      id: data.id,
+      status: effectiveStatus,
+      plan_name: data.plan_name,
+      starts_at: data.starts_at,
+      ends_at: data.ends_at,
+      notes: data.notes,
+    },
+  };
 }
 
 // Helper to check if current user is admin

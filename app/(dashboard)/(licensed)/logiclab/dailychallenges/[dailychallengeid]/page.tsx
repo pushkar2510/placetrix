@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { redirect, notFound } from "next/navigation"
-import { ProblemWorkspaceClient } from "@/app/(dashboard)/logiclab/_components/ProblemWorkspaceClient/ProblemWorkspaceClient"
+import { ProblemWorkspaceClient } from "@/app/(dashboard)/(licensed)/logiclab/_components/ProblemWorkspaceClient/ProblemWorkspaceClient"
 
 export async function generateMetadata({ params }: { params: Promise<{ dailychallengeid: string }> }) {
   const { dailychallengeid } = await params

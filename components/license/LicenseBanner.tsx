@@ -1,10 +1,10 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useLicense } from "@/components/license/LicenseProvider";
 import { AlertTriangle, Clock, XCircle, ShieldOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type BannerVariant = "expired" | "pending" | "none" | "unverified";
+type BannerVariant = "expired" | "pending" | "none" | "unverified" | "revoked";
 
 interface BannerConfig {
   icon: React.ReactNode;
@@ -46,15 +46,44 @@ const BANNER_CONFIG: Record<BannerVariant, BannerConfig> = {
     className:
       "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300",
   },
+  revoked: {
+    icon: <XCircle className="h-4 w-4 shrink-0" />,
+    title: "License Revoked",
+    description:
+      "Your college's Placetrix license has been manually suspended or revoked. Please contact support.",
+    className:
+      "border-red-200 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300",
+  },
 };
 
 export function LicenseBanner() {
-  const searchParams = useSearchParams();
-  const licenseParam = searchParams.get("license") as BannerVariant | null;
+  const { license, user, isAdmin } = useLicense();
 
-  if (!licenseParam || !BANNER_CONFIG[licenseParam]) return null;
+  if (isAdmin) return null;
 
-  const config = BANNER_CONFIG[licenseParam];
+  let variant: BannerVariant | null = null;
+
+  // 1. License Check
+  if (!license || license.status !== "active") {
+    const status = license?.status ?? null;
+    if (status === "expired") {
+      variant = "expired";
+    } else if (status === "revoked") {
+      variant = "revoked";
+    } else if (status === "pending") {
+      variant = "pending";
+    } else {
+      variant = "none";
+    }
+  } 
+  // 2. Student Verification Check (only if license is active)
+  else if (user?.account_type === "candidate" && user?.institute_verified !== true) {
+    variant = "unverified";
+  }
+
+  if (!variant || !BANNER_CONFIG[variant]) return null;
+
+  const config = BANNER_CONFIG[variant];
 
   return (
     <div
