@@ -742,7 +742,7 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
 
           const newDisplayName = [firstName.trim(), lastName.trim()]
             .filter(Boolean).join(" ") || userProfile.display_name;
-          await (supabase as any).from("profiles").update({ display_name: newDisplayName }).eq("id", userProfile.id);
+          await (supabase as any).from("profiles").update({ display_name: newDisplayName, profile_updated: true }).eq("id", userProfile.id);
           await supabase.auth.updateUser({ data: { display_name: newDisplayName, account_type: userProfile.account_type } });
           toast.success("Personal details saved!");
         }
@@ -781,6 +781,10 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
             }
             throw error;
           }
+          await (supabase as any)
+            .from("profiles")
+            .update({ institute_id: instituteId || null })
+            .eq("id", userProfile.id);
           toast.success("Education details saved!");
         }
 
