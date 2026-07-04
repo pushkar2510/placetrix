@@ -80,7 +80,7 @@ type NavItem = {
   badge?: string
 }
 
-const VALID_ACCOUNT_TYPES: AccountType[] = ["candidate", "institute", "admin", "recruiter"]
+const VALID_ACCOUNT_TYPES: AccountType[] = ["candidate", "institute", "admin"]
 const VALID_INSTITUTE_SUBTYPES: InstituteSubtype[] = ["primary", "staff", "tpo"]
 
 
@@ -105,17 +105,10 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "Home", url: "/home", icon: Home },
     { title: "Analytics", url: "/analytics", icon: FileBarChart },
     { title: "Users", url: "/users", icon: Users },
+    { title: "Licenses", url: "/licenses", icon: ShieldCheck },
     { title: "Courses", url: "/courses", icon: BookOpen, badge: "Beta" },
     { title: "LogicLab", url: "/logiclab/admin", icon: Code },
     { title: "Support Queue", url: "/support", icon: CircleHelp },
-  ],
-  recruiter: [
-    { title: "Home", url: "/home", icon: Home },
-    { title: "Job Postings", url: "/postings", icon: Briefcase },
-    { title: "Candidates", url: "/candidates", icon: Target },
-    { title: "Drives", url: "/drives", icon: Folder },
-    { title: "Tests", url: "/tests", icon: BarChart3 },
-    { title: "LogicLab", url: "/logiclab", icon: Code },
   ],
 }
 
@@ -136,7 +129,6 @@ const NAV_INSTITUTE_SUBTYPES: Record<InstituteSubtype, NavItem[]> = {
     { title: "Home", url: "/home", icon: Home },
     { title: "Placement", url: "/placement-management", icon: Trophy },
     { title: "Drives", url: "/drives", icon: Folder },
-    { title: "Recruiters", url: "/recruiters", icon: Briefcase },
   ],
 }
 
@@ -153,7 +145,6 @@ const ROLE_LABELS: Record<AccountType, string> = {
   candidate: "Candidate",
   institute: "Institute",
   admin: "Admin",
-  recruiter: "Recruiter",
 }
 
 const INSTITUTE_SUBTYPE_LABELS: Record<InstituteSubtype, string> = {
@@ -167,7 +158,6 @@ const ROLE_COLORS: Record<AccountType, string> = {
   candidate: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   institute: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   admin: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  recruiter: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
 }
 
 const INSTITUTE_SUBTYPE_COLORS: Record<InstituteSubtype, string> = {

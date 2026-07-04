@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Suspense } from "react";
 import { RecentSupportTickets } from "./RecentSupportTickets";
 import { CandidateDashboardClient } from "./_components/CandidateDashboardClient";
+import { LicenseBanner } from "@/components/license/LicenseBanner";
 import {
   ArrowRight,
   BookOpen,
@@ -274,10 +276,7 @@ export default async function HomePage() {
           title,
           job_type,
           location,
-          work_mode,
-          profiles!inner (
-            recruiter_profiles ( company_name )
-          )
+          work_mode
         )
       `)
       .eq("candidate_id", profile.id)
@@ -287,21 +286,12 @@ export default async function HomePage() {
     const jobApplications = (apps ?? []).map((row: any) => {
       const jobData = Array.isArray(row.job_postings) ? row.job_postings[0] : row.job_postings;
 
-      let companyName = "Unknown Company";
-      if (jobData?.profiles) {
-        const p = Array.isArray(jobData.profiles) ? jobData.profiles[0] : jobData.profiles;
-        if (p?.recruiter_profiles) {
-          const rp = Array.isArray(p.recruiter_profiles) ? p.recruiter_profiles[0] : p.recruiter_profiles;
-          companyName = rp?.company_name || "Unknown Company";
-        }
-      }
-
       return {
         id: row.id,
         status: row.status,
         created_at: row.created_at,
         title: jobData?.title,
-        company_name: companyName,
+        company_name: "Unknown Company",
         location: jobData?.location,
         work_mode: jobData?.work_mode,
       };
@@ -365,17 +355,20 @@ export default async function HomePage() {
     };
 
     return (
-      <CandidateDashboardClient
-        profile={candidateProfile}
-        stats={testStats}
-        globalStats={globalStats}
-        streakStats={streakStats}
-        activityCalendar={activityCalendar}
-        jobApplications={jobApplications}
-        liveTests={liveTests}
-        upcomingTests={upcomingTests}
-        todayStr={todayStr}
-      />
+      <>
+        <Suspense><LicenseBanner /></Suspense>
+        <CandidateDashboardClient
+          profile={candidateProfile}
+          stats={testStats}
+          globalStats={globalStats}
+          streakStats={streakStats}
+          activityCalendar={activityCalendar}
+          jobApplications={jobApplications}
+          liveTests={liveTests}
+          upcomingTests={upcomingTests}
+          todayStr={todayStr}
+        />
+      </>
     );
   }
 
@@ -384,23 +377,43 @@ export default async function HomePage() {
     // Staff and TPO users resolve their parent institute's ID
     const instituteId = profile.institute_id
 
+    // Resolve the primary profile ID for this institute to get stats
+    let primaryProfileId = profile.id
+    if (profile.account_subtype !== "primary" && instituteId) {
+      const { data: primaryLink } = await (supabase as any)
+        .from("profiles")
+        .select("id")
+        .eq("institute_id", instituteId)
+        .eq("account_type", "institute")
+        .eq("account_subtype", "primary")
+        .limit(1)
+        .maybeSingle()
+      if (primaryLink?.id) {
+        primaryProfileId = primaryLink.id
+      }
+    }
+
     const { data } = await (supabase as any).rpc("get_institute_home_stats" as any, {
-      p_profile_id: instituteId,
+      p_profile_id: primaryProfileId,
     })
 
     const instituteData = data as unknown as InstituteStatsResponse
     const ip = instituteData?.profile
     const stats = instituteData?.stats
 
-    const isComplete = ip?.profile_complete === true
-    const hasBeenSaved = ip?.profile_updated === true
-    const profileReady = isComplete && hasBeenSaved
+    // Fetch the actual profile update state from profiles
+    const { data: instProfile } = await (supabase as any)
+      .from("profiles")
+      .select("profile_updated")
+      .eq("id", primaryProfileId)
+      .maybeSingle()
 
-    const profileSubtitle = !ip
+    const hasBeenSaved = instProfile?.profile_updated === true
+    const profileReady = hasBeenSaved
+
+    const profileSubtitle = !hasBeenSaved
       ? "You haven't set up your institution profile yet. Add your details to get started."
-      : !hasBeenSaved
-        ? "Your profile has been started but not saved yet."
-        : "A few required fields are still missing."
+      : ""
 
     const subtypeLabel = profile.account_subtype === "staff"
       ? "Staff"
@@ -410,6 +423,7 @@ export default async function HomePage() {
 
     return (
       <div className="flex flex-col gap-6 px-4 py-8 md:px-8">
+        <Suspense><LicenseBanner /></Suspense>
         <div className="flex flex-col gap-1.5">
           <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Home</h1>
           <p className="text-sm text-muted-foreground">
@@ -485,13 +499,11 @@ export default async function HomePage() {
     const [
       candidatesCount,
       institutesCount,
-      recruitersCount,
       pendingTicketsCount,
       recentTicketsRes
     ] = await Promise.all([
       (supabase as any).from("profiles").select("*", { count: "exact", head: true }).eq("account_type", "candidate"),
       (supabase as any).from("profiles").select("*", { count: "exact", head: true }).eq("account_type", "institute"),
-      (supabase as any).from("profiles").select("*", { count: "exact", head: true }).eq("account_type", "recruiter"),
       (supabase as any).from("tickets").select("*", { count: "exact", head: true }).in("status", ["open", "in_progress"]),
       (supabase as any).from("tickets").select("*").order("created_at", { ascending: false }).limit(5),
     ]);
@@ -499,7 +511,6 @@ export default async function HomePage() {
     const stats = {
       candidates: candidatesCount.count ?? 0,
       institutes: institutesCount.count ?? 0,
-      recruiters: recruitersCount.count ?? 0,
       pendingTickets: pendingTicketsCount.count ?? 0,
     };
 
@@ -507,6 +518,7 @@ export default async function HomePage() {
 
     return (
       <div className="flex flex-col gap-6 px-4 py-8 md:px-8">
+        <Suspense><LicenseBanner /></Suspense>
         <div className="flex flex-col gap-1.5">
           <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Home</h1>
           <p className="text-sm text-muted-foreground">
@@ -516,7 +528,7 @@ export default async function HomePage() {
 
         <div className="space-y-6">
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <StatCard
               icon={<Users className="h-4 w-4" />}
               label="Candidates"
@@ -526,11 +538,6 @@ export default async function HomePage() {
               icon={<Users className="h-4 w-4" />}
               label="Institutes"
               value={stats.institutes}
-            />
-            <StatCard
-              icon={<Users className="h-4 w-4" />}
-              label="Recruiters"
-              value={stats.recruiters}
             />
             <StatCard
               icon={<PlayCircle className="h-4 w-4" />}
@@ -557,46 +564,6 @@ export default async function HomePage() {
     );
   }
 
-  // ── Recruiter ───────────────────────────────────────────────────────────────
-  if (profile.account_type === "recruiter") {
-    const { data: rp } = await (supabase as any)
-      .from("recruiter_profiles")
-      .select("profile_complete, profile_updated")
-      .eq("profile_id", profile.id)
-      .maybeSingle();
-
-    const profileReady = rp?.profile_complete === true && rp?.profile_updated === true;
-
-    return (
-      <div className="flex flex-col gap-6 px-4 py-8 md:px-8">
-        <div className="flex flex-col gap-1.5">
-          <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Home</h1>
-          <p className="text-sm text-muted-foreground">
-            Welcome back{profile.username ? `, @${profile.username}` : ""}
-          </p>
-        </div>
-
-        <div className="space-y-6">
-          {!profileReady && (
-            <div className="rounded-lg border bg-card p-4 flex items-start justify-between gap-4">
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium">Your company profile isn&apos;t complete yet</p>
-                <p className="text-xs text-muted-foreground">
-                  Fill in your company details to unlock all recruiter features.
-                </p>
-              </div>
-              <Link href="/myprofile" className="shrink-0">
-                <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
-                  Complete Profile
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Button>
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
   return (
     <div className="p-8 text-center text-muted-foreground">
       <p>Invalid or missing account type.</p>

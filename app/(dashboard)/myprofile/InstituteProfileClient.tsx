@@ -547,12 +547,19 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
           }
           
           let instId = initialData?.id;
+          const newDisplayName = instituteName.trim() || userProfile.display_name;
+
           if (instId) {
             const { error } = await (supabase as any)
               .from("institutes")
               .update(payload)
               .eq("id", instId)
             if (error) throw error
+
+            await (supabase as any)
+              .from("profiles")
+              .update({ display_name: newDisplayName, profile_updated: true })
+              .eq("id", userProfile.id)
           } else {
             const { data: newInst, error } = await (supabase as any)
               .from("institutes")
@@ -562,14 +569,12 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
             if (error) throw error
             instId = newInst.id
 
-            const { error: linkErr } = await (supabase as any)
-              .from("institute_profiles")
-              .upsert({ profile_id: userProfile.id, institute_id: instId, profile_updated: true }, { onConflict: "profile_id" })
-            if (linkErr) throw linkErr
+            await (supabase as any)
+              .from("profiles")
+              .update({ display_name: newDisplayName, institute_id: instId, profile_updated: true })
+              .eq("id", userProfile.id)
           }
 
-          const newDisplayName = instituteName.trim() || userProfile.display_name
-          await (supabase as any).from("profiles").update({ display_name: newDisplayName }).eq("id", userProfile.id)
           await supabase.auth.updateUser({ data: { display_name: newDisplayName } })
           toast.success("Basic information saved!")
         }

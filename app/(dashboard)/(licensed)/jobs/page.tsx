@@ -16,16 +16,7 @@ export default async function JobsPage() {
 
   const { data: jobsData, error: jobsError } = await (supabase as any)
     .from("job_postings")
-    .select(`
-      *,
-      profiles!inner (
-        recruiter_profiles (
-          company_name,
-          industry,
-          company_logo_path
-        )
-      )
-    `)
+    .select(`*`)
     .eq("status", "active")
     .order("created_at", { ascending: false })
 
@@ -41,9 +32,6 @@ export default async function JobsPage() {
   const appliedJobIds = new Set<string>((applicationsData ?? []).map((a: any) => a.job_id as string))
 
   const jobs: CandidateJobPosting[] = (jobsData ?? []).map((row: any) => {
-    const rpArray = row.profiles?.recruiter_profiles
-    const rp = Array.isArray(rpArray) ? rpArray[0] : rpArray
-
     return {
       id: row.id,
       title: row.title,
@@ -58,9 +46,9 @@ export default async function JobsPage() {
       skills: row.skills ?? [],
       application_deadline: row.application_deadline,
       created_at: row.created_at,
-      company_name: rp?.company_name ?? "Unknown Company",
-      industry: rp?.industry,
-      company_logo_path: rp?.company_logo_path,
+      company_name: "Unknown Company",
+      industry: undefined,
+      company_logo_path: undefined,
     }
   })
 

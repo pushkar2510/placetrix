@@ -23,23 +23,13 @@ export default async function ResumeAnalyzerPage({
         title, 
         description, 
         requirements,
-        skills,
-        profiles!inner (
-          recruiter_profiles (
-            company_name
-          )
-        )
+        skills
       `)
       .eq("id", job_id)
       .single()
 
-    const anyData = data as any;
-    if (anyData) {
-      const rpArray = anyData.profiles?.recruiter_profiles;
-      const rp = Array.isArray(rpArray) ? rpArray[0] : rpArray;
-      const companyName = rp?.company_name ?? "Unknown Company";
-
-      prefillDescription = `Role: ${anyData.title}\nCompany: ${companyName}\n\nDescription:\n${anyData.description}${anyData.requirements ? `\n\nRequirements:\n${anyData.requirements}` : ''}${(anyData.skills && anyData.skills.length > 0) ? `\n\nSkills: ${anyData.skills.join(', ')}` : ''}`
+    if (data) {
+      prefillDescription = `Role: ${data.title}\n\nDescription:\n${data.description}${data.requirements ? `\n\nRequirements:\n${data.requirements}` : ''}${(data.skills && data.skills.length > 0) ? `\n\nSkills: ${data.skills.join(', ')}` : ''}`
     }
   }
 

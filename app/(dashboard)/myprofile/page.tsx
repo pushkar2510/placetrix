@@ -4,7 +4,6 @@ import { redirect } from "next/navigation"
 import { decryptString, maskAadhaar } from "@/lib/encryption"
 import { CandidateProfileClient } from "./CandidateProfileClient"
 import { InstituteProfileClient } from "./InstituteProfileClient"
-import { RecruiterProfileClient } from "./RecruiterProfileClient"
 import { AdminProfileClient } from "./AdminProfileClient"
 import { StaffProfileClient } from "./StaffProfileClient"
 import { TpoProfileClient } from "./TpoProfileClient"
@@ -82,21 +81,6 @@ export default async function MyProfilePage() {
       <InstituteProfileClient
         userProfile={profile}
         initialData={instituteProfile ?? null}
-      />
-    )
-  }
-
-  if (profile.account_type === "recruiter") {
-    const { data: recruiterProfile } = await (supabase as any)
-      .from("recruiter_profiles")
-      .select("*")
-      .eq("profile_id", profile.id)
-      .maybeSingle()
-
-    return (
-      <RecruiterProfileClient
-        userProfile={profile}
-        initialData={recruiterProfile ?? null}
       />
     )
   }

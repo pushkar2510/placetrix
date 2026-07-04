@@ -1,0 +1,167 @@
+"use server";
+
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import type { UserProfile } from "@/lib/supabase/profile";
+import { revalidatePath } from "next/cache";
+
+// --- Types ---
+
+export type LicenseStatus = "active" | "expired" | "pending" | null;
+
+export interface InstituteLicense {
+  status: LicenseStatus;
+  plan_name: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+}
+
+// --- getInstituteLicense ---
+export async function getInstituteLicense(
+  institute_id: string
+): Promise<InstituteLicense> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await (supabase as any)
+      .from("institute_licenses")
+      .select("status, plan_name, starts_at, ends_at")
+      .eq("institute_id", institute_id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[getInstituteLicense] Error fetching license:", error);
+      return { status: null, plan_name: null, starts_at: null, ends_at: null };
+    }
+
+    if (!data) {
+      return { status: null, plan_name: null, starts_at: null, ends_at: null };
+    }
+
+    const now = new Date();
+    const endsAt = data.ends_at ? new Date(data.ends_at) : null;
+    const effectiveStatus: LicenseStatus =
+      data.status === "active" && endsAt && endsAt < now
+        ? "expired"
+        : (data.status as LicenseStatus);
+
+    return {
+      status: effectiveStatus,
+      plan_name: data.plan_name ?? null,
+      starts_at: data.starts_at ?? null,
+      ends_at: data.ends_at ?? null,
+    };
+  } catch (e) {
+    console.error("[getInstituteLicense] Unexpected error:", e);
+    return { status: null, plan_name: null, starts_at: null, ends_at: null };
+  }
+}
+
+// --- getLicenseForProfile ---
+export async function getLicenseForProfile(
+  profile: UserProfile
+): Promise<InstituteLicense | null> {
+  if (profile.account_type === "admin") return null;
+
+  const institute_id = profile.institute_id;
+  if (!institute_id) return null;
+
+  return getInstituteLicense(institute_id);
+}
+
+// --- requireActiveLicense ---
+export async function requireActiveLicense(
+  profile: UserProfile
+): Promise<InstituteLicense | null> {
+  if (profile.account_type === "admin") return null;
+
+  const license = await getLicenseForProfile(profile);
+  const status = license?.status ?? null;
+
+  if (status !== "active") {
+    redirect(`/home?license=${status ?? "none"}`);
+  }
+
+  return license;
+}
+
+// --- Admin Server Actions ---
+
+// Fetches all institutes and their licenses. Admin role only.
+export async function getAllInstitutesAndLicenses() {
+  const profile = await getUserProfileAdminCheck();
+  if (!profile) throw new Error("Unauthorized");
+
+  const supabase = await createClient();
+  const { data, error } = await (supabase as any)
+    .from("institutes")
+    .select(`
+      id,
+      institute_name,
+      logo_path,
+      institute_licenses (
+        id,
+        status,
+        plan_name,
+        starts_at,
+        ends_at,
+        notes
+      )
+    `)
+    .order("institute_name", { ascending: true });
+
+  if (error) {
+    console.error("[getAllInstitutesAndLicenses] Database error:", error);
+    throw new Error("Failed to fetch institutes and licenses");
+  }
+
+  return data || [];
+}
+
+// Upserts a license for an institute. Admin role only.
+export async function upsertInstituteLicense(payload: {
+  institute_id: string;
+  status: LicenseStatus;
+  plan_name: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  notes: string | null;
+}) {
+  const profile = await getUserProfileAdminCheck();
+  if (!profile) throw new Error("Unauthorized");
+
+  const supabase = await createClient();
+  const { error } = await (supabase as any)
+    .from("institute_licenses")
+    .upsert({
+      institute_id: payload.institute_id,
+      status: payload.status,
+      plan_name: payload.plan_name,
+      starts_at: payload.starts_at,
+      ends_at: payload.ends_at,
+      notes: payload.notes,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "institute_id" });
+
+  if (error) {
+    console.error("[upsertInstituteLicense] Database error:", error);
+    throw new Error(error.message || "Failed to update license");
+  }
+
+  revalidatePath("/licenses");
+  return { success: true };
+}
+
+// Helper to check if current user is admin
+async function getUserProfileAdminCheck() {
+  try {
+    const { getUserProfile } = require("./profile");
+    const profile = await getUserProfile();
+    if (profile && profile.account_type === "admin") {
+      return profile;
+    }
+  } catch (e) {
+    console.error("[getUserProfileAdminCheck] Error:", e);
+  }
+  return null;
+}

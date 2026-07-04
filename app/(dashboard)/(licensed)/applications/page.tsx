@@ -9,10 +9,6 @@ export default async function ApplicationsPage() {
     redirect("/auth/login")
   }
 
-  if (profile.account_type === "recruiter") {
-    redirect("/postings")
-  }
-
   const supabase = await createClient()
 
   const { data: apps, error } = await (supabase as any)
@@ -26,10 +22,7 @@ export default async function ApplicationsPage() {
         title,
         job_type,
         location,
-        work_mode,
-        profiles!inner (
-          recruiter_profiles ( company_name )
-        )
+        work_mode
       )
     `)
     .eq("candidate_id", profile.id)
@@ -42,15 +35,6 @@ export default async function ApplicationsPage() {
   const applications: MyJobApplication[] = (apps ?? []).map((row: any) => {
     const jobData = Array.isArray(row.job_postings) ? row.job_postings[0] : row.job_postings
 
-    let companyName = "Unknown Company"
-    if (jobData?.profiles) {
-      const p = Array.isArray(jobData.profiles) ? jobData.profiles[0] : jobData.profiles
-      if (p?.recruiter_profiles) {
-        const rp = Array.isArray(p.recruiter_profiles) ? p.recruiter_profiles[0] : p.recruiter_profiles
-        companyName = rp?.company_name || "Unknown Company"
-      }
-    }
-
     return {
       id: row.id,
       status: row.status,
@@ -61,7 +45,7 @@ export default async function ApplicationsPage() {
         job_type: jobData?.job_type,
         location: jobData?.location,
         work_mode: jobData?.work_mode,
-        company_name: companyName,
+        company_name: "Unknown Company",
       }
     }
   })

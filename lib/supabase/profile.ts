@@ -9,7 +9,7 @@ import { headers } from "next/headers";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-export type AccountType = "candidate" | "institute" | "admin" | "recruiter";
+export type AccountType = "candidate" | "institute" | "admin";
 export type InstituteSubtype = "primary" | "staff" | "tpo";
 
 export interface UserProfile {
@@ -22,6 +22,7 @@ export interface UserProfile {
   account_subtype: InstituteSubtype | null;
   institute_id: string | null;
   signature_path?: string | null;
+  profile_updated?: boolean | null;
 }
 
 function isDefinitiveRevocation(error: AuthApiError): boolean {
@@ -227,11 +228,7 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
       const { data: dbProfile, error: dbError } = await (supabase as any)
         .from("profiles")
         .select(`
-          username, display_name, avatar_path, account_type, account_subtype, signature_path,
-          candidate_profiles!candidate_profiles_profile_id_fkey (institute_id),
-          staff_profiles!staff_profiles_profile_id_fkey (institute_id),
-          tpo_profiles!tpo_profiles_profile_id_fkey (institute_id),
-          institute_profiles!institute_profiles_profile_id_fkey (institute_id)
+          username, display_name, avatar_path, account_type, account_subtype, signature_path, institute_id, profile_updated
         `)
         .eq("id", built.id)
         .maybeSingle();
@@ -246,20 +243,8 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
         if (dbProfile.avatar_path !== undefined) built.avatar_path = dbProfile.avatar_path;
         if (dbProfile.account_type !== undefined) built.account_type = dbProfile.account_type as AccountType;
         if (dbProfile.account_subtype !== undefined) built.account_subtype = dbProfile.account_subtype as InstituteSubtype | null;
-        
-        const getInstituteId = (val: any) => {
-          if (!val) return null;
-          if (Array.isArray(val)) return val[0]?.institute_id || null;
-          return val.institute_id || null;
-        };
-
-        let fetchedInstituteId = null;
-        if (built.account_type === 'candidate') fetchedInstituteId = getInstituteId(dbProfile.candidate_profiles);
-        else if (built.account_subtype === 'staff') fetchedInstituteId = getInstituteId(dbProfile.staff_profiles);
-        else if (built.account_subtype === 'tpo') fetchedInstituteId = getInstituteId(dbProfile.tpo_profiles);
-        else if (built.account_type === 'institute') fetchedInstituteId = getInstituteId(dbProfile.institute_profiles);
-        
-        built.institute_id = fetchedInstituteId || null;
+        if (dbProfile.institute_id !== undefined) built.institute_id = dbProfile.institute_id;
+        if (dbProfile.profile_updated !== undefined) built.profile_updated = dbProfile.profile_updated;
         
         if (dbProfile.signature_path !== undefined) built.signature_path = dbProfile.signature_path;
         built._account_type_missing = false;

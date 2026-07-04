@@ -413,6 +413,6 @@ export default async function TestsPage(props: {
     )
   }
 
-  // Recruiter, admin, etc. — feature not yet available
+  // Other account types — feature not yet available
   return <UnderDevelopment />
 }

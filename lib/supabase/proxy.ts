@@ -24,8 +24,8 @@ const PROTECTED_PATHS = [
   "/students",
   "/placement-management",
   "/drives",
-  "/recruiters",
   "/users",
+  "/licenses",
   "/analytics",
   "/support",
   "/postings",
@@ -36,6 +36,7 @@ const PROTECTED_PATHS = [
   "/groups",
   "/myprofile",
 ] as const;
+
 
 /** Routes that should NOT be visited while authenticated. */
 const AUTH_PATHS = ["/auth"] as const;
