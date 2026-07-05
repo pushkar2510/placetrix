@@ -253,7 +253,7 @@ export function NavUser({ user }: { user: UserProfile | null }) {
               <div className="flex items-center gap-2.5 w-full" suppressHydrationWarning>
                 {user ? (
                   <>
-                    <Avatar className="h-9 w-9 rounded-lg shrink-0 border border-sidebar-border group-hover/user:border-primary/20 group-data-[state=open]/user:border-primary/20 transition-all duration-200 group-hover/user:scale-105">
+                    <Avatar className="h-9 w-9 rounded-lg shrink-0 border border-sidebar-border group-hover/user:border-primary/20 group-data-[state=open]/user:border-primary/20 transition-all duration-200 group-hover/user:scale-105 group-data-[state=collapsed]/sidebar-wrapper:h-8 group-data-[state=collapsed]/sidebar-wrapper:w-8">
                       <AvatarImage src={avatarUrl ?? undefined} alt={displayName} className="object-cover" />
                       <AvatarFallback className="rounded-lg bg-sidebar-border text-sidebar-foreground font-semibold">{initials}</AvatarFallback>
                     </Avatar>
@@ -265,7 +265,7 @@ export function NavUser({ user }: { user: UserProfile | null }) {
                   </>
                 ) : (
                   <>
-                    <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
+                    <Skeleton className="h-9 w-9 rounded-lg shrink-0 group-data-[state=collapsed]/sidebar-wrapper:h-8 group-data-[state=collapsed]/sidebar-wrapper:w-8" />
                     <div className="flex flex-col gap-1.5 flex-1 min-w-0 group-data-[state=collapsed]/sidebar-wrapper:hidden">
                       <Skeleton className="h-3.5 w-28" />
                       <Skeleton className="h-3 w-36" />

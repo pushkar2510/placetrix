@@ -57,7 +57,7 @@ export async function createCourseAction(
       updated_at: new Date().toISOString(),
     })
     .select("id")
-    .single()
+    .maybeSingle()
 
   if (courseError || !course) {
     console.error("Error creating course:", courseError)
@@ -362,7 +362,7 @@ export async function generateCertificateAction(courseId: string) {
       issued_at: new Date().toISOString(),
     })
     .select("id")
-    .single()
+    .maybeSingle()
 
   if (certError || !newCert) {
     console.error("Error generating completion certificate:", certError)

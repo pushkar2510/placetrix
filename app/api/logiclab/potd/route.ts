@@ -19,7 +19,7 @@ export async function GET() {
       .from("logiclab_daily_challenges")
       .select("id, problem_id, logiclab_problems ( id, title, difficulty )")
       .eq("date", today)
-      .single()
+      .maybeSingle()
 
     if (existingPotd) {
       return NextResponse.json({ success: true, potd: existingPotd })

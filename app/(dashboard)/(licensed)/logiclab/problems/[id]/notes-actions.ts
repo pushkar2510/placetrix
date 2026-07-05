@@ -26,7 +26,7 @@ export async function getPersonalNote(problemId: string, isDailyChallenge?: bool
     .select("*")
     .eq("user_id", user.id)
     .eq("problem_id", problemId)
-    .single()
+    .maybeSingle()
 
   if (error && error.code !== 'PGRST116') {
     return { note: null, hasSolved, error: error.message }
@@ -165,7 +165,7 @@ export async function getSubmissionCode(submissionId: string, isDailyChallenge: 
     .select("code, language_id")
     .eq("id", submissionId)
     .eq("user_id", user.id)
-    .single()
+    .maybeSingle()
 
   if (error || !data) {
     return { code: null, error: error?.message || "Submission code not found." }

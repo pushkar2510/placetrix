@@ -5,6 +5,23 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { UserProfile } from "@/lib/supabase/profile";
 import { updateCandidatePersonalDetails } from "./actions";
+import {
+  saveEducationAction,
+  deleteEducationAction,
+  saveExperienceAction,
+  deleteExperienceAction,
+  saveProjectAction,
+  deleteProjectAction,
+  saveCertificationAction,
+  deleteCertificationAction,
+  updateCandidateBioAction
+} from "./candidate-extensions-actions";
+import {
+  CandidateEducation,
+  CandidateExperience,
+  CandidateProject,
+  CandidateCertification
+} from "@/types/profile-extensions";
 import { toast } from "sonner";
 import {
   Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
@@ -20,6 +37,9 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
+} from "@/components/ui/dialog";
+import {
   Combobox, ComboboxChip, ComboboxChips, ComboboxChipsInput,
   ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem,
   ComboboxList, ComboboxValue, useComboboxAnchor,
@@ -30,6 +50,7 @@ import {
   Upload, Plus, Minus, Copy, CalendarIcon, Loader2, Camera,
   CheckCircle2, XCircle, AtSign, ShieldAlert, HelpCircle,
   Pencil, X, Info, CheckCircle, User, GraduationCap, Briefcase,
+  Link2, Trash2, Edit2, FileText, Check, FileDown, Award, FolderGit2
 } from "lucide-react";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
@@ -62,7 +83,7 @@ const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SectionId = "account" | "personal" | "education" | "professional";
+type SectionId = "account" | "personal" | "education" | "professional" | "bio";
 type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid" | "unchanged";
 
 interface InstituteOption {
@@ -75,6 +96,10 @@ interface InstituteOption {
 interface Props {
   userProfile: UserProfile;
   initialData: Record<string, any> | null;
+  educationData: CandidateEducation[];
+  experienceData: CandidateExperience[];
+  projectsData: CandidateProject[];
+  certificationsData: CandidateCertification[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -184,12 +209,19 @@ function usernameStatusMessage(status: UsernameStatus): { text: string; classNam
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function CandidateProfileClient({ userProfile, initialData }: Props) {
+export function CandidateProfileClient({
+  userProfile,
+  initialData,
+  educationData,
+  experienceData,
+  projectsData,
+  certificationsData
+}: Props) {
   const supabase = createClient();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const isFirstTime = !initialData?.profile_updated;
+  const isFirstTime = !userProfile.profile_updated;
   const [editingSection, setEditingSection] = useState<SectionId | null>(
     isFirstTime ? "personal" : null
   );
@@ -202,7 +234,7 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
   const initialUsername = useRef(userProfile.username ?? "");
 
   // Avatar
-  const storedImagePath = useRef<string | null>(initialData?.profile_image_path ?? null);
+  const storedImagePath = useRef<string | null>(userProfile.avatar_path ?? null);
   const [avatarSrc, setAvatarSrc] = useState<string | null>(
     getStorageUrl(supabase, "avatars", storedImagePath.current)
   );
@@ -226,8 +258,15 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
   const [currentAddress, setCurrentAddress] = useState(initialData?.current_address ?? "");
   const [permanentAddress, setPermanentAddress] = useState(initialData?.permanent_address ?? "");
 
-  // Education
-  const [instituteId, setInstituteId] = useState<string>(initialData?.institute_id ?? "");
+  // Bio
+  const [bio, setBio] = useState(initialData?.bio ?? "");
+
+  // Education Records extraction
+  const sscRecord = educationData?.find(e => e.type === "ssc");
+  const hscRecord = educationData?.find(e => e.type === "hsc");
+  const diplomaRecord = educationData?.find(e => e.type === "diploma");
+
+  const [instituteId, setInstituteId] = useState<string>(userProfile.institute_id ?? "");
   const [tempImageSrc, setTempImageSrc] = useState<string | null>(null);
   const [tempFileName, setTempFileName] = useState("");
 
@@ -245,32 +284,63 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
     initialData?.passout_year ? String(initialData.passout_year) : ""
   );
   const [sscPercentage, setSscPercentage] = useState(
-    initialData?.ssc_percentage != null ? String(initialData.ssc_percentage) : ""
+    sscRecord?.grade_or_percentage != null ? String(sscRecord.grade_or_percentage) : ""
   );
   const [sscPassYear, setSscPassYear] = useState(
-    initialData?.ssc_pass_year ? String(initialData.ssc_pass_year) : ""
+    sscRecord?.passout_year ? String(sscRecord.passout_year) : ""
   );
-  const [isHsc, setIsHsc] = useState(initialData?.is_hsc ?? false);
+  const [isHsc, setIsHsc] = useState(!!hscRecord);
   const [hscPercentage, setHscPercentage] = useState(
-    initialData?.hsc_percentage != null ? String(initialData.hsc_percentage) : ""
+    hscRecord?.grade_or_percentage != null ? String(hscRecord.grade_or_percentage) : ""
   );
   const [hscPassYear, setHscPassYear] = useState(
-    initialData?.hsc_pass_year ? String(initialData.hsc_pass_year) : ""
+    hscRecord?.passout_year ? String(hscRecord.passout_year) : ""
   );
-  const [isDiploma, setIsDiploma] = useState(initialData?.is_diploma ?? false);
+  const [isDiploma, setIsDiploma] = useState(!!diplomaRecord);
   const [diplomaPercentage, setDiplomaPercentage] = useState(
-    initialData?.diploma_percentage != null ? String(initialData.diploma_percentage) : ""
+    diplomaRecord?.grade_or_percentage != null ? String(diplomaRecord.grade_or_percentage) : ""
   );
   const [diplomaPassYear, setDiplomaPassYear] = useState(
-    initialData?.diploma_pass_year ? String(initialData.diploma_pass_year) : ""
+    diplomaRecord?.passout_year ? String(diplomaRecord.passout_year) : ""
   );
   const [universityPrn, setUniversityPrn] = useState(initialData?.university_prn ?? "");
+
+  // Load semester SGPAs from JSONB array
   const [sgpaValues, setSgpaValues] = useState<string[]>(
     Array.from({ length: 8 }, (_, i) => {
-      const val = initialData?.[`sgpa_sem${i + 1}`];
-      return val != null ? String(val) : "";
+      const val = initialData?.sgpa_semesters?.[i];
+      return val != null && val !== 0 ? String(val) : "";
     })
   );
+
+  // Experiences list and dialog
+  const [experiences, setExperiences] = useState<CandidateExperience[]>(experienceData || []);
+  const [experienceDialogOpen, setExperienceDialogOpen] = useState(false);
+  const [activeExperience, setActiveExperience] = useState<Partial<CandidateExperience> | null>(null);
+
+  // Projects list and dialog
+  const [projects, setProjects] = useState<CandidateProject[]>(projectsData || []);
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [activeProject, setActiveProject] = useState<Partial<CandidateProject> | null>(null);
+
+  // Certifications list and dialog
+  const [certifications, setCertifications] = useState<CandidateCertification[]>(certificationsData || []);
+  const [certificationDialogOpen, setCertificationDialogOpen] = useState(false);
+  const [activeCertification, setActiveCertification] = useState<Partial<CandidateCertification> | null>(null);
+  const [uploadingCert, setUploadingCert] = useState(false);
+
+  // Sync props data to state when Server Component re-renders
+  useEffect(() => {
+    setExperiences(experienceData || []);
+  }, [experienceData]);
+
+  useEffect(() => {
+    setProjects(projectsData || []);
+  }, [projectsData]);
+
+  useEffect(() => {
+    setCertifications(certificationsData || []);
+  }, [certificationsData]);
 
   // Professional
   const [selectedSkills, setSelectedSkills] = useState<string[]>(initialData?.skills ?? []);
@@ -297,8 +367,8 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
     initialData?.gender && initialData?.phone_number && initialData?.date_of_birth
   );
   const educationComplete = !!(
-    initialData?.institute_id && initialData?.course_name &&
-    initialData?.passout_year && initialData?.ssc_percentage
+    userProfile.institute_id && initialData?.course_name &&
+    initialData?.passout_year && sscRecord?.grade_or_percentage
   );
   const professionalComplete = !!(initialData?.skills?.length > 0);
 
@@ -336,8 +406,8 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
         .order("institute_name");
       if (data) {
         setInstitutes(data);
-        if (initialData?.institute_id) {
-          const found = data.find((i: any) => i.id === initialData.institute_id);
+        if (userProfile.institute_id) {
+          const found = data.find((i: any) => i.id === userProfile.institute_id);
           if (found) {
             setInstituteName(found.institute_name);
             setAvailableCourses(found.courses ?? []);
@@ -347,6 +417,19 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
       }
     })();
   }, []);
+
+  // Sync state when userProfile.institute_id updates from router.refresh()
+  useEffect(() => {
+    if (userProfile.institute_id && institutes.length > 0) {
+      const found = institutes.find((i) => i.id === userProfile.institute_id);
+      if (found && found.id !== instituteId) {
+        setInstituteId(found.id);
+        setInstituteName(found.institute_name);
+        setAvailableCourses(found.courses ?? []);
+        setSelectedAffiliation(found.affiliation ?? null);
+      }
+    }
+  }, [userProfile.institute_id, institutes]);
 
   useEffect(() => {
     const found = institutes.find((i) => i.id === instituteId);
@@ -385,26 +468,29 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
       setCurrentAddress(initialData?.current_address ?? "");
       setPermanentAddress(initialData?.permanent_address ?? "");
     } else if (section === "education") {
-      setInstituteId(initialData?.institute_id ?? "");
+      setInstituteId(userProfile.institute_id ?? "");
       setCourseName(initialData?.course_name ?? "");
       setPassoutYear(initialData?.passout_year ? String(initialData.passout_year) : "");
-      setSscPercentage(initialData?.ssc_percentage != null ? String(initialData.ssc_percentage) : "");
-      setSscPassYear(initialData?.ssc_pass_year ? String(initialData.ssc_pass_year) : "");
-      setIsHsc(initialData?.is_hsc ?? false);
-      setHscPercentage(initialData?.hsc_percentage != null ? String(initialData.hsc_percentage) : "");
-      setHscPassYear(initialData?.hsc_pass_year ? String(initialData.hsc_pass_year) : "");
-      setIsDiploma(initialData?.is_diploma ?? false);
-      setDiplomaPercentage(initialData?.diploma_percentage != null ? String(initialData.diploma_percentage) : "");
-      setDiplomaPassYear(initialData?.diploma_pass_year ? String(initialData.diploma_pass_year) : "");
+      setSscPercentage(sscRecord?.grade_or_percentage != null ? String(sscRecord.grade_or_percentage) : "");
+      setSscPassYear(sscRecord?.passout_year ? String(sscRecord.passout_year) : "");
+      setIsHsc(!!hscRecord);
+      setHscPercentage(hscRecord?.grade_or_percentage != null ? String(hscRecord.grade_or_percentage) : "");
+      setHscPassYear(hscRecord?.passout_year ? String(hscRecord.passout_year) : "");
+      setIsDiploma(!!diplomaRecord);
+      setDiplomaPercentage(diplomaRecord?.grade_or_percentage != null ? String(diplomaRecord.grade_or_percentage) : "");
+      setDiplomaPassYear(diplomaRecord?.passout_year ? String(diplomaRecord.passout_year) : "");
       setUniversityPrn(initialData?.university_prn ?? "");
       setSgpaValues(Array.from({ length: 8 }, (_, i) => {
-        const val = initialData?.[`sgpa_sem${i + 1}`]; return val != null ? String(val) : "";
+        const val = initialData?.sgpa_semesters?.[i];
+        return val != null && val !== 0 ? String(val) : "";
       }));
     } else if (section === "professional") {
       setSelectedSkills(initialData?.skills ?? []);
       setLinkedinUrl(initialData?.linkedin_url ?? "");
       setGithubUrl(initialData?.github_url ?? "");
       setPortfolioLinks(initialData?.portfolio_links?.length ? initialData.portfolio_links : [""]);
+    } else if (section === "bio") {
+      setBio(initialData?.bio ?? "");
     }
     setEditingSection(null);
   }
@@ -453,11 +539,10 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
       if (uploadError) throw uploadError;
 
       const { error: dbError } = await (supabase as any)
-        .from("candidate_profiles")
-        .upsert({ profile_id: userProfile.id, profile_image_path: newPath }, { onConflict: "profile_id" });
+        .from("profiles")
+        .update({ avatar_path: newPath })
+        .eq("id", userProfile.id);
       if (dbError) throw dbError;
-
-      await (supabase as any).from("profiles").update({ avatar_path: newPath }).eq("id", userProfile.id);
       await supabase.auth.updateUser({ data: { avatar_path: newPath } });
 
       storedImagePath.current = newPath;
@@ -736,7 +821,6 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
             aadhaar_number: aadhaarNumber.trim() || null,
             current_address: currentAddress.trim() || null,
             permanent_address: permanentAddress.trim() || null,
-            profile_updated: true,
           };
           await updateCandidatePersonalDetails(payload);
 
@@ -748,40 +832,112 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
         }
 
         else if (section === "education") {
-          const { error } = await (supabase as any)
+          // 1. Save main profile details
+          const { error: profileError } = await (supabase as any)
             .from("candidate_profiles")
-            .update({
-              institute_id: instituteId || null,
+            .upsert({
+              profile_id: userProfile.id,
               course_name: courseName || null,
               passout_year: passoutYear ? Number(passoutYear) : null,
-              ssc_percentage: sscPercentage ? Number(sscPercentage) : null,
-              ssc_pass_year: sscPassYear ? Number(sscPassYear) : null,
-              is_hsc: isHsc,
-              hsc_percentage: isHsc && hscPercentage ? Number(hscPercentage) : null,
-              hsc_pass_year: isHsc && hscPassYear ? Number(hscPassYear) : null,
-              is_diploma: isDiploma,
-              diploma_percentage: isDiploma && diplomaPercentage ? Number(diplomaPercentage) : null,
-              diploma_pass_year: isDiploma && diplomaPassYear ? Number(diplomaPassYear) : null,
               university_prn: universityPrn.trim() || null,
-              sgpa_sem1: sgpaValues[0] ? Number(sgpaValues[0]) : null,
-              sgpa_sem2: sgpaValues[1] ? Number(sgpaValues[1]) : null,
-              sgpa_sem3: sgpaValues[2] ? Number(sgpaValues[2]) : null,
-              sgpa_sem4: sgpaValues[3] ? Number(sgpaValues[3]) : null,
-              sgpa_sem5: sgpaValues[4] ? Number(sgpaValues[4]) : null,
-              sgpa_sem6: sgpaValues[5] ? Number(sgpaValues[5]) : null,
-              sgpa_sem7: sgpaValues[6] ? Number(sgpaValues[6]) : null,
-              sgpa_sem8: sgpaValues[7] ? Number(sgpaValues[7]) : null,
-              profile_updated: true,
-            })
-            .eq("profile_id", userProfile.id);
-          if (error) {
-            if (error.code === "PGRST116") {
+              sgpa_semesters: sgpaValues.map((v) => v ? Number(v) : 0),
+            }, { onConflict: 'profile_id' });
+            
+          await (supabase as any)
+            .from("profiles")
+            .update({ institute_id: instituteId || null })
+            .eq("id", userProfile.id);
+          if (profileError) {
+            if (profileError.code === "PGRST116") {
               toast.error("Please save Personal Details first.");
               return;
             }
-            throw error;
+            throw profileError;
+          }
+
+          // 2. Save SSC Education
+          if (sscPercentage && sscPassYear) {
+            const { data: sscExist } = await (supabase as any)
+              .from("candidate_education")
+              .select("id")
+              .eq("profile_id", userProfile.id)
+              .eq("type", "ssc")
+              .maybeSingle();
+
+            const { error: sscError } = await (supabase as any)
+              .from("candidate_education")
+              .upsert({
+                id: sscExist?.id || undefined,
+                profile_id: userProfile.id,
+                type: "ssc",
+                institution_name: "High School",
+                grade_or_percentage: Number(sscPercentage),
+                passout_year: Number(sscPassYear),
+              });
+            if (sscError) throw sscError;
+          }
+
+          // 3. Save HSC Education
+          if (isHsc && hscPercentage && hscPassYear) {
+            const { data: hscExist } = await (supabase as any)
+              .from("candidate_education")
+              .select("id")
+              .eq("profile_id", userProfile.id)
+              .eq("type", "hsc")
+              .maybeSingle();
+
+            const { error: hscError } = await (supabase as any)
+              .from("candidate_education")
+              .upsert({
+                id: hscExist?.id || undefined,
+                profile_id: userProfile.id,
+                type: "hsc",
+                institution_name: "Junior College",
+                grade_or_percentage: Number(hscPercentage),
+                passout_year: Number(hscPassYear),
+              });
+            if (hscError) throw hscError;
+          } else {
+            await (supabase as any)
+              .from("candidate_education")
+              .delete()
+              .eq("profile_id", userProfile.id)
+              .eq("type", "hsc");
+          }
+
+          // 4. Save Diploma Education
+          if (isDiploma && diplomaPercentage && diplomaPassYear) {
+            const { data: dipExist } = await (supabase as any)
+              .from("candidate_education")
+              .select("id")
+              .eq("profile_id", userProfile.id)
+              .eq("type", "diploma")
+              .maybeSingle();
+
+            const { error: dipError } = await (supabase as any)
+              .from("candidate_education")
+              .upsert({
+                id: dipExist?.id || undefined,
+                profile_id: userProfile.id,
+                type: "diploma",
+                institution_name: "Diploma Institute",
+                grade_or_percentage: Number(diplomaPercentage),
+                passout_year: Number(diplomaPassYear),
+              });
+            if (dipError) throw dipError;
+          } else {
+            await (supabase as any)
+              .from("candidate_education")
+              .delete()
+              .eq("profile_id", userProfile.id)
+              .eq("type", "diploma");
           }
           toast.success("Education details saved!");
+        }
+
+        else if (section === "bio") {
+          await updateCandidateBioAction(bio);
+          toast.success("About summary saved!");
         }
 
         else if (section === "professional") {
@@ -792,7 +948,6 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
               linkedin_url: linkedinUrl.trim() || null,
               github_url: githubUrl.trim() || null,
               portfolio_links: portfolioLinks.filter((l) => l.trim()),
-              profile_updated: true,
             })
             .eq("profile_id", userProfile.id);
           if (error) {
@@ -814,6 +969,188 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
       }
     });
   }
+
+  // ─── Bio and Sub-table Handlers ──────────────────────────────────────────────
+
+  const handleSaveBio = async () => {
+    startTransition(async () => {
+      try {
+        await updateCandidateBioAction(bio);
+        toast.success("About summary saved!");
+        setEditingSection(null);
+        router.refresh();
+      } catch (err: any) {
+        toast.error(err.message || "Failed to save bio.");
+      }
+    });
+  };
+
+  const handleAddExperience = () => {
+    setActiveExperience({
+      title: "",
+      company_name: "",
+      location: "",
+      start_date: "",
+      end_date: "",
+      is_current: false,
+      description: "",
+    });
+    setExperienceDialogOpen(true);
+  };
+
+  const handleEditExperience = (exp: CandidateExperience) => {
+    setActiveExperience(exp);
+    setExperienceDialogOpen(true);
+  };
+
+  const handleSaveExperience = async () => {
+    if (!activeExperience?.title || !activeExperience?.company_name || !activeExperience?.start_date) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await saveExperienceAction(activeExperience);
+        toast.success("Experience saved successfully!");
+        setExperienceDialogOpen(false);
+        router.refresh();
+      } catch (err: any) {
+        toast.error(err.message || "Failed to save experience.");
+      }
+    });
+  };
+
+  const handleDeleteExperience = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this experience?")) return;
+    startTransition(async () => {
+      try {
+        await deleteExperienceAction(id);
+        toast.success("Experience deleted successfully!");
+        router.refresh();
+      } catch (err: any) {
+        toast.error(err.message || "Failed to delete experience.");
+      }
+    });
+  };
+
+  const handleAddProject = () => {
+    setActiveProject({
+      title: "",
+      description: "",
+      project_url: "",
+      start_date: "",
+      end_date: "",
+      is_ongoing: false,
+      associated_with: "",
+      skills: [],
+    });
+    setProjectDialogOpen(true);
+  };
+
+  const handleEditProject = (proj: CandidateProject) => {
+    setActiveProject(proj);
+    setProjectDialogOpen(true);
+  };
+
+  const handleSaveProject = async () => {
+    if (!activeProject?.title || !activeProject?.description) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await saveProjectAction(activeProject);
+        toast.success("Project saved successfully!");
+        setProjectDialogOpen(false);
+        router.refresh();
+      } catch (err: any) {
+        toast.error(err.message || "Failed to save project.");
+      }
+    });
+  };
+
+  const handleDeleteProject = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this project?")) return;
+    startTransition(async () => {
+      try {
+        await deleteProjectAction(id);
+        toast.success("Project deleted successfully!");
+        router.refresh();
+      } catch (err: any) {
+        toast.error(err.message || "Failed to delete project.");
+      }
+    });
+  };
+
+  const handleAddCertification = () => {
+    setActiveCertification({
+      name: "",
+      issuing_org: "",
+      issue_date: "",
+      expiration_date: "",
+      does_not_expire: true,
+      credential_id: "",
+      credential_url: "",
+      certificate_path: "",
+    });
+    setCertificationDialogOpen(true);
+  };
+
+  const handleEditCertification = (cert: CandidateCertification) => {
+    setActiveCertification(cert);
+    setCertificationDialogOpen(true);
+  };
+
+  const handleCertificateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Max file size allowed is 5MB.");
+      return;
+    }
+    setUploadingCert(true);
+    try {
+      const path = `${userProfile.id}/${Date.now()}_${file.name}`;
+      const { data, error } = await supabase.storage.from("certificates").upload(path, file);
+      if (error) throw error;
+      setActiveCertification(prev => prev ? { ...prev, certificate_path: data.path } : null);
+      toast.success("Certificate document uploaded!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload file.");
+    } finally {
+      setUploadingCert(false);
+    }
+  };
+
+  const handleSaveCertification = async () => {
+    if (!activeCertification?.name || !activeCertification?.issuing_org || !activeCertification?.issue_date) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await saveCertificationAction(activeCertification);
+        toast.success("Certification saved successfully!");
+        setCertificationDialogOpen(false);
+        router.refresh();
+      } catch (err: any) {
+        toast.error(err.message || "Failed to save certification.");
+      }
+    });
+  };
+
+  const handleDeleteCertification = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this certification?")) return;
+    startTransition(async () => {
+      try {
+        await deleteCertificationAction(id);
+        toast.success("Certification deleted successfully!");
+        router.refresh();
+      } catch (err: any) {
+        toast.error(err.message || "Failed to delete certification.");
+      }
+    });
+  };
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
@@ -978,6 +1315,53 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
               </div>
             </div>
           </CardContent>
+        </Card>
+
+        {/* About Summary */}
+        <Card className={cn("transition-all duration-200", editing("bio") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
+            <div>
+              <CardTitle>About Summary</CardTitle>
+              <CardDescription>A brief summary of your background, experience, and interests</CardDescription>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {!editing("bio") && (
+                <Button variant="outline" size="sm" onClick={() => openSection("bio")}>
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  Edit
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {editing("bio") ? (
+              <div className="space-y-4">
+                <Textarea
+                  placeholder="Tell us about yourself, your accomplishments, career goals, or passion projects..."
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  className="min-h-[120px] resize-none"
+                  maxLength={1000}
+                />
+                <p className="text-xs text-muted-foreground text-right">{bio.length}/1000 characters</p>
+              </div>
+            ) : (
+              <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">
+                {bio || <span className="text-muted-foreground italic">No bio summary added yet. Click edit to write one.</span>}
+              </p>
+            )}
+          </CardContent>
+          {editing("bio") && (
+            <CardFooter className="flex justify-end gap-2 border-t pt-4">
+              <Button variant="ghost" size="sm" onClick={() => cancelSection("bio")} disabled={isPending}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={() => handleSaveBio()} disabled={isPending}>
+                {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                Save Summary
+              </Button>
+            </CardFooter>
+          )}
         </Card>
 
         {/* Personal Details */}
@@ -1562,7 +1946,528 @@ export function CandidateProfileClient({ userProfile, initialData }: Props) {
           )}
         </Card>
 
+
+
+        {/* Work Experience Card */}
+        <Card>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
+            <div>
+              <CardTitle>Work Experience</CardTitle>
+              <CardDescription>Your professional work and internship history</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleAddExperience}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              Add Experience
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {experiences.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">No work experience listed yet.</p>
+            ) : (
+              experiences.map((exp, idx) => (
+                <div key={exp.id} className="group relative flex gap-4 items-start pt-1">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-zinc-50 dark:bg-zinc-900/50">
+                    <Briefcase className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-1 pr-16 flex-1">
+                    <h4 className="text-sm font-semibold leading-none">{exp.title}</h4>
+                    <p className="text-xs text-muted-foreground font-medium">
+                      {exp.company_name} {exp.location ? `• ${exp.location}` : ""}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground font-medium">
+                      {new Date(exp.start_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })} –{" "}
+                      {exp.is_current
+                        ? "Present"
+                        : exp.end_date
+                        ? new Date(exp.end_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+                        : "—"}
+                    </p>
+                    {exp.description && (
+                      <p className="text-xs text-foreground/80 mt-2 whitespace-pre-line leading-normal">
+                        {exp.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => handleEditExperience(exp)}>
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteExperience(exp.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  {idx < experiences.length - 1 && <Separator className="mt-4" />}
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Projects Card */}
+        <Card>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
+            <div>
+              <CardTitle>Projects</CardTitle>
+              <CardDescription>Academic, personal, or open-source projects</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleAddProject}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              Add Project
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {projects.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">No projects listed yet.</p>
+            ) : (
+              projects.map((proj, idx) => (
+                <div key={proj.id} className="group relative flex gap-4 items-start pt-1">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-zinc-50 dark:bg-zinc-900/50">
+                    <FolderGit2 className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-1 pr-16 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-semibold leading-none">{proj.title}</h4>
+                      {proj.project_url && (
+                        <a href={proj.project_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                          <Link2 className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                    </div>
+                    {proj.associated_with && (
+                      <p className="text-xs text-muted-foreground font-medium">
+                        Associated with: {proj.associated_with}
+                      </p>
+                    )}
+                    {(proj.start_date || proj.end_date || proj.is_ongoing) && (
+                      <p className="text-[11px] text-muted-foreground font-medium">
+                        {proj.start_date
+                          ? new Date(proj.start_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+                          : "—"}{" "}
+                        –{" "}
+                        {proj.is_ongoing
+                          ? "Present"
+                          : proj.end_date
+                          ? new Date(proj.end_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+                          : "—"}
+                      </p>
+                    )}
+                    <p className="text-xs text-foreground/80 mt-2 whitespace-pre-line leading-normal">
+                      {proj.description}
+                    </p>
+                    {proj.skills && proj.skills.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {proj.skills.map((skill) => (
+                          <Badge key={skill} variant="secondary" className="text-[10px] px-1.5 py-0">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => handleEditProject(proj)}>
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteProject(proj.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  {idx < projects.length - 1 && <Separator className="mt-4" />}
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Certifications Card */}
+        <Card>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
+            <div>
+              <CardTitle>Licenses & Certifications</CardTitle>
+              <CardDescription>Professional certifications and credentials</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleAddCertification}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              Add Certification
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {certifications.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">No certifications listed yet.</p>
+            ) : (
+              certifications.map((cert, idx) => (
+                <div key={cert.id} className="group relative flex gap-4 items-start pt-1">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-zinc-50 dark:bg-zinc-900/50">
+                    <Award className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-1 pr-16 flex-1">
+                    <h4 className="text-sm font-semibold leading-none">{cert.name}</h4>
+                    <p className="text-xs text-muted-foreground font-medium">{cert.issuing_org}</p>
+                    <p className="text-[11px] text-muted-foreground font-medium">
+                      Issued {new Date(cert.issue_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                      {!cert.does_not_expire && cert.expiration_date
+                        ? ` • Expires ${new Date(cert.expiration_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
+                        : " • No Expiration Date"}
+                    </p>
+                    {cert.credential_id && (
+                      <p className="text-[11px] text-muted-foreground">Credential ID: {cert.credential_id}</p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                      {cert.credential_url && (
+                        <a
+                          href={cert.credential_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <Link2 className="h-3 w-3" /> Show credential
+                        </a>
+                      )}
+                      {cert.certificate_path && (
+                        <a
+                          href={getStorageUrl(supabase, "certificates", cert.certificate_path) ?? "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <FileText className="h-3 w-3" /> View certificate document
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => handleEditCertification(cert)}>
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteCertification(cert.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  {idx < certifications.length - 1 && <Separator className="mt-4" />}
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
       </div>
+
+      {/* Experience Dialog */}
+      <Dialog open={experienceDialogOpen} onOpenChange={setExperienceDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{activeExperience?.id ? "Edit Experience" : "Add Experience"}</DialogTitle>
+            <DialogDescription>Add details about your professional work history.</DialogDescription>
+          </DialogHeader>
+          {activeExperience && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Title <RequiredMark /></Label>
+                <Input
+                  placeholder="e.g. Software Engineer Intern"
+                  value={activeExperience.title}
+                  onChange={(e) => setActiveExperience(prev => prev ? { ...prev, title: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Company Name <RequiredMark /></Label>
+                <Input
+                  placeholder="e.g. Acme Corp"
+                  value={activeExperience.company_name}
+                  onChange={(e) => setActiveExperience(prev => prev ? { ...prev, company_name: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Input
+                  placeholder="e.g. Mumbai, India (or Remote)"
+                  value={activeExperience.location || ""}
+                  onChange={(e) => setActiveExperience(prev => prev ? { ...prev, location: e.target.value } : null)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Start Date <RequiredMark /></Label>
+                  <Input
+                    type="date"
+                    value={activeExperience.start_date || ""}
+                    onChange={(e) => setActiveExperience(prev => prev ? { ...prev, start_date: e.target.value } : null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Date</Label>
+                  <Input
+                    type="date"
+                    disabled={activeExperience.is_current}
+                    value={activeExperience.end_date || ""}
+                    onChange={(e) => setActiveExperience(prev => prev ? { ...prev, end_date: e.target.value } : null)}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="is_current"
+                  checked={activeExperience.is_current || false}
+                  onChange={(e) => setActiveExperience(prev => prev ? { ...prev, is_current: e.target.checked, end_date: e.target.checked ? "" : prev.end_date } : null)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label htmlFor="is_current" className="text-sm font-medium text-foreground cursor-pointer">
+                  I am currently working in this role
+                </label>
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  placeholder="Describe your responsibilities, key achievements, and technologies used..."
+                  value={activeExperience.description || ""}
+                  onChange={(e) => setActiveExperience(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  className="min-h-[100px] resize-none"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setExperienceDialogOpen(false)} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveExperience} disabled={isPending}>
+              {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+              Save Experience
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Project Dialog */}
+      <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{activeProject?.id ? "Edit Project" : "Add Project"}</DialogTitle>
+            <DialogDescription>Add details about projects you have worked on.</DialogDescription>
+          </DialogHeader>
+          {activeProject && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Project Title <RequiredMark /></Label>
+                <Input
+                  placeholder="e.g. E-Commerce Platform"
+                  value={activeProject.title}
+                  onChange={(e) => setActiveProject(prev => prev ? { ...prev, title: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Associated With</Label>
+                <Input
+                  placeholder="e.g. Acme Corp (or Independent)"
+                  value={activeProject.associated_with || ""}
+                  onChange={(e) => setActiveProject(prev => prev ? { ...prev, associated_with: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Project URL</Label>
+                <Input
+                  placeholder="e.g. https://github.com/username/project"
+                  value={activeProject.project_url || ""}
+                  onChange={(e) => setActiveProject(prev => prev ? { ...prev, project_url: e.target.value } : null)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Start Date</Label>
+                  <Input
+                    type="date"
+                    value={activeProject.start_date || ""}
+                    onChange={(e) => setActiveProject(prev => prev ? { ...prev, start_date: e.target.value } : null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Date</Label>
+                  <Input
+                    type="date"
+                    disabled={activeProject.is_ongoing}
+                    value={activeProject.end_date || ""}
+                    onChange={(e) => setActiveProject(prev => prev ? { ...prev, end_date: e.target.value } : null)}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="is_ongoing"
+                  checked={activeProject.is_ongoing || false}
+                  onChange={(e) => setActiveProject(prev => prev ? { ...prev, is_ongoing: e.target.checked, end_date: e.target.checked ? "" : prev.end_date } : null)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label htmlFor="is_ongoing" className="text-sm font-medium text-foreground cursor-pointer">
+                  This project is currently ongoing
+                </label>
+              </div>
+              <div className="space-y-2">
+                <Label>Skills Used</Label>
+                <Combobox
+                  items={SOFTWARE_SKILLS}
+                  value={activeProject.skills || []}
+                  onValueChange={(v) => setActiveProject(prev => prev ? { ...prev, skills: v as string[] } : null)}
+                  multiple
+                >
+                  <ComboboxChips>
+                    {(activeProject.skills || []).map((skill) => (
+                      <ComboboxChip key={skill} showRemove>{skill}</ComboboxChip>
+                    ))}
+                    <ComboboxChipsInput placeholder={(activeProject.skills || []).length ? "Add more…" : "Search skills…"} />
+                  </ComboboxChips>
+                  <ComboboxContent>
+                    <ComboboxEmpty>No skill found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {SOFTWARE_SKILLS.map((item) => (
+                        <ComboboxItem key={item} value={item}>
+                          <ComboboxValue>{item}</ComboboxValue>
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </div>
+              <div className="space-y-2">
+                <Label>Description <RequiredMark /></Label>
+                <Textarea
+                  placeholder="Detail your role in the project, problems solved, and outcomes..."
+                  value={activeProject.description}
+                  onChange={(e) => setActiveProject(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  className="min-h-[100px] resize-none"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setProjectDialogOpen(false)} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveProject} disabled={isPending}>
+              {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+              Save Project
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Certification Dialog */}
+      <Dialog open={certificationDialogOpen} onOpenChange={setCertificationDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{activeCertification?.id ? "Edit Certification" : "Add Certification"}</DialogTitle>
+            <DialogDescription>Add professional credentials and certifications.</DialogDescription>
+          </DialogHeader>
+          {activeCertification && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Certification Name <RequiredMark /></Label>
+                <Input
+                  placeholder="e.g. AWS Certified Solutions Architect"
+                  value={activeCertification.name}
+                  onChange={(e) => setActiveCertification(prev => prev ? { ...prev, name: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Issuing Organization <RequiredMark /></Label>
+                <Input
+                  placeholder="e.g. Amazon Web Services (AWS)"
+                  value={activeCertification.issuing_org}
+                  onChange={(e) => setActiveCertification(prev => prev ? { ...prev, issuing_org: e.target.value } : null)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Issue Date <RequiredMark /></Label>
+                  <Input
+                    type="date"
+                    value={activeCertification.issue_date || ""}
+                    onChange={(e) => setActiveCertification(prev => prev ? { ...prev, issue_date: e.target.value } : null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Expiration Date</Label>
+                  <Input
+                    type="date"
+                    disabled={activeCertification.does_not_expire}
+                    value={activeCertification.expiration_date || ""}
+                    onChange={(e) => setActiveCertification(prev => prev ? { ...prev, expiration_date: e.target.value } : null)}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="does_not_expire"
+                  checked={activeCertification.does_not_expire || false}
+                  onChange={(e) => setActiveCertification(prev => prev ? { ...prev, does_not_expire: e.target.checked, expiration_date: e.target.checked ? "" : prev.expiration_date } : null)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label htmlFor="does_not_expire" className="text-sm font-medium text-foreground cursor-pointer">
+                  This credential does not expire
+                </label>
+              </div>
+              <div className="space-y-2">
+                <Label>Credential ID</Label>
+                <Input
+                  placeholder="e.g. AWS-SEC-123456"
+                  value={activeCertification.credential_id || ""}
+                  onChange={(e) => setActiveCertification(prev => prev ? { ...prev, credential_id: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Credential URL</Label>
+                <Input
+                  placeholder="e.g. https://creds.com/aws-solutions-architect"
+                  value={activeCertification.credential_url || ""}
+                  onChange={(e) => setActiveCertification(prev => prev ? { ...prev, credential_url: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Certificate Document File</Label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    onChange={handleCertificateUpload}
+                    className="hidden"
+                    id="certificate_file"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById("certificate_file")?.click()}
+                    disabled={uploadingCert}
+                  >
+                    {uploadingCert ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading…</>
+                    ) : (
+                      <><Upload className="h-4 w-4 mr-2" />Upload Document</>
+                    )}
+                  </Button>
+                  {activeCertification.certificate_path && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Check className="h-4 w-4 text-green-500" /> Document uploaded
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">Supports JPEG, PNG, WEBP or PDF. Max size 5MB.</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCertificationDialogOpen(false)} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveCertification} disabled={isPending}>
+              {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+              Save Certification
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <ImageCropperModal
         isOpen={cropModalOpen}
         onClose={handleCropModalClose}

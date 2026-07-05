@@ -36,9 +36,9 @@ async function fetchCandidateTests(
 
   // 1. Resolve the candidate's institute
   const { data: profile } = await (supabase as any)
-    .from("candidate_profiles")
+    .from("profiles")
     .select("institute_id")
-    .eq("profile_id", userId)
+    .eq("id", userId)
     .maybeSingle()
 
   if (!profile?.institute_id) {

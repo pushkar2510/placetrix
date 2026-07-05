@@ -33,7 +33,7 @@ async function assertOwner(testId: string): Promise<string> {
     .from("tests")
     .select("institute_id")
     .eq("id", testId)
-    .single()
+    .maybeSingle()
 
   if (error || !test) throw new Error("Test not found")
   if (test.institute_id !== profile.institute_id) throw new Error("Forbidden")
@@ -54,7 +54,7 @@ export async function toggleResultsAction(testId: string): Promise<void> {
     .from("tests")
     .select("results_available")
     .eq("id", testId)
-    .single()
+    .maybeSingle()
 
   const { error } = await (supabase as any)
     .from("tests")
@@ -79,7 +79,7 @@ export async function togglePublishAction(testId: string): Promise<void> {
     .from("tests")
     .select("status")
     .eq("id", testId)
-    .single()
+    .maybeSingle()
 
   if (current?.status === "archived") throw new Error("Cannot publish an archived test.")
 

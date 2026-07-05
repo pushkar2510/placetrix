@@ -155,7 +155,8 @@ export function CandidateDashboardClient({
     else setGreeting("Good evening")
   }, [])
 
-  const profileName = profile.first_name || profile.full_name || profile.username || "Candidate"
+  const computedFirstName = profile.full_name ? profile.full_name.split(' ')[0] : null
+  const profileName = computedFirstName || profile.username || "Candidate"
   const isProfileComplete = profile.profile_complete === true && profile.profile_updated === true
 
   return (

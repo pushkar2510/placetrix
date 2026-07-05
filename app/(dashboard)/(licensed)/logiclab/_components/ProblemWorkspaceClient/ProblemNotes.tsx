@@ -311,7 +311,7 @@ export function ProblemNotes({ problemId, currentCode, currentLanguage, submissi
       const supabase = createClient()
       const { data, error } = await supabase
         .from(isDailyChallenge ? "logiclab_daily_challenge_submissions" : "logiclab_problem_submissions")
-        .select("code, language_id").eq("id", sub.id).single()
+        .select("code, language_id").eq("id", sub.id).maybeSingle()
       if (error || !data) throw new Error("Submission not found")
       const langObj = LANGUAGES.find((l: any) => l.id === data.language_id)
       handleInsertAtEnd(data.code, langObj ? langObj.value : "javascript")

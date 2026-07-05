@@ -43,7 +43,7 @@ async function fetchResultData(
     `)
     .eq("id", testId)
     .eq("test_attempts.id", attemptId)
-    .single()
+    .maybeSingle()
 
   if (error || !raw) notFound()
 

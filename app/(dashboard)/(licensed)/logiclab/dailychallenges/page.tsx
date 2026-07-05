@@ -47,6 +47,18 @@ export default async function DailyChallengesPage() {
       || potdSub?.[0]?.status
       || null
 
+    let statsRow = null
+    const { data: statsData } = await supabase
+      .from("logiclab_problem_stats")
+      .select("total_submissions, accepted_submissions")
+      .eq("problem_id", pId)
+      .maybeSingle()
+    if (statsData) statsRow = statsData
+
+    const totalSubmissions = statsRow?.total_submissions || 0
+    const acceptedSubmissions = statsRow?.accepted_submissions || 0
+    const acceptanceRate = totalSubmissions > 0 ? Math.round((acceptedSubmissions / totalSubmissions) * 100) : null
+
     currentPotd = {
       id: potdRow.id,
       date: potdRow.date,
@@ -56,8 +68,8 @@ export default async function DailyChallengesPage() {
       difficulty: (potdRow.logiclab_problems?.difficulty || "Medium") as "Easy" | "Medium" | "Hard",
       tags: (potdRow.logiclab_problems?.tags || []) as string[],
       solved_status: potdStatus,
-      total_submissions: 0,
-      acceptance_rate: 0,
+      total_submissions: totalSubmissions,
+      acceptance_rate: acceptanceRate || 0,
     }
   }
 

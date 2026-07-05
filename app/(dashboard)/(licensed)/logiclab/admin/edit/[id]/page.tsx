@@ -27,7 +27,7 @@ export default async function EditProblemPage({ params }: PageProps) {
     .from("logiclab_problems")
     .select("*")
     .eq("id", id)
-    .single()
+    .maybeSingle()
 
   if (error || !problem) {
     notFound()

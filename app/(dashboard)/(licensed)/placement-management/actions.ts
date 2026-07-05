@@ -42,11 +42,11 @@ export async function upsertPlacementInfo(input: UpsertPlacementInfoInput) {
 
   // Verify the student belongs to this institute
   const { data: student, error: checkErr } = await (supabase as any)
-    .from("candidate_profiles")
-    .select("profile_id")
-    .eq("profile_id", input.candidateUuid)
+    .from("profiles")
+    .select("id")
+    .eq("id", input.candidateUuid)
     .eq("institute_id", instituteId)
-    .single()
+    .maybeSingle()
 
   if (checkErr || !student) {
     throw new Error("Student not found or does not belong to your institute.")
@@ -95,13 +95,13 @@ export async function bulkSetPlacementStatus(
 
   // Verify all students belong to this institute
   const { data: students, error: checkErr } = await (supabase as any)
-    .from("candidate_profiles")
-    .select("profile_id")
+    .from("profiles")
+    .select("id")
     .eq("institute_id", instituteId)
-    .in("profile_id", candidateUuids)
+    .in("id", candidateUuids)
 
   if (checkErr) throw new Error(checkErr.message)
-  const validIds: string[] = (students || []).map((s: any) => s.profile_id)
+  const validIds: string[] = (students || []).map((s: any) => s.id)
 
   if (validIds.length === 0) {
     throw new Error("No valid students found for this institute.")
@@ -152,11 +152,12 @@ export async function exportPlacementData(filters: ExportFilters): Promise<Recor
       phone_number,
       profiles!inner (
         display_name,
-        email
+        email,
+        institute_id
       )
     `
     )
-    .eq("institute_id", instituteId)
+    .eq("profiles.institute_id", instituteId)
 
   // ── Placed filter ──
   if (filters.placedFilter === "placed") {

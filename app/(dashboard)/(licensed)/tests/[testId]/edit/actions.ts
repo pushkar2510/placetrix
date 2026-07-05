@@ -141,7 +141,7 @@ export async function loadTestAction(
     `)
     .eq("id", testId)
     .eq("institute_id", profile.institute_id)
-    .single()
+    .maybeSingle()
 
   if (!test) return null
 

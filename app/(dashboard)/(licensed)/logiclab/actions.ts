@@ -40,7 +40,7 @@ export async function getProblemDataSPA(problemId: string, userId: string) {
     .from("logiclab_problems")
     .select("*")
     .eq("id", problemId)
-    .single()
+    .maybeSingle()
 
   if (error || !problem) return null
 
@@ -103,7 +103,7 @@ export const getCachedPotd = unstable_cache(
       .from("logiclab_daily_challenges")
       .select("id, problem_id, logiclab_problems ( id, title, difficulty )")
       .eq("date", todayStr)
-      .single()
+      .maybeSingle()
     return data
   },
   ["daily-potd-cache"],
@@ -160,19 +160,37 @@ export async function fetchDailyChallengesInfinite({
     }
   }
 
+  // Fetch problem stats in bulk
+  const { data: statsData } = await supabase
+    .from("logiclab_problem_stats")
+    .select("problem_id, total_submissions, accepted_submissions")
+    .in("problem_id", problemIds)
+
+  const statsMap: Record<string, { total: number; accepted: number }> = {}
+  for (const s of statsData ?? []) {
+    statsMap[s.problem_id] = {
+      total: s.total_submissions || 0,
+      accepted: s.accepted_submissions || 0,
+    }
+  }
+
   // Enrich
-  let enriched = historyData.map((h: any) => ({
-    id: h.id,
-    date: h.date,
-    problem_id: h.problem_id,
-    number: h.logiclab_problems?.number,
-    title: h.logiclab_problems?.title || "Unknown Problem",
-    difficulty: (h.logiclab_problems?.difficulty || "Medium") as "Easy" | "Medium" | "Hard",
-    tags: (h.logiclab_problems?.tags || []) as string[],
-    solved_status: solvedMap[h.problem_id] || null,
-    total_submissions: 0,
-    acceptance_rate: 0,
-  }))
+  let enriched = historyData.map((h: any) => {
+    const s = statsMap[h.problem_id] || { total: 0, accepted: 0 }
+    const acceptanceRate = s.total > 0 ? Math.round((s.accepted / s.total) * 100) : 0
+    return {
+      id: h.id,
+      date: h.date,
+      problem_id: h.problem_id,
+      number: h.logiclab_problems?.number,
+      title: h.logiclab_problems?.title || "Unknown Problem",
+      difficulty: (h.logiclab_problems?.difficulty || "Medium") as "Easy" | "Medium" | "Hard",
+      tags: (h.logiclab_problems?.tags || []) as string[],
+      solved_status: solvedMap[h.problem_id] || null,
+      total_submissions: s.total,
+      acceptance_rate: acceptanceRate,
+    }
+  })
 
   // Apply filters
   if (search) {

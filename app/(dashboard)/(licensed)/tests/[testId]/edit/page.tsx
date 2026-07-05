@@ -26,7 +26,7 @@ export default async function TestEditorPage({ params }: Props) {
     .from("profiles")
     .select("account_type, account_subtype")
     .eq("id", user.sub)
-    .single()
+    .maybeSingle()
 
   if (profile?.account_type !== "institute" || (profile?.account_subtype !== "staff" && profile?.account_subtype !== "tpo" && profile?.account_subtype !== "primary")) redirect("/tests")
 

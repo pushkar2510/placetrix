@@ -23,11 +23,19 @@ export default async function MyProfilePage() {
   }
 
   if (profile.account_type === "candidate") {
-    const { data: candidateProfile } = await (supabase as any)
-      .from("candidate_profiles")
-      .select("*")
-      .eq("profile_id", profile.id)
-      .maybeSingle() // Fix: prevents throwing if 0 rows exist
+    const [
+      { data: candidateProfile },
+      { data: candidateEducation },
+      { data: candidateExperiences },
+      { data: candidateProjects },
+      { data: candidateCertifications }
+    ] = await Promise.all([
+      (supabase as any).from("candidate_profiles").select("*").eq("profile_id", profile.id).maybeSingle(),
+      (supabase as any).from("candidate_education").select("*").eq("profile_id", profile.id).order("passout_year", { ascending: false }),
+      (supabase as any).from("candidate_experiences").select("*").eq("profile_id", profile.id).order("start_date", { ascending: false }),
+      (supabase as any).from("candidate_projects").select("*").eq("profile_id", profile.id).order("start_date", { ascending: false }),
+      (supabase as any).from("candidate_certifications").select("*").eq("profile_id", profile.id).order("issue_date", { ascending: false }),
+    ]);
 
     if (candidateProfile?.aadhaar_number) {
       try {
@@ -43,6 +51,10 @@ export default async function MyProfilePage() {
       <CandidateProfileClient
         userProfile={profile}
         initialData={candidateProfile ?? null}
+        educationData={candidateEducation ?? []}
+        experienceData={candidateExperiences ?? []}
+        projectsData={candidateProjects ?? []}
+        certificationsData={candidateCertifications ?? []}
       />
     )
   }

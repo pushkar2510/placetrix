@@ -10,7 +10,7 @@ export async function generateMetadata({ params }: { params: Promise<{ dailychal
     .from("logiclab_daily_challenges")
     .select("logiclab_problems ( title )")
     .eq("id", dailychallengeid)
-    .single()
+    .maybeSingle()
 
   const title = (data as any)?.logiclab_problems?.title
   return {
@@ -31,7 +31,7 @@ export default async function DailyChallengePage({ params }: { params: Promise<{
     .from("logiclab_daily_challenges")
     .select("id, problem_id, logiclab_problems (*)")
     .eq("id", dailychallengeid)
-    .single()
+    .maybeSingle()
 
   if (error || !dailyChallenge || !dailyChallenge.logiclab_problems) {
     notFound()

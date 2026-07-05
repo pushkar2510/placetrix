@@ -23,7 +23,7 @@ export async function createTicketAction(data: { title: string; description: str
       status: "open",
     })
     .select("id")
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw new Error(error.message);
@@ -41,7 +41,7 @@ export async function getTicketAction(ticketId: string) {
     return null;
   }
 
-  const { data: profile } = await supabase.from("profiles").select("account_type").eq("id", userId).single();
+  const { data: profile } = await supabase.from("profiles").select("account_type").eq("id", userId).maybeSingle();
   const isAdmin = profile?.account_type === "admin";
 
   let query = supabase.from("tickets").select("*, profiles(avatar_path, display_name, email)").eq("id", ticketId);
@@ -49,7 +49,7 @@ export async function getTicketAction(ticketId: string) {
     query = query.eq("user_id", userId);
   }
   
-  const { data: ticket, error: ticketError } = await query.single();
+  const { data: ticket, error: ticketError } = await query.maybeSingle();
 
   if (ticketError || !ticket) {
     return null;
@@ -82,7 +82,7 @@ export async function addTicketMessageAction(ticketId: string, message: string) 
     .from("tickets")
     .select("id")
     .eq("id", ticketId)
-    .single();
+    .maybeSingle();
 
   if (ticketError || !ticket) {
     throw new Error("Ticket not found or access denied.");
@@ -93,7 +93,7 @@ export async function addTicketMessageAction(ticketId: string, message: string) 
     .from("profiles")
     .select("account_type")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
   const isAdmin = profile?.account_type === "admin";
   const sender_type = isAdmin ? "support" : "user";
 
@@ -125,7 +125,7 @@ export async function validateTicketAction(ticketInput: string) {
   const input = ticketInput.trim();
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input);
 
-  const { data: profile } = await supabase.from("profiles").select("account_type").eq("id", userData.user.id).single();
+  const { data: profile } = await supabase.from("profiles").select("account_type").eq("id", userData.user.id).maybeSingle();
   const isAdmin = profile?.account_type === "admin";
 
   let query = supabase.from("tickets").select("id").limit(1);
@@ -139,7 +139,7 @@ export async function validateTicketAction(ticketInput: string) {
     query = query.eq("user_id", userData.user.id);
   }
 
-  const { data, error } = await query.single();
+  const { data, error } = await query.maybeSingle();
 
   if (error || !data) {
     throw new Error("Invalid Ticket ID or Number, or you do not have permission to view it.");
@@ -162,7 +162,7 @@ export async function getMyTicketsAction() {
     .from("profiles")
     .select("account_type")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
   const isAdmin = profile?.account_type === "admin";
 
   let query = supabase.from("tickets").select("*");
@@ -193,7 +193,7 @@ export async function updateTicketStatusAction(ticketId: string, status: "open" 
     .from("profiles")
     .select("account_type")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
 
   if (profile?.account_type !== "admin") {
     throw new Error("Unauthorized. Only admins can update ticket status.");

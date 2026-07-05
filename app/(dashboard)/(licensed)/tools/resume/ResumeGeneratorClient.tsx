@@ -850,8 +850,21 @@ export function ResumeGeneratorClient() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Not logged in")
 
-      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      const { data: candidate } = await supabase.from('candidate_profiles').select('*').eq('profile_id', user.id).single()
+      const [
+        { data: profile },
+        { data: candidate },
+        { data: candidateEdu },
+        { data: candidateExp },
+        { data: candidateProj },
+        { data: candidateCert }
+      ] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
+        supabase.from('candidate_profiles').select('*').eq('profile_id', user.id).maybeSingle(),
+        (supabase as any).from('candidate_education').select('*').eq('profile_id', user.id).order('passout_year', { ascending: false }),
+        (supabase as any).from('candidate_experiences').select('*').eq('profile_id', user.id).order('start_date', { ascending: false }),
+        (supabase as any).from('candidate_projects').select('*').eq('profile_id', user.id).order('start_date', { ascending: false }),
+        (supabase as any).from('candidate_certifications').select('*').eq('profile_id', user.id).order('issue_date', { ascending: false }),
+      ])
 
       if (profile || candidate) {
         let instituteName = "Institute"
@@ -860,17 +873,20 @@ export function ResumeGeneratorClient() {
             .from('institutes')
             .select('institute_name')
             .eq('id', candidate.institute_id)
-            .single()
+            .maybeSingle()
           if (inst?.institute_name) {
             instituteName = inst.institute_name
           }
         }
 
         setData(prev => {
+          // 1. Build Education list
           let newEdu = prev.education;
-          if (candidate?.course_name || candidate?.is_hsc || candidate?.is_diploma || candidate?.ssc_percentage) {
+          if (candidate?.course_name || (candidateEdu && candidateEdu.length > 0)) {
             newEdu = []
-            if (candidate.course_name) {
+            
+            // Add current UG/PG from candidate_profiles
+            if (candidate?.course_name) {
               newEdu.push({
                 id: uid(),
                 institution: instituteName,
@@ -883,46 +899,77 @@ export function ResumeGeneratorClient() {
                 honors: ""
               })
             }
-            if (candidate.is_hsc) {
-              newEdu.push({
-                id: uid(),
-                institution: "HSC",
-                degree: "Higher Secondary",
-                field: "",
-                location: "",
-                startDate: "",
-                endDate: candidate.hsc_pass_year ? String(candidate.hsc_pass_year) : "",
-                gpa: candidate.hsc_percentage != null ? `${candidate.hsc_percentage}%` : "",
-                honors: ""
-              })
-            }
-            if (candidate.is_diploma) {
-              newEdu.push({
-                id: uid(),
-                institution: "Diploma",
-                degree: "Diploma",
-                field: "",
-                location: "",
-                startDate: "",
-                endDate: candidate.diploma_pass_year ? String(candidate.diploma_pass_year) : "",
-                gpa: candidate.diploma_percentage != null ? `${candidate.diploma_percentage}%` : "",
-                honors: ""
-              })
-            }
-            if (candidate.ssc_percentage) {
-              newEdu.push({
-                id: uid(),
-                institution: "SSC",
-                degree: "Secondary",
-                field: "",
-                location: "",
-                startDate: "",
-                endDate: candidate.ssc_pass_year ? String(candidate.ssc_pass_year) : "",
-                gpa: candidate.ssc_percentage != null ? `${candidate.ssc_percentage}%` : "",
-                honors: ""
+
+            // Add other entries from candidate_education
+            if (candidateEdu && candidateEdu.length > 0) {
+              candidateEdu.forEach((edu: any) => {
+                let instName = edu.institution_name;
+                let degName = edu.course_or_stream || "";
+                if (edu.type === "ssc") {
+                  instName = edu.institution_name === "High School" ? "Secondary School" : edu.institution_name;
+                  degName = "SSC (Secondary)";
+                } else if (edu.type === "hsc") {
+                  instName = edu.institution_name === "Junior College" ? "Higher Secondary School" : edu.institution_name;
+                  degName = "HSC (Higher Secondary)";
+                } else if (edu.type === "diploma") {
+                  degName = "Diploma";
+                }
+
+                newEdu.push({
+                  id: uid(),
+                  institution: instName,
+                  degree: degName,
+                  field: edu.course_or_stream || "",
+                  location: "",
+                  startDate: "",
+                  endDate: String(edu.passout_year),
+                  gpa: edu.grade_or_percentage != null ? `${edu.grade_or_percentage}%` : "",
+                  honors: ""
+                })
               })
             }
             if (newEdu.length === 0) newEdu = prev.education
+          }
+
+          // 2. Build Work Experience list
+          let newExp = prev.experience;
+          if (candidateExp && candidateExp.length > 0) {
+            newExp = candidateExp.map((exp: any) => ({
+              id: uid(),
+              company: exp.company_name,
+              title: exp.title,
+              location: exp.location || "",
+              startDate: exp.start_date ? new Date(exp.start_date).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "",
+              endDate: exp.is_current ? "Present" : exp.end_date ? new Date(exp.end_date).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "",
+              current: exp.is_current,
+              bullets: exp.description ? exp.description.split("\n").filter((line: any) => line.trim()) : [""]
+            }))
+          }
+
+          // 3. Build Projects list
+          let newProj = prev.projects;
+          if (candidateProj && candidateProj.length > 0) {
+            newProj = candidateProj.map((proj: any) => ({
+              id: uid(),
+              name: proj.title,
+              techStack: proj.skills ? proj.skills.join(", ") : "",
+              dateRange: proj.start_date ? `${new Date(proj.start_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })} – ${proj.is_ongoing ? "Present" : proj.end_date ? new Date(proj.end_date).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : ""}` : "",
+              liveUrl: proj.project_url || "",
+              repoUrl: "",
+              bullets: proj.description ? proj.description.split("\n").filter((line: any) => line.trim()) : [""]
+            }))
+          }
+
+          // 4. Build Certifications list
+          let newCert = prev.certifications;
+          if (candidateCert && candidateCert.length > 0) {
+            newCert = candidateCert.map((cert: any) => ({
+              id: uid(),
+              name: cert.name,
+              issuer: cert.issuing_org,
+              date: cert.issue_date ? new Date(cert.issue_date).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "",
+              credentialId: cert.credential_id || ""
+            }))
           }
 
           return {
@@ -938,6 +985,9 @@ export function ResumeGeneratorClient() {
               tagline: prev.personal.tagline
             },
             education: newEdu,
+            experience: newExp,
+            projects: newProj,
+            certifications: newCert,
             skills: candidate?.skills && candidate.skills.length > 0 ? [
               { id: uid(), category: "Core Skills", skills: candidate.skills.join(", ") }
             ] : prev.skills

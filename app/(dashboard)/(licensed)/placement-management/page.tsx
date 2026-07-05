@@ -50,8 +50,8 @@ export default async function PlacementManagementPage(props: {
   // ── Fetch available filter options (years + courses + drives for this institute) ──
   const { data: filterOptions } = await (supabase as any)
     .from("candidate_profiles")
-    .select("passout_year, course_name")
-    .eq("institute_id", instituteId)
+    .select("passout_year, course_name, profiles!inner(institute_id)")
+    .eq("profiles.institute_id", instituteId)
     .not("passout_year", "is", null)
 
   const availableYears: number[] = Array.from(
@@ -68,8 +68,8 @@ export default async function PlacementManagementPage(props: {
   // We get all candidate UUIDs for this institute first
   const { data: candidateIds } = await (supabase as any)
     .from("candidate_profiles")
-    .select("profile_id")
-    .eq("institute_id", instituteId)
+    .select("profile_id, profiles!inner(institute_id)")
+    .eq("profiles.institute_id", instituteId)
 
   const allCandidateUuids: string[] = (candidateIds || []).map((r: any) => r.profile_id)
 
@@ -94,16 +94,17 @@ export default async function PlacementManagementPage(props: {
       profile_id,
       course_name,
       passout_year,
-      profile_image_path,
       phone_number,
       profiles!inner (
         display_name,
-        email
+        email,
+        institute_id,
+        avatar_path
       )
     `,
       { count: "exact" }
     )
-    .eq("institute_id", instituteId)
+    .eq("profiles.institute_id", instituteId)
 
   // ── Placed filter ──────────────────────────────────────────────────────
   if (placedFilter === "placed") {
@@ -252,8 +253,8 @@ export default async function PlacementManagementPage(props: {
       offer_type: pt?.offer_type ?? null,
       location: pt?.location ?? null,
       drive_tag: pt?.drive_tag ?? null,
-      profile_image_path: r.profile_image_path
-        ? supabase.storage.from("avatars").getPublicUrl(r.profile_image_path).data.publicUrl
+      profile_image_path: r.profiles?.avatar_path
+        ? supabase.storage.from("avatars").getPublicUrl(r.profiles.avatar_path).data.publicUrl
         : null,
     }
   })

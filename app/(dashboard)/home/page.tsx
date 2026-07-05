@@ -313,12 +313,12 @@ export default async function HomePage() {
     const candidateProfile = {
       id: profile.id,
       username: profile.username || null,
-      full_name: cp.full_name || null,
-      first_name: cp.first_name || null,
-      last_name: cp.last_name || null,
-      profile_complete: cp.profile_complete || null,
-      profile_updated: cp.profile_updated || false,
-      institute_id: cp.institute_id || null,
+      full_name: profile.display_name || null,
+      first_name: null, // no longer needed
+      last_name: null,  // no longer needed
+      profile_complete: profile.profile_complete || false,
+      profile_updated: profile.profile_updated || false,
+      institute_id: profile.institute_id || null,
     };
 
     return (

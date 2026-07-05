@@ -14,19 +14,19 @@ export async function toggleStudentVerification(studentId: string, verified: boo
 
   // Verify the student belongs to this institute
   const { data: candidateProfile } = await (supabase as any)
-    .from("candidate_profiles")
+    .from("profiles")
     .select("institute_id")
-    .eq("profile_id", studentId)
-    .single();
+    .eq("id", studentId)
+    .maybeSingle();
 
   if (candidateProfile?.institute_id !== profile.institute_id) {
     throw new Error("Student does not belong to your institute");
   }
 
   const { data, error } = await (supabase as any)
-    .from("candidate_profiles")
+    .from("profiles")
     .update({ institute_verified: verified })
-    .eq("profile_id", studentId)
+    .eq("id", studentId)
     .select()
 
   if (error) {

@@ -44,9 +44,13 @@ export async function startAttemptAction(testId: string): Promise<AttemptInfo> {
   // Fetch everything we need in a single round-trip.
   const [profileRes, testRes, existingRes, completedRes] = await Promise.all([
     (supabase as any)
-      .from("candidate_profiles")
-      .select("institute_id, profile_complete, profile_updated")
-      .eq("profile_id", userId)
+      .from("profiles")
+      .select(`
+        institute_id,
+        profile_updated,
+        candidate_profiles!inner ( profile_complete )
+      `)
+      .eq("id", userId)
       .maybeSingle(),
     (supabase as any)
       .from("tests")
@@ -54,7 +58,7 @@ export async function startAttemptAction(testId: string): Promise<AttemptInfo> {
         "status, institute_id, time_limit_seconds, max_attempts, available_from, available_until"
       )
       .eq("id", testId)
-      .single(),
+      .maybeSingle(),
     (supabase as any)
       .from("test_attempts")
       .select("id, started_at, expires_at, tab_switch_count, attempt_number")
@@ -72,14 +76,15 @@ export async function startAttemptAction(testId: string): Promise<AttemptInfo> {
       .in("status", ["submitted", "auto_submitted"]),
   ])
 
-  const candidateProfile = profileRes.data
   const test = testRes.data
   const existingAttempt = existingRes.data
+  const profileComplete = Array.isArray(profileRes.data?.candidate_profiles) 
+    ? profileRes.data?.candidate_profiles[0]?.profile_complete 
+    : profileRes.data?.candidate_profiles?.profile_complete;
 
   if (
-    !candidateProfile ||
-    !candidateProfile.profile_complete ||
-    !candidateProfile.profile_updated
+    !profileComplete ||
+    !profileRes.data?.profile_updated
   ) {
     throw new Error("Profile is incomplete")
   }
@@ -87,7 +92,7 @@ export async function startAttemptAction(testId: string): Promise<AttemptInfo> {
   if (
     !test ||
     test.status !== "published" ||
-    test.institute_id !== candidateProfile.institute_id
+    test.institute_id !== profileRes.data?.institute_id
   ) {
     throw new Error("Test not available")
   }
@@ -136,7 +141,7 @@ export async function startAttemptAction(testId: string): Promise<AttemptInfo> {
       expires_at: expiresAt,
     })
     .select("id, started_at")
-    .single()
+    .maybeSingle()
 
   if (insertError) {
     // Unique-violation code in Postgres is "23505".  Another tab won the race;

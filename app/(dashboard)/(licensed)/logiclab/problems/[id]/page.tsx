@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     .from("logiclab_problems")
     .select("title")
     .eq("id", id)
-    .single()
+    .maybeSingle()
 
   return {
     title: data?.title ? `${data.title} — LogicLab` : "Problem — LogicLab",
@@ -31,7 +31,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
     .from("logiclab_problems")
     .select("*")
     .eq("id", id)
-    .single()
+    .maybeSingle()
 
   if (error || !problem) {
     console.error("404 Triggered! Error:", error, "Problem:", problem);

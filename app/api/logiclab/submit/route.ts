@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
         .from("logiclab_daily_challenges")
         .select("date")
         .eq("id", daily_challenge_id)
-        .single()
+      .maybeSingle()
       if (dc) {
         dailyChallengeDate = dc.date
       }
@@ -411,7 +411,7 @@ export async function POST(req: NextRequest) {
         .from("logiclab_daily_challenge_submissions")
         .insert(submission)
         .select("id")
-        .single()
+        .maybeSingle()
       
       savedSubmission = saved || null
       saveError = sErr
@@ -420,7 +420,7 @@ export async function POST(req: NextRequest) {
         .from("logiclab_problem_submissions")
         .insert(submission)
         .select("id")
-        .single()
+        .maybeSingle()
       
       savedSubmission = saved || null
       saveError = sErr
@@ -428,6 +428,26 @@ export async function POST(req: NextRequest) {
 
     if (saveError) {
       console.error("[LogicLab Submit] Failed to save submission:", saveError.message)
+    } else {
+      // Update the user's daily activity
+      const fallbackIst = new Date(new Date().getTime() + 5.5 * 60 * 60 * 1000)
+      const activityDate = daily_challenge_id 
+        ? (dailyChallengeDate || fallbackIst.toISOString().split("T")[0])
+        : fallbackIst.toISOString().split("T")[0]
+
+      const difficulty = problem.difficulty || "Medium"
+      const isSolved = overallStatus === "Accepted"
+
+      const { error: rpcErr } = await (supabase as any).rpc("update_logiclab_user_activity_rpc", {
+        p_user_id: user_id,
+        p_activity_date: activityDate,
+        p_is_solved: isSolved,
+        p_difficulty: difficulty
+      })
+
+      if (rpcErr) {
+        console.error("[LogicLab Submit] Failed to update user activity:", rpcErr.message)
+      }
     }
 
     const sampleCases = results.filter((r, idx) => testCases[idx]?.is_sample || testCases[idx]?.isSample)

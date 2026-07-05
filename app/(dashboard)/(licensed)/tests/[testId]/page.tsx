@@ -36,9 +36,9 @@ async function fetchCandidateView(
   // This reduces 7-8 sequential/parallel calls to just 2 master calls.
   const [profileRes, testRes] = await Promise.all([
     (supabase as any)
-      .from("candidate_profiles")
+      .from("profiles")
       .select("institute_id")
-      .eq("profile_id", userId)
+      .eq("id", userId)
       .maybeSingle(),
     (supabase as any)
       .from("tests")
@@ -202,7 +202,7 @@ async function fetchInstituteView(
     `)
     .eq("id", testId)
     .eq("institute_id", userId)
-    .single()
+    .maybeSingle()
 
   if (error || !raw) notFound()
 

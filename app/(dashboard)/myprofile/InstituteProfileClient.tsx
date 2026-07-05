@@ -560,7 +560,7 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
               .from("institutes")
               .insert(payload)
               .select("id")
-              .single()
+              .maybeSingle()
             if (error) throw error
             instId = newInst.id
           }

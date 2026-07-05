@@ -206,7 +206,7 @@ export default async function LogicLabPage() {
         .from("logiclab_problems")
         .select("id, number, title, difficulty, tags")
         .eq("id", initialPotd.problem_id)
-        .single();
+        .maybeSingle();
 
       if (dbProblem) {
         const { data: statsRow } = await supabase

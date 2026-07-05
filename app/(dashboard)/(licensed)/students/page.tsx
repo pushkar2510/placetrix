@@ -42,22 +42,23 @@ export default async function StudentsPage(props: {
       course_name,
       passout_year,
       university_prn,
-      institute_verified,
       cgpa,
-      profile_image_path,
       created_at,
       profiles!inner (
         display_name,
-        email
+        email,
+        institute_id,
+        institute_verified,
+        avatar_path
       )
     `, { count: "exact" })
-    .eq("institute_id", profile.institute_id)
+    .eq("profiles.institute_id", profile.institute_id)
 
   // Status Filter
   if (status === "verified") {
-    query = query.eq("institute_verified", true)
+    query = query.eq("profiles.institute_verified", true)
   } else if (status === "pending") {
-    query = query.or("institute_verified.eq.false,institute_verified.is.null")
+    query = query.or("institute_verified.eq.false,institute_verified.is.null", { referencedTable: "profiles" })
   }
 
   // Search Filter
@@ -73,10 +74,9 @@ export default async function StudentsPage(props: {
     const matchedProfileIds = (matchedProfiles || []).map((p: any) => p.id)
     
     if (matchedProfileIds.length === 0) {
-      // Force empty result if no profile matches
-      query = query.eq("profile_id", "00000000-0000-0000-0000-000000000000")
+      query = query.or(`university_prn.ilike.%${s}%`)
     } else {
-      query = query.in("profile_id", matchedProfileIds)
+      query = query.or(`university_prn.ilike.%${s}%,profile_id.in.(${matchedProfileIds.join(",")})`)
     }
   }
 
@@ -96,7 +96,7 @@ export default async function StudentsPage(props: {
       query = query.order("cgpa", { ascending })
       break
     case "status":
-      query = query.order("institute_verified", { ascending })
+      query = query.order("institute_verified", { ascending: sortOrder === "asc", referencedTable: "profiles" })
       break
     case "created":
     default:
@@ -121,10 +121,10 @@ export default async function StudentsPage(props: {
     course_name: s.course_name,
     passout_year: s.passout_year,
     university_prn: s.university_prn,
-    institute_verified: s.institute_verified,
+    institute_verified: s.profiles?.institute_verified || false,
     cgpa: s.cgpa,
-    profile_image_path: s.profile_image_path
-      ? supabase.storage.from("avatars").getPublicUrl(s.profile_image_path).data.publicUrl
+    profile_image_path: s.profiles?.avatar_path
+      ? supabase.storage.from("avatars").getPublicUrl(s.profiles.avatar_path).data.publicUrl
       : null,
     created_at: s.created_at,
   }))
