@@ -54,6 +54,11 @@ export function parseUserAgent(ua: string | null | undefined): ParsedUA {
     return { browser: "Unknown Browser", os: "Unknown OS", device: "desktop" };
   }
 
+  const lower = ua.toLowerCase();
+  if (lower.includes("placetrix android app")) {
+    return { browser: "PlaceTrix", os: "Android", device: "mobile" };
+  }
+
   if (isServerUA(ua)) {
     return { browser: "System", os: "Server", device: "desktop" };
   }
