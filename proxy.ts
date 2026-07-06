@@ -1,4 +1,4 @@
-// middleware.ts
+// proxy.ts
 //
 // ── What this file does ────────────────────────────────────────────────────────
 //
@@ -37,9 +37,10 @@ const CACHE_TTL_MS = 30_000; // 30 seconds
 
 async function getSystemStatus(): Promise<SystemStatus> {
   // Bypass maintenance mode in local development environment
-  if (process.env.NODE_ENV === "development") {
-    return "online";
-  }
+  // Temporarily commented out to test/run connection error and maintenance mode on localhost
+  // if (process.env.NODE_ENV === "development") {
+  //   return "online";
+  // }
 
   const now = Date.now();
 
@@ -110,7 +111,7 @@ function isStatusOnlyPath(pathname: string): boolean {
   return STATUS_ONLY_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // 1. Skip middleware entirely for prefetches.
   // Browsers often ignore Set-Cookie on prefetches, so we shouldn't waste
   // CPU or Supabase Auth hits (invocations) on them.
