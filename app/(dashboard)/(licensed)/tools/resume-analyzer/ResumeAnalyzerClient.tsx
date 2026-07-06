@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Skeleton } from "@/components/ui/skeleton"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { toast } from "sonner"
-import { motion, AnimatePresence } from "motion/react"
+import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import {
   IconUpload,
