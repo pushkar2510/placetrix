@@ -856,7 +856,8 @@ export function ResumeGeneratorClient() {
         { data: candidateEdu },
         { data: candidateExp },
         { data: candidateProj },
-        { data: candidateCert }
+        { data: candidateCert },
+        { data: candidateSkills }
       ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
         supabase.from('candidate_profiles').select('*').eq('profile_id', user.id).maybeSingle(),
@@ -864,6 +865,7 @@ export function ResumeGeneratorClient() {
         (supabase as any).from('candidate_experiences').select('*').eq('profile_id', user.id).order('start_date', { ascending: false }),
         (supabase as any).from('candidate_projects').select('*').eq('profile_id', user.id).order('start_date', { ascending: false }),
         (supabase as any).from('candidate_certifications').select('*').eq('profile_id', user.id).order('issue_date', { ascending: false }),
+        (supabase as any).from('candidate_skills').select('skills!inner(name)').eq('profile_id', user.id)
       ])
 
       if (profile || candidate) {
@@ -972,6 +974,10 @@ export function ResumeGeneratorClient() {
             }))
           }
 
+          const skillNames = (candidateSkills || [])
+            .map((s: any) => s.skills?.name)
+            .filter(Boolean) as string[];
+
           return {
             ...prev,
             personal: {
@@ -988,8 +994,8 @@ export function ResumeGeneratorClient() {
             experience: newExp,
             projects: newProj,
             certifications: newCert,
-            skills: candidate?.skills && candidate.skills.length > 0 ? [
-              { id: uid(), category: "Core Skills", skills: candidate.skills.join(", ") }
+            skills: skillNames.length > 0 ? [
+              { id: uid(), category: "Core Skills", skills: skillNames.join(", ") }
             ] : prev.skills
           }
         })

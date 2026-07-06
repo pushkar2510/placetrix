@@ -242,7 +242,6 @@ export type Database = {
           profile_complete: boolean
           profile_id: string
           sgpa_semesters: Json | null
-          skills: string[] | null
           university_prn: string | null
           updated_at: string
         }
@@ -268,7 +267,6 @@ export type Database = {
           profile_complete?: boolean
           profile_id: string
           sgpa_semesters?: Json | null
-          skills?: string[] | null
           university_prn?: string | null
           updated_at?: string
         }
@@ -294,7 +292,6 @@ export type Database = {
           profile_complete?: boolean
           profile_id?: string
           sgpa_semesters?: Json | null
-          skills?: string[] | null
           university_prn?: string | null
           updated_at?: string
         }
