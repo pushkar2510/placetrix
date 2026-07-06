@@ -1,5 +1,14 @@
 export type EducationType = "ssc" | "hsc" | "diploma" | "ug" | "pg" | "other";
 
+export type SkillCategory = 'Languages' | 'Frameworks & Libraries' | 'Databases & Cloud' | 'Tools & DevOps' | 'Design & UX' | 'Data & AI' | 'Other';
+
+export interface Skill {
+  id: string;
+  name: string;
+  category: SkillCategory;
+  created_at: string;
+}
+
 export interface CandidateEducation {
   id: string;
   profile_id: string;

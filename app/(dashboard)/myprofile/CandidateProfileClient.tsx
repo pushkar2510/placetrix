@@ -13,13 +13,15 @@ import {
   deleteProjectAction,
   saveCertificationAction,
   deleteCertificationAction,
-  updateCandidateBioAction
+  updateCandidateBioAction,
+  syncCandidateSkillsAction
 } from "./actions";
 import {
   CandidateEducation,
   CandidateExperience,
   CandidateProject,
-  CandidateCertification
+  CandidateCertification,
+  Skill
 } from "@/types/profile-extensions";
 import { toast } from "sonner";
 import {
@@ -41,8 +43,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Combobox, ComboboxChip, ComboboxChips, ComboboxChipsInput,
-  ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem,
-  ComboboxList, ComboboxValue, useComboboxAnchor,
+  ComboboxCollection, ComboboxContent, ComboboxEmpty, ComboboxGroup, ComboboxInput, ComboboxItem,
+  ComboboxLabel, ComboboxList, ComboboxValue, useComboboxAnchor,
 } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
 import { ImageCropperModal } from "@/components/ImageCropperModal";
@@ -50,7 +52,7 @@ import {
   Upload, Plus, Minus, Copy, CalendarIcon, Loader2, Camera,
   CheckCircle2, XCircle, AtSign, ShieldAlert, HelpCircle,
   Pencil, X, Info, CheckCircle, User, GraduationCap, Briefcase,
-  Link2, Trash2, Edit2, FileText, Check, FileDown, Award, FolderGit2
+  Link2, Trash2, Edit2, FileText, Check, FileDown, Award, FolderGit2, Tag
 } from "lucide-react";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
@@ -58,19 +60,7 @@ import {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const SOFTWARE_SKILLS = [
-  "JavaScript", "TypeScript", "Python", "Java", "C", "C++", "Go", "Rust", "PHP", "Ruby",
-  "Swift", "Kotlin", "React", "Angular", "Vue.js", "Next.js", "Node.js", "Express.js",
-  "Django", "Flask", "Spring Boot", "ASP.NET", "Laravel", "React Native", "Flutter",
-  "HTML", "CSS", "Sass", "Tailwind CSS", "Bootstrap", "Material UI", "SQL", "MySQL",
-  "PostgreSQL", "MongoDB", "Redis", "Firebase", "Oracle", "SQLite", "Git", "GitHub",
-  "GitLab", "Docker", "Kubernetes", "Jenkins", "CI/CD", "AWS", "Azure", "Google Cloud",
-  "Heroku", "Netlify", "Vercel", "REST API", "GraphQL", "Microservices", "Linux",
-  "Bash", "PowerShell", "Agile", "Scrum", "Jira", "TensorFlow", "PyTorch",
-  "Machine Learning", "Deep Learning", "Data Science", "Pandas", "NumPy",
-  "Scikit-learn", "Selenium", "Jest", "Cypress", "JUnit", "Postman", "Figma",
-  "Adobe XD", "Photoshop", "UI/UX Design",
-];
+// SOFTWARE_SKILLS replaced by dynamic skills fetched from the DB (allSkills prop)
 
 const GENDER_OPTIONS = ["Male", "Female", "Other"];
 const GENDER_MAP: Record<string, string> = { Male: "M", Female: "F", Other: "O" };
@@ -135,6 +125,8 @@ interface Props {
   projectsData: CandidateProject[];
   certificationsData: CandidateCertification[];
   eventCertificates?: EventCertificate[];
+  allSkills: Skill[];
+  initialSkillIds: string[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -190,7 +182,7 @@ function capitalizeFirstLetterOnly(str: string): string {
   if (!str) return str;
   const sanitized = str.replace(/[<>]/g, '');
   if (!sanitized) return sanitized;
-  return sanitized.charAt(0).toUpperCase() + sanitized.slice(1).toLowerCase();
+  return sanitized.charAt(0).toUpperCase() + sanitized.slice(1);
 }
 
 function formatDate(date: Date): string {
@@ -214,6 +206,193 @@ function getInitials(firstName: string, lastName: string, email: string): string
   if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase();
   if (firstName) return firstName[0].toUpperCase();
   return email[0]?.toUpperCase() ?? "?";
+}
+
+const SUPPORTED_DEVICONS = new Set([
+  "cplusplus", "csharp", "fsharp", "amazonwebservices", "googlecloud", "azure",
+  "tailwindcss", "nodejs", "nextjs", "react", "vuejs", "angular", "spring",
+  "express", "postgresql", "mysql", "mongodb", "redis",
+  "sqlite", "mariadb", "html5", "css3", "sass", "git", "github", "gitlab",
+  "docker", "kubernetes", "terraform", "jenkins", "ansible", "figma", "photoshop",
+  "illustrator", "xd", "premierepro", "python", "java", "kotlin", "scala", "swift",
+  "objectivec", "ruby", "rails", "php", "go", "rust", "dart", "flutter",
+  "typescript", "javascript", "bash", "linux", "ubuntu", "android", "apple",
+  "wordpress", "jira", "slack", "trello", "graphql", "webpack",
+  "babel", "gulp", "npm", "yarn", "postman", "django", "flask", "laravel",
+  "symfony", "bootstrap",
+  "apachespark", "matplotlib", "numpy", "opencv", "pandas", "pytorch", "tensorflow",
+  "cassandra", "cloudflare", "dynamodb", "elasticsearch", "firebase", "heroku",
+  "netlify", "oracle", "supabase", "vercel", "canva", "chakraui", "fastapi",
+  "fastify", "grpc", "ionic", "materialui", "nestjs", "nuxt", "redux", "c",
+  "matlab", "powershell", "r", "bitbucket", "confluence", "githubactions",
+  "jest", "junit", "nginx", "pytest", "selenium", "swagger", "vite", "cypressio",
+  "svelte"
+]);
+
+const DEVICON_SUFFIXES: Record<string, string> = {
+  "express": "original",
+  "tensorflow": "original",
+  "ionic": "original"
+};
+
+function getSkillIconClass(skillName: string): string | null {
+  const normalized = skillName.toLowerCase().trim();
+  
+  const map: Record<string, string> = {
+    "c++": "cplusplus",
+    "c#": "csharp",
+    "f#": "fsharp",
+    "aws": "amazonwebservices",
+    "amazon web services": "amazonwebservices",
+    "google cloud": "googlecloud",
+    "gcp": "googlecloud",
+    "microsoft azure": "azure",
+    "azure": "azure",
+    "tailwind css": "tailwindcss",
+    "tailwind": "tailwindcss",
+    "node.js": "nodejs",
+    "node": "nodejs",
+    "next.js": "nextjs",
+    "next": "nextjs",
+    "react.js": "react",
+    "react js": "react",
+    "vue.js": "vuejs",
+    "vue js": "vuejs",
+    "vue": "vuejs",
+    "angular.js": "angularjs",
+    "angular": "angular",
+    "spring boot": "spring",
+    "express.js": "express",
+    "expressjs": "express",
+    "express": "express",
+    "postgresql": "postgresql",
+    "postgres": "postgresql",
+    "sql server": "microsoftsqlserver",
+    "mysql": "mysql",
+    "mongodb": "mongodb",
+    "redis": "redis",
+    "sqlite": "sqlite",
+    "mariadb": "mariadb",
+    "html": "html5",
+    "html5": "html5",
+    "css": "css3",
+    "css3": "css3",
+    "sass": "sass",
+    "scss": "sass",
+    "git": "git",
+    "github": "github",
+    "gitlab": "gitlab",
+    "docker": "docker",
+    "kubernetes": "kubernetes",
+    "k8s": "kubernetes",
+    "terraform": "terraform",
+    "jenkins": "jenkins",
+    "ansible": "ansible",
+    "figma": "figma",
+    "photoshop": "photoshop",
+    "illustrator": "illustrator",
+    "xd": "xd",
+    "adobe xd": "xd",
+    "premiere pro": "premierepro",
+    "premiere": "premierepro",
+    "python": "python",
+    "java": "java",
+    "kotlin": "kotlin",
+    "scala": "scala",
+    "swift": "swift",
+    "objective-c": "objectivec",
+    "objective c": "objectivec",
+    "ruby": "ruby",
+    "rails": "rails",
+    "ruby on rails": "rails",
+    "php": "php",
+    "go": "go",
+    "golang": "go",
+    "rust": "rust",
+    "dart": "dart",
+    "flutter": "flutter",
+    "typescript": "typescript",
+    "ts": "typescript",
+    "javascript": "javascript",
+    "js": "javascript",
+    "apache spark": "apachespark",
+    "matplotlib": "matplotlib",
+    "numpy": "numpy",
+    "opencv": "opencv",
+    "pandas": "pandas",
+    "pytorch": "pytorch",
+    "tensorflow": "tensorflow",
+    "cassandra": "cassandra",
+    "cloudflare": "cloudflare",
+    "dynamodb": "dynamodb",
+    "elasticsearch": "elasticsearch",
+    "firebase": "firebase",
+    "heroku": "heroku",
+    "netlify": "netlify",
+    "oracle": "oracle",
+    "supabase": "supabase",
+    "vercel": "vercel",
+    "canva": "canva",
+    "chakra ui": "chakraui",
+    "fastapi": "fastapi",
+    "fastify": "fastify",
+    "grpc": "grpc",
+    "ionic": "ionic",
+    "material ui": "materialui",
+    "nestjs": "nestjs",
+    "nuxt.js": "nuxt",
+    "nuxt": "nuxt",
+    "redux": "redux",
+    "sveltekit": "svelte",
+    "c": "c",
+    "matlab": "matlab",
+    "powershell": "powershell",
+    "r": "r",
+    "bitbucket": "bitbucket",
+    "confluence": "confluence",
+    "github actions": "githubactions",
+    "jest": "jest",
+    "junit": "junit",
+    "nginx": "nginx",
+    "pytest": "pytest",
+    "selenium": "selenium",
+    "swagger": "swagger",
+    "vite": "vite",
+    "cypress": "cypressio",
+  };
+
+  const resolved = map[normalized] || normalized.replace(/\s+/g, "");
+  return SUPPORTED_DEVICONS.has(resolved) ? resolved : null;
+}
+
+function SkillIcon({ name, className }: { name: string; className?: string }) {
+  const iconClass = getSkillIconClass(name);
+  
+  // Align sizes dynamically based on target classes
+  let sizeClass = "w-4 h-4 text-base"; // default 16px
+  if (className?.includes("text-[11px]") || className?.includes("text-[10px]") || className?.includes("text-[10px]")) {
+    sizeClass = "w-[11px] h-[11px] text-[11px]";
+  } else if (className?.includes("text-base")) {
+    sizeClass = "w-4 h-4 text-base";
+  }
+
+  // Strip text-size classes from the className to avoid duplicates/conflicts
+  const cleanClassName = className
+    ?.replace(/\btext-(?:base|lg|sm|xs|\[11px\]|\[10px\])\b/g, "")
+    ?.trim();
+
+  if (iconClass) {
+    const suffix = DEVICON_SUFFIXES[iconClass] || "plain";
+    return (
+      <span className={cn("inline-flex items-center justify-center shrink-0 text-muted-foreground", sizeClass, cleanClassName)}>
+        <i className={`devicon-${iconClass}-${suffix}`} style={{ fontSize: "inherit", lineHeight: 1 }} />
+      </span>
+    );
+  }
+
+  return (
+    <Tag className={cn("text-muted-foreground shrink-0", sizeClass, cleanClassName)} />
+  );
 }
 
 function getStorageUrl(
@@ -251,7 +430,9 @@ export function CandidateProfileClient({
   experienceData,
   projectsData,
   certificationsData,
-  eventCertificates = []
+  eventCertificates = [],
+  allSkills,
+  initialSkillIds
 }: Props) {
   const supabase = createClient();
   const router = useRouter();
@@ -275,6 +456,8 @@ export function CandidateProfileClient({
     getStorageUrl(supabase, "avatars", storedImagePath.current)
   );
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [pendingAvatarPreview, setPendingAvatarPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [cropModalOpen, setCropModalOpen] = useState(false);
 
@@ -311,8 +494,11 @@ export function CandidateProfileClient({
       if (tempImageSrc) {
         URL.revokeObjectURL(tempImageSrc);
       }
+      if (pendingAvatarPreview) {
+        URL.revokeObjectURL(pendingAvatarPreview);
+      }
     };
-  }, [tempImageSrc]);
+  }, [tempImageSrc, pendingAvatarPreview]);
 
   const [instituteName, setInstituteName] = useState("");
   const [courseName, setCourseName] = useState(initialData?.course_name ?? "");
@@ -379,6 +565,7 @@ export function CandidateProfileClient({
   const [certificationDialogOpen, setCertificationDialogOpen] = useState(false);
   const [activeCertification, setActiveCertification] = useState<Partial<CandidateCertification> | null>(null);
   const [uploadingCert, setUploadingCert] = useState(false);
+  const [pendingCertFile, setPendingCertFile] = useState<File | null>(null);
 
 
 
@@ -394,8 +581,21 @@ export function CandidateProfileClient({
     setCertifications(certificationsData || []);
   }, [certificationsData]);
 
-  // Professional
-  const [selectedSkills, setSelectedSkills] = useState<string[]>(initialData?.skills ?? []);
+  // Professional — skill IDs (UUIDs from candidate_skills table)
+  const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>(initialSkillIds ?? []);
+
+  // DB-driven grouped skills for read-only view
+  const groupedSkills = useMemo(() => {
+    const groups: Record<string, Skill[]> = {};
+    const selectedSet = new Set(selectedSkillIds);
+    allSkills.forEach((skill) => {
+      if (!selectedSet.has(skill.id)) return;
+      if (!groups[skill.category]) groups[skill.category] = [];
+      groups[skill.category].push(skill);
+    });
+    return groups;
+  }, [selectedSkillIds, allSkills]);
+
   const [linkedinUrl, setLinkedinUrl] = useState(initialData?.linkedin_url ?? "");
   const [githubUrl, setGithubUrl] = useState(initialData?.github_url ?? "");
   const [portfolioLinks, setPortfolioLinks] = useState<string[]>(
@@ -411,6 +611,7 @@ export function CandidateProfileClient({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const skillsAnchor = useComboboxAnchor();
+  const projectSkillsAnchor = useComboboxAnchor();
   const defaultDobDate = new Date(2000, 0, 1);
 
   // Section completeness (from server data)
@@ -425,7 +626,7 @@ export function CandidateProfileClient({
     ((isHsc && hscPercentage && hscPassYear && hscInstitution) ||
       (isDiploma && diplomaPercentage && diplomaPassYear && diplomaInstitution))
   );
-  const professionalComplete = !!(initialData?.skills?.length > 0);
+  const professionalComplete = !!(initialSkillIds?.length > 0);
 
   // ─── Username debounce ───────────────────────────────────────────────────────
 
@@ -493,14 +694,131 @@ export function CandidateProfileClient({
       setSelectedAffiliation(found.affiliation ?? null);
       if (!found.courses?.includes(courseName)) setCourseName("");
     }
-  }, [instituteId]);
+  }, [instituteId, institutes]);
+
+  // ─── Section open/close ──────────────────────────────────────────────────────
+
+  // ─── Section change detectors ──────────────────────────────────────────────
+
+  function hasAccountChanges(): boolean {
+    return username !== (userProfile.username ?? "");
+  }
+
+  function hasBioChanges(): boolean {
+    return bio !== (initialData?.bio ?? "");
+  }
+
+  function hasPersonalChanges(): boolean {
+    const origFirstName = capitalizeFirstLetterOnly(initialData?.first_name ?? "");
+    const origMiddleName = capitalizeFirstLetterOnly(initialData?.middle_name ?? "");
+    const origLastName = capitalizeFirstLetterOnly(initialData?.last_name ?? "");
+    const origGender = initialData?.gender ? GENDER_REVERSE[initialData.gender] ?? "" : "";
+    const origPhone = initialData?.phone_number ?? "";
+    const origDob = initialData?.date_of_birth ? parseLocalDate(initialData.date_of_birth) : undefined;
+    const origAadhaar = initialData?.aadhaar_number ?? "";
+    const origCurrentAddr = initialData?.current_address ?? "";
+    const origPermAddr = initialData?.permanent_address ?? "";
+
+    const dobTime = dateOfBirth ? toLocalDateString(dateOfBirth) : "";
+    const origDobTime = origDob ? toLocalDateString(origDob) : "";
+
+    return (
+      firstName !== origFirstName ||
+      middleName !== origMiddleName ||
+      lastName !== origLastName ||
+      gender !== origGender ||
+      phoneNumber !== origPhone ||
+      dobTime !== origDobTime ||
+      aadhaarNumber !== origAadhaar ||
+      currentAddress !== origCurrentAddr ||
+      permanentAddress !== origPermAddr
+    );
+  }
+
+  function hasProfessionalChanges(): boolean {
+    const origLinkedin = initialData?.linkedin_url ?? "";
+    const origGithub = initialData?.github_url ?? "";
+    const origPortfolio = initialData?.portfolio_links ?? [""];
+
+    const origSet = new Set(initialSkillIds);
+    const currSet = new Set(selectedSkillIds);
+    const skillsEqual = origSet.size === currSet.size && [...origSet].every((id) => currSet.has(id));
+
+    const portfolioEqual =
+      portfolioLinks.length === origPortfolio.length &&
+      portfolioLinks.every((l, i) => l === origPortfolio[i]);
+
+    return (
+      !skillsEqual ||
+      linkedinUrl !== origLinkedin ||
+      githubUrl !== origGithub ||
+      !portfolioEqual
+    );
+  }
+
+  function hasEducationChanges(): boolean {
+    const origInstId = userProfile.institute_id ?? "";
+    const origCourse = initialData?.course_name ?? "";
+    const origPassout = initialData?.passout_year ? String(initialData.passout_year) : "";
+    const origPrn = initialData?.university_prn ?? "";
+
+    const origSscPct = sscRecord?.grade_or_percentage != null ? Number(sscRecord.grade_or_percentage).toFixed(2) : "";
+    const origSscYear = sscRecord?.passout_year ? String(sscRecord.passout_year) : "";
+    const origSscInst = sscRecord?.institution_name || "";
+
+    const origIsHsc = !!hscRecord;
+    const origHscPct = hscRecord?.grade_or_percentage != null ? Number(hscRecord.grade_or_percentage).toFixed(2) : "";
+    const origHscYear = hscRecord?.passout_year ? String(hscRecord.passout_year) : "";
+    const origHscInst = hscRecord?.institution_name || "";
+
+    const origIsDiploma = !!diplomaRecord;
+    const origDipPct = diplomaRecord?.grade_or_percentage != null ? Number(diplomaRecord.grade_or_percentage).toFixed(2) : "";
+    const origDipYear = diplomaRecord?.passout_year ? String(diplomaRecord.passout_year) : "";
+    const origDipInst = diplomaRecord?.institution_name || "";
+
+    const origSgpas = Array.from({ length: 8 }, (_, i) => {
+      const val = initialData?.sgpa_semesters?.[i];
+      return val != null && val !== 0 ? val.toFixed(2) : "";
+    });
+    const sgpaEqual = sgpaValues.every((val, i) => val === origSgpas[i]);
+
+    const numOrEmpty = (v: string) => v ? parseFloat(v) : null;
+
+    return (
+      instituteId !== origInstId ||
+      courseName !== origCourse ||
+      passoutYear !== origPassout ||
+      universityPrn !== origPrn ||
+      numOrEmpty(sscPercentage) !== numOrEmpty(origSscPct) ||
+      sscPassYear !== origSscYear ||
+      sscInstitution !== origSscInst ||
+      isHsc !== origIsHsc ||
+      numOrEmpty(hscPercentage) !== numOrEmpty(origHscPct) ||
+      hscPassYear !== origHscYear ||
+      hscInstitution !== origHscInst ||
+      isDiploma !== origIsDiploma ||
+      numOrEmpty(diplomaPercentage) !== numOrEmpty(origDipPct) ||
+      diplomaPassYear !== origDipYear ||
+      diplomaInstitution !== origDipInst ||
+      !sgpaEqual
+    );
+  }
 
   // ─── Section open/close ──────────────────────────────────────────────────────
 
   function openSection(section: SectionId) {
     if (editingSection && editingSection !== section) {
-      const confirmDiscard = window.confirm("You are currently editing another section. Unsaved changes will be discarded. Do you want to proceed?");
-      if (!confirmDiscard) return;
+      let hasChanges = false;
+      if (editingSection === "account") hasChanges = hasAccountChanges();
+      else if (editingSection === "personal") hasChanges = hasPersonalChanges();
+      else if (editingSection === "education") hasChanges = hasEducationChanges();
+      else if (editingSection === "professional") hasChanges = hasProfessionalChanges();
+      else if (editingSection === "bio") hasChanges = hasBioChanges();
+
+      if (hasChanges) {
+        const confirmDiscard = window.confirm("You have unsaved changes in the current section. Discard changes and proceed?");
+        if (!confirmDiscard) return;
+      }
       cancelSection(editingSection);
     }
     setErrors({});
@@ -508,6 +826,18 @@ export function CandidateProfileClient({
   }
 
   function cancelSection(section: SectionId) {
+    let hasChanges = false;
+    if (section === "account") hasChanges = hasAccountChanges();
+    else if (section === "personal") hasChanges = hasPersonalChanges();
+    else if (section === "education") hasChanges = hasEducationChanges();
+    else if (section === "professional") hasChanges = hasProfessionalChanges();
+    else if (section === "bio") hasChanges = hasBioChanges();
+
+    if (hasChanges) {
+      const confirmCancel = window.confirm("Are you sure you want to discard your unsaved changes?");
+      if (!confirmCancel) return;
+    }
+
     setErrors({});
     if (section === "account") {
       setUsername(userProfile.username ?? "");
@@ -523,27 +853,29 @@ export function CandidateProfileClient({
       setCurrentAddress(initialData?.current_address ?? "");
       setPermanentAddress(initialData?.permanent_address ?? "");
     } else if (section === "education") {
+      const oldInst = institutes.find(i => i.id === (userProfile.institute_id ?? ""));
       setInstituteId(userProfile.institute_id ?? "");
+      setInstituteName(oldInst ? oldInst.institute_name : "");
       setCourseName(initialData?.course_name ?? "");
       setPassoutYear(initialData?.passout_year ? String(initialData.passout_year) : "");
-      setSscPercentage(sscRecord?.grade_or_percentage != null ? String(sscRecord.grade_or_percentage) : "");
+      setSscPercentage(sscRecord?.grade_or_percentage != null ? Number(sscRecord.grade_or_percentage).toFixed(2) : "");
       setSscPassYear(sscRecord?.passout_year ? String(sscRecord.passout_year) : "");
       setSscInstitution(sscRecord?.institution_name || "");
       setIsHsc(!!hscRecord);
-      setHscPercentage(hscRecord?.grade_or_percentage != null ? String(hscRecord.grade_or_percentage) : "");
+      setHscPercentage(hscRecord?.grade_or_percentage != null ? Number(hscRecord.grade_or_percentage).toFixed(2) : "");
       setHscPassYear(hscRecord?.passout_year ? String(hscRecord.passout_year) : "");
       setHscInstitution(hscRecord?.institution_name || "");
       setIsDiploma(!!diplomaRecord);
-      setDiplomaPercentage(diplomaRecord?.grade_or_percentage != null ? String(diplomaRecord.grade_or_percentage) : "");
+      setDiplomaPercentage(diplomaRecord?.grade_or_percentage != null ? Number(diplomaRecord.grade_or_percentage).toFixed(2) : "");
       setDiplomaPassYear(diplomaRecord?.passout_year ? String(diplomaRecord.passout_year) : "");
       setDiplomaInstitution(diplomaRecord?.institution_name || "");
       setUniversityPrn(initialData?.university_prn ?? "");
       setSgpaValues(Array.from({ length: 8 }, (_, i) => {
         const val = initialData?.sgpa_semesters?.[i];
-        return val != null && val !== 0 ? String(val) : "";
+        return val != null && val !== 0 ? val.toFixed(2) : "";
       }));
     } else if (section === "professional") {
-      setSelectedSkills(initialData?.skills ?? []);
+      setSelectedSkillIds(initialSkillIds ?? []);
       setLinkedinUrl(initialData?.linkedin_url ?? "");
       setGithubUrl(initialData?.github_url ?? "");
       setPortfolioLinks(initialData?.portfolio_links?.length ? initialData.portfolio_links : [""]);
@@ -578,21 +910,42 @@ export function CandidateProfileClient({
   };
 
   async function handleCroppedAvatarUpload(croppedFile: File) {
-    setIsUploadingAvatar(true);
     const localPreviewUrl = URL.createObjectURL(croppedFile);
+    if (pendingAvatarPreview) {
+      URL.revokeObjectURL(pendingAvatarPreview);
+    }
+    setPendingAvatarPreview(localPreviewUrl);
+    setPendingAvatarFile(croppedFile);
     setAvatarSrc(localPreviewUrl);
+    setCropModalOpen(false);
+    if (tempImageSrc) {
+      URL.revokeObjectURL(tempImageSrc);
+      setTempImageSrc(null);
+    }
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
+  }
+
+  const handleCancelAvatarChange = () => {
+    if (pendingAvatarPreview) {
+      URL.revokeObjectURL(pendingAvatarPreview);
+      setPendingAvatarPreview(null);
+    }
+    setPendingAvatarFile(null);
+    setAvatarSrc(getStorageUrl(supabase, "avatars", storedImagePath.current));
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
+  };
+
+  const handleSaveAvatar = async () => {
+    if (!pendingAvatarFile) return;
+    setIsUploadingAvatar(true);
     try {
       const oldPath = storedImagePath.current;
-      if (oldPath) {
-        const { error: deleteError } = await supabase.storage.from("avatars").remove([oldPath]);
-        if (deleteError) console.warn("Could not delete old avatar:", deleteError.message);
-      }
       const timestamp = Date.now();
       const newPath = `candidates/${userProfile.id}/profile/${timestamp}.jpg`;
 
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(newPath, croppedFile, {
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(newPath, pendingAvatarFile, {
         upsert: false,
-        contentType: croppedFile.type,
+        contentType: pendingAvatarFile.type,
       });
       if (uploadError) throw uploadError;
 
@@ -601,27 +954,31 @@ export function CandidateProfileClient({
         .update({ avatar_path: newPath })
         .eq("id", userProfile.id);
       if (dbError) throw dbError;
+
       await supabase.auth.updateUser({ data: { avatar_path: newPath } });
+
+      if (oldPath) {
+        const { error: deleteError } = await supabase.storage.from("avatars").remove([oldPath]);
+        if (deleteError) console.warn("Could not delete old avatar:", deleteError.message);
+      }
 
       storedImagePath.current = newPath;
       const newPublicUrl = getStorageUrl(supabase, "avatars", newPath);
       setAvatarSrc(`${newPublicUrl}?v=${timestamp}`);
       toast.success("Profile picture updated!");
+      setPendingAvatarFile(null);
+      if (pendingAvatarPreview) {
+        URL.revokeObjectURL(pendingAvatarPreview);
+        setPendingAvatarPreview(null);
+      }
       router.refresh();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error("Failed to upload profile picture. Please try again.");
-      setAvatarSrc(getStorageUrl(supabase, "avatars", storedImagePath.current));
+      toast.error(err.message || "Failed to upload profile picture. Please try again.");
     } finally {
       setIsUploadingAvatar(false);
-      URL.revokeObjectURL(localPreviewUrl);
-      if (tempImageSrc) {
-        URL.revokeObjectURL(tempImageSrc);
-        setTempImageSrc(null);
-      }
-      if (avatarInputRef.current) avatarInputRef.current.value = "";
     }
-  }
+  };
 
   // ─── Institute select ────────────────────────────────────────────────────────
 
@@ -784,7 +1141,7 @@ export function CandidateProfileClient({
 
   function validateProfessional(): Record<string, string> {
     const e: Record<string, string> = {};
-    if (selectedSkills.length === 0) e.skills = "Select at least one skill";
+    if (selectedSkillIds.length === 0) e.skills = "Select at least one skill";
 
     if (linkedinUrl.trim() && !/^(https?:\/\/)?(www\.)?linkedin\.com\/.*$/i.test(linkedinUrl)) {
       e.linkedinUrl = "Please enter a valid LinkedIn URL.";
@@ -975,10 +1332,13 @@ export function CandidateProfileClient({
         }
 
         else if (section === "professional") {
+          // Save skills via candidate_skills table
+          await syncCandidateSkillsAction(selectedSkillIds);
+
+          // Save other professional details
           const { error } = await (supabase as any)
             .from("candidate_profiles")
             .update({
-              skills: selectedSkills.length > 0 ? selectedSkills : null,
               linkedin_url: linkedinUrl.trim() || null,
               github_url: githubUrl.trim() || null,
               portfolio_links: portfolioLinks.filter((l) => l.trim()),
@@ -1006,18 +1366,7 @@ export function CandidateProfileClient({
 
   // ─── Bio and Sub-table Handlers ──────────────────────────────────────────────
 
-  const handleSaveBio = async () => {
-    startTransition(async () => {
-      try {
-        await updateCandidateBioAction(bio);
-        toast.success("About summary saved!");
-        setEditingSection(null);
-        router.refresh();
-      } catch (err: any) {
-        toast.error(err.message || "Failed to save bio.");
-      }
-    });
-  };
+
 
   const handleAddExperience = () => {
     setActiveExperience({
@@ -1127,33 +1476,24 @@ export function CandidateProfileClient({
       credential_url: "",
       certificate_path: "",
     });
+    setPendingCertFile(null);
     setCertificationDialogOpen(true);
   };
 
   const handleEditCertification = (cert: CandidateCertification) => {
     setActiveCertification(cert);
+    setPendingCertFile(null);
     setCertificationDialogOpen(true);
   };
 
-  const handleCertificateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Max file size allowed is 5MB.");
       return;
     }
-    setUploadingCert(true);
-    try {
-      const path = `${userProfile.id}/${Date.now()}_${file.name}`;
-      const { data, error } = await supabase.storage.from("certificates").upload(path, file);
-      if (error) throw error;
-      setActiveCertification(prev => prev ? { ...prev, certificate_path: data.path } : null);
-      toast.success("Certificate document uploaded!");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to upload file.");
-    } finally {
-      setUploadingCert(false);
-    }
+    setPendingCertFile(file);
   };
 
   const handleSaveCertification = async () => {
@@ -1163,12 +1503,24 @@ export function CandidateProfileClient({
     }
     startTransition(async () => {
       try {
-        await saveCertificationAction(activeCertification);
+        let updatedCert = { ...activeCertification };
+        if (pendingCertFile) {
+          setUploadingCert(true);
+          const path = `${userProfile.id}/${Date.now()}_${pendingCertFile.name}`;
+          const { data, error } = await supabase.storage.from("certificates").upload(path, pendingCertFile);
+          if (error) throw error;
+          updatedCert.certificate_path = data.path;
+        }
+
+        await saveCertificationAction(updatedCert);
         toast.success("Certification saved successfully!");
         setCertificationDialogOpen(false);
+        setPendingCertFile(null);
         router.refresh();
       } catch (err: any) {
         toast.error(err.message || "Failed to save certification.");
+      } finally {
+        setUploadingCert(false);
       }
     });
   };
@@ -1316,74 +1668,80 @@ export function CandidateProfileClient({
           </Alert>
         )}
 
-        {/* Account Settings — only shown if username not set */}
-        {!initialUsername.current ? (
-          <Card className={cn("transition-all duration-200", editing("account") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
-              <div>
-                <CardTitle>Account Settings</CardTitle>
-                <CardDescription>Your unique username is used to identify you on the platform</CardDescription>
-              </div>
-              {!editing("account") && (
-                <Button variant="outline" size="sm" onClick={() => openSection("account")}>
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                  Edit
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              {editing("account") ? (
-                <div className="max-w-sm space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <div className="relative">
-                    <AtSign className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="username"
-                      placeholder="yourusername"
-                      className={cn(
-                        "pl-9 pr-9",
-                        errors.username && "border-destructive focus-visible:ring-destructive"
-                      )}
-                      value={username}
-                      maxLength={20}
-                      onChange={(e) => handleUsernameChange(e.target.value.replace(/\s/g, ""))}
-                      autoComplete="username"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <UsernameStatusIcon status={usernameStatus} />
-                    </span>
-                  </div>
-                  {errors.username ? (
-                    <p className="text-xs text-destructive">{errors.username}</p>
-                  ) : usernameMsg ? (
-                    <p className={cn("text-xs", usernameMsg.className)}>{usernameMsg.text}</p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      3–20 characters: letters, numbers, and underscores only — cannot be changed after saving
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="max-w-sm">
-                  <p className="text-xs text-muted-foreground mb-1">Username</p>
-                  <p className="text-sm font-medium text-muted-foreground italic">Not set yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">Set your username — it cannot be changed once saved</p>
-                </div>
-              )}
-            </CardContent>
-            {editing("account") && (
-              <CardFooter className="flex justify-end gap-2 border-t pt-4">
-                <Button variant="ghost" size="sm" onClick={() => cancelSection("account")} disabled={isPending}>
-                  Cancel
-                </Button>
-                <Button size="sm" onClick={() => handleSaveSection("account")} disabled={isPending}>
-                  {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-                  Save
-                </Button>
-              </CardFooter>
+        {/* Account Settings */}
+        <Card className={cn("transition-all duration-200", editing("account") && "border-primary/50 shadow-md ring-1 ring-primary/10")}>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
+            <div>
+              <CardTitle>Account Settings</CardTitle>
+              <CardDescription>Your unique username is used to identify you on the platform</CardDescription>
+            </div>
+            {!editing("account") && !initialUsername.current && (
+              <Button variant="outline" size="sm" onClick={() => openSection("account")}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Edit
+              </Button>
             )}
-          </Card>
-        ) : null}
+          </CardHeader>
+          <CardContent>
+            {editing("account") ? (
+              <div className="max-w-sm space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <div className="relative">
+                  <AtSign className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="username"
+                    placeholder="yourusername"
+                    className={cn(
+                      "pl-9 pr-9",
+                      errors.username && "border-destructive focus-visible:ring-destructive"
+                    )}
+                    value={username}
+                    maxLength={20}
+                    onChange={(e) => handleUsernameChange(e.target.value.replace(/\s/g, ""))}
+                    autoComplete="username"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <UsernameStatusIcon status={usernameStatus} />
+                  </span>
+                </div>
+                {errors.username ? (
+                  <p className="text-xs text-destructive">{errors.username}</p>
+                ) : usernameMsg ? (
+                  <p className={cn("text-xs", usernameMsg.className)}>{usernameMsg.text}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    3–20 characters: letters, numbers, and underscores only — cannot be changed after saving
+                  </p>
+                )}
+              </div>
+            ) : initialUsername.current ? (
+              <div className="max-w-sm space-y-1.5">
+                <p className="text-xs text-muted-foreground font-medium">Username</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">@{initialUsername.current}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-normal">Usernames cannot be changed once saved.</p>
+              </div>
+            ) : (
+              <div className="max-w-sm">
+                <p className="text-xs text-muted-foreground mb-1">Username</p>
+                <p className="text-sm font-medium text-muted-foreground italic">Not set yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Set your username — it cannot be changed once saved</p>
+              </div>
+            )}
+          </CardContent>
+          {editing("account") && (
+            <CardFooter className="flex justify-end gap-2 border-t pt-4">
+              <Button variant="ghost" size="sm" onClick={() => cancelSection("account")} disabled={isPending}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={() => handleSaveSection("account")} disabled={isPending}>
+                {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                Save
+              </Button>
+            </CardFooter>
+          )}
+        </Card>
 
         {/* Profile Photo — always interactive */}
         <Card>
@@ -1437,11 +1795,22 @@ export function CandidateProfileClient({
                   )}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center sm:text-left">
-                  Click the avatar or button to upload a new photo.
+                  {pendingAvatarFile ? "New photo selected. Click Save Photo below to confirm." : "Click the avatar or button to upload a new photo."}
                 </p>
               </div>
             </div>
           </CardContent>
+          {pendingAvatarFile && (
+            <CardFooter className="flex justify-end gap-2 border-t pt-4">
+              <Button variant="ghost" size="sm" onClick={handleCancelAvatarChange} disabled={isUploadingAvatar}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSaveAvatar} disabled={isUploadingAvatar}>
+                {isUploadingAvatar && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                Save Photo
+              </Button>
+            </CardFooter>
+          )}
         </Card>
 
         {/* About Summary */}
@@ -1483,7 +1852,7 @@ export function CandidateProfileClient({
               <Button variant="ghost" size="sm" onClick={() => cancelSection("bio")} disabled={isPending}>
                 Cancel
               </Button>
-              <Button size="sm" onClick={() => handleSaveBio()} disabled={isPending}>
+              <Button size="sm" onClick={() => handleSaveSection("bio")} disabled={isPending}>
                 {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
                 Save Summary
               </Button>
@@ -1515,17 +1884,35 @@ export function CandidateProfileClient({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>First Name<RequiredMark /></Label>
-                    <Input placeholder="First name" maxLength={50} value={firstName} onChange={(e) => setFirstName(capitalizeFirstLetterOnly(e.target.value))} />
+                    <Input
+                      placeholder="First name"
+                      maxLength={50}
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value.replace(/[<>]/g, ''))}
+                      onBlur={() => setFirstName(capitalizeFirstLetterOnly(firstName))}
+                    />
                     <FieldError message={errors.firstName} />
                   </div>
                   <div className="space-y-2">
                     <Label>Middle Name<RequiredMark /></Label>
-                    <Input placeholder="Middle name" maxLength={50} value={middleName} onChange={(e) => setMiddleName(capitalizeFirstLetterOnly(e.target.value))} />
+                    <Input
+                      placeholder="Middle name"
+                      maxLength={50}
+                      value={middleName}
+                      onChange={(e) => setMiddleName(e.target.value.replace(/[<>]/g, ''))}
+                      onBlur={() => setMiddleName(capitalizeFirstLetterOnly(middleName))}
+                    />
                     <FieldError message={errors.middleName} />
                   </div>
                   <div className="space-y-2">
                     <Label>Last Name<RequiredMark /></Label>
-                    <Input placeholder="Last name" maxLength={50} value={lastName} onChange={(e) => setLastName(capitalizeFirstLetterOnly(e.target.value))} />
+                    <Input
+                      placeholder="Last name"
+                      maxLength={50}
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value.replace(/[<>]/g, ''))}
+                      onBlur={() => setLastName(capitalizeFirstLetterOnly(lastName))}
+                    />
                     <FieldError message={errors.lastName} />
                   </div>
                 </div>
@@ -1590,6 +1977,16 @@ export function CandidateProfileClient({
                     maxLength={12}
                     value={aadhaarNumber}
                     onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, ""))}
+                    onFocus={() => {
+                      if (aadhaarNumber.includes("*")) {
+                        setAadhaarNumber("");
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!aadhaarNumber.trim() && initialData?.aadhaar_number) {
+                        setAadhaarNumber(initialData.aadhaar_number);
+                      }
+                    }}
                   />
                   <FieldError message={errors.aadhaarNumber} />
                 </div>
@@ -1624,7 +2021,7 @@ export function CandidateProfileClient({
                 </div>
                 <Separator />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                  <ReadonlyField label="Aadhaar Number" value={aadhaarNumber ? aadhaarNumber.replace(/(.{4})(.{4})(.{4})/, "$1 $2 $3") : null} />
+                  <ReadonlyField label="Aadhaar Number" value={aadhaarNumber ? aadhaarNumber.replace(/.(?=.{4})/g, "*").replace(/(.{4})(.{4})(.{4})/, "$1 $2 $3") : null} />
                   <div className="hidden sm:block" />
                   <div className="sm:col-span-2">
                     <ReadonlyField label="Current Address" value={currentAddress} />
@@ -2021,28 +2418,53 @@ export function CandidateProfileClient({
           <CardContent>
             {editing("professional") ? (
               <div className="space-y-4">
-                <div className="space-y-2" ref={skillsAnchor}>
+                <div className="space-y-2">
                   <Label>Skills<RequiredMark /></Label>
                   <Combobox
-                    items={SOFTWARE_SKILLS}
-                    value={selectedSkills}
-                    onValueChange={(v) => setSelectedSkills(v as string[])}
+                    items={(() => {
+                      const grouped = allSkills.reduce<Record<string, string[]>>((acc, skill) => {
+                        if (!acc[skill.category]) acc[skill.category] = [];
+                        acc[skill.category].push(skill.id);
+                        return acc;
+                      }, {});
+                      return Object.entries(grouped).map(([category, items]) => ({ value: category, items }));
+                    })()}
+                    value={selectedSkillIds}
+                    onValueChange={(v) => setSelectedSkillIds(v as string[])}
                     multiple
+                    itemToStringLabel={(id) => allSkills.find((s) => s.id === id)?.name ?? id}
                   >
-                    <ComboboxChips>
-                      {selectedSkills.map((skill) => (
-                        <ComboboxChip key={skill} showRemove>{skill}</ComboboxChip>
-                      ))}
-                      <ComboboxChipsInput placeholder={selectedSkills.length ? "Add more…" : "Search skills…"} />
+                    <ComboboxChips ref={skillsAnchor}>
+                      {selectedSkillIds.map((id) => {
+                        const skill = allSkills.find((s) => s.id === id);
+                        return (
+                          <ComboboxChip key={id} showRemove>
+                            <SkillIcon name={skill?.name ?? ""} className="mr-1 text-[11px]" />
+                            {skill?.name ?? id}
+                          </ComboboxChip>
+                        );
+                      })}
+                      <ComboboxChipsInput placeholder={selectedSkillIds.length ? "Add more…" : "Search skills…"} />
                     </ComboboxChips>
-                    <ComboboxContent>
+                    <ComboboxContent anchor={skillsAnchor}>
                       <ComboboxEmpty>No skill found.</ComboboxEmpty>
                       <ComboboxList>
-                        {SOFTWARE_SKILLS.map((item) => (
-                          <ComboboxItem key={item} value={item}>
-                            <ComboboxValue>{item}</ComboboxValue>
-                          </ComboboxItem>
-                        ))}
+                        {(group: { value: string; items: string[] }) => (
+                          <ComboboxGroup key={group.value} items={group.items}>
+                            <ComboboxLabel>{group.value}</ComboboxLabel>
+                            <ComboboxCollection>
+                              {(id: string) => {
+                                const skill = allSkills.find((s) => s.id === id);
+                                return (
+                                  <ComboboxItem key={id} value={id}>
+                                    <SkillIcon name={skill?.name ?? ""} className="mr-1.5 text-base" />
+                                    <span className="text-sm font-medium">{skill?.name ?? id}</span>
+                                  </ComboboxItem>
+                                );
+                              }}
+                            </ComboboxCollection>
+                          </ComboboxGroup>
+                        )}
                       </ComboboxList>
                     </ComboboxContent>
                   </Combobox>
@@ -2073,11 +2495,9 @@ export function CandidateProfileClient({
                         type="url"
                         maxLength={200}
                       />
-                      {portfolioLinks.length > 1 && (
-                        <Button variant="ghost" size="icon" type="button" onClick={() => removePortfolioLink(index)}>
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Button variant="ghost" size="icon" type="button" onClick={() => removePortfolioLink(index)}>
+                        <Minus className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))}
                   <Button variant="outline" size="sm" onClick={addPortfolioLink} type="button">
@@ -2089,11 +2509,22 @@ export function CandidateProfileClient({
             ) : (
               <div className="space-y-4">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Skills</p>
-                  {selectedSkills.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedSkills.map((skill) => (
-                        <Badge key={skill} variant="secondary" className="text-xs">{skill}</Badge>
+                  <p className="text-xs text-muted-foreground mb-3">Skills & Expertise</p>
+                  {selectedSkillIds.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {Object.entries(groupedSkills).map(([category, skills]) => (
+                        <div key={category} className="space-y-1.5 p-3 rounded-lg border bg-muted/10 border-border/50">
+                          <h5 className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{category}</h5>
+                          <div className="flex flex-wrap gap-x-2 gap-y-1">
+                            {skills.map((skill, index) => (
+                              <span key={skill.id} className="inline-flex items-center text-sm text-foreground">
+                                <SkillIcon name={skill.name} className="mr-1 text-base" />
+                                {skill.name}
+                                {index < skills.length - 1 && <span className="text-muted-foreground ml-1.5">,</span>}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   ) : (
@@ -2163,30 +2594,32 @@ export function CandidateProfileClient({
               <div className="space-y-0">
                 {experiences.map((exp, idx) => (
                   <div key={exp.id}>
-                    <div className="group relative flex gap-4 items-start py-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
-                        <Briefcase className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="space-y-1 pr-16 flex-1">
-                        <h4 className="text-sm font-semibold leading-none">{exp.title}</h4>
-                        <p className="text-xs text-muted-foreground font-medium">
-                          {exp.company_name} {exp.location ? `• ${exp.location}` : ""}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground font-medium">
-                          {new Date(exp.start_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })} –{" "}
-                          {exp.is_current
-                            ? "Present"
-                            : exp.end_date
-                              ? new Date(exp.end_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
-                              : "—"}
-                        </p>
-                        {exp.description && (
-                          <p className="text-xs text-foreground/80 mt-2 whitespace-pre-line leading-normal">
-                            {exp.description}
+                    <div className="flex gap-4 items-start py-4 justify-between">
+                      <div className="flex gap-4 items-start flex-1 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
+                          <Briefcase className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold leading-none">{exp.title}</h4>
+                          <p className="text-xs text-muted-foreground font-medium">
+                            {exp.company_name} {exp.location ? `• ${exp.location}` : ""}
                           </p>
-                        )}
+                          <p className="text-[11px] text-muted-foreground font-medium">
+                            {new Date(exp.start_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })} –{" "}
+                            {exp.is_current
+                              ? "Present"
+                              : exp.end_date
+                                ? new Date(exp.end_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+                                : "—"}
+                          </p>
+                          {exp.description && (
+                            <p className="text-xs text-foreground/80 mt-2 whitespace-pre-line leading-normal">
+                              {exp.description}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <div className="absolute right-0 top-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                      <div className="flex items-center gap-1 shrink-0">
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => handleEditExperience(exp)}>
                           <Edit2 className="h-3.5 w-3.5" />
                         </Button>
@@ -2222,51 +2655,54 @@ export function CandidateProfileClient({
               <div className="space-y-0">
                 {projects.map((proj, idx) => (
                   <div key={proj.id}>
-                    <div className="group relative flex gap-4 items-start py-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
-                        <FolderGit2 className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="space-y-1 pr-16 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-semibold leading-none">{proj.title}</h4>
-                          {proj.project_url && (
-                            <a href={proj.project_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                              <Link2 className="h-3.5 w-3.5" />
-                            </a>
+                    <div className="flex gap-4 items-start py-4 justify-between">
+                      <div className="flex gap-4 items-start flex-1 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
+                          <FolderGit2 className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-semibold leading-none">{proj.title}</h4>
+                            {proj.project_url && (
+                              <a href={proj.project_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                                <Link2 className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                          </div>
+                          {proj.associated_with && (
+                            <p className="text-xs text-muted-foreground font-medium">
+                              Associated with: {proj.associated_with}
+                            </p>
+                          )}
+                          {(proj.start_date || proj.end_date || proj.is_ongoing) && (
+                            <p className="text-[11px] text-muted-foreground font-medium">
+                              {proj.start_date
+                                ? new Date(proj.start_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+                                : "—"}{" "}
+                              –{" "}
+                              {proj.is_ongoing
+                                ? "Present"
+                                : proj.end_date
+                                  ? new Date(proj.end_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+                                  : "—"}
+                            </p>
+                          )}
+                          <p className="text-xs text-foreground/80 mt-2 whitespace-pre-line leading-normal">
+                            {proj.description}
+                          </p>
+                          {proj.skills && proj.skills.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {proj.skills.map((skill) => (
+                                <Badge key={skill} variant="default" className="text-[10px] px-1.5 py-0 inline-flex items-center gap-1">
+                                  <SkillIcon name={skill} className="text-[10px]" />
+                                  {skill}
+                                </Badge>
+                              ))}
+                            </div>
                           )}
                         </div>
-                        {proj.associated_with && (
-                          <p className="text-xs text-muted-foreground font-medium">
-                            Associated with: {proj.associated_with}
-                          </p>
-                        )}
-                        {(proj.start_date || proj.end_date || proj.is_ongoing) && (
-                          <p className="text-[11px] text-muted-foreground font-medium">
-                            {proj.start_date
-                              ? new Date(proj.start_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
-                              : "—"}{" "}
-                            –{" "}
-                            {proj.is_ongoing
-                              ? "Present"
-                              : proj.end_date
-                                ? new Date(proj.end_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
-                                : "—"}
-                          </p>
-                        )}
-                        <p className="text-xs text-foreground/80 mt-2 whitespace-pre-line leading-normal">
-                          {proj.description}
-                        </p>
-                        {proj.skills && proj.skills.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {proj.skills.map((skill) => (
-                              <Badge key={skill} variant="secondary" className="text-[10px] px-1.5 py-0">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
                       </div>
-                      <div className="absolute right-0 top-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                      <div className="flex items-center gap-1 shrink-0">
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => handleEditProject(proj)}>
                           <Edit2 className="h-3.5 w-3.5" />
                         </Button>
@@ -2302,46 +2738,48 @@ export function CandidateProfileClient({
               <div className="space-y-0">
                 {certifications.map((cert, idx) => (
                   <div key={cert.id}>
-                    <div className="group relative flex gap-4 items-start py-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
-                        <Award className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="space-y-1 pr-16 flex-1">
-                        <h4 className="text-sm font-semibold leading-none">{cert.name}</h4>
-                        <p className="text-xs text-muted-foreground font-medium">{cert.issuing_org}</p>
-                        <p className="text-[11px] text-muted-foreground font-medium">
-                          Issued {new Date(cert.issue_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
-                          {!cert.does_not_expire && cert.expiration_date
-                            ? ` • Expires ${new Date(cert.expiration_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
-                            : " • No Expiration Date"}
-                        </p>
-                        {cert.credential_id && (
-                          <p className="text-[11px] text-muted-foreground">Credential ID: {cert.credential_id}</p>
-                        )}
-                        <div className="flex flex-wrap items-center gap-3 mt-2">
-                          {cert.credential_url && (
-                            <a
-                              href={cert.credential_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                            >
-                              <Link2 className="h-3 w-3" /> Show credential
-                            </a>
+                    <div className="flex gap-4 items-start py-4 justify-between">
+                      <div className="flex gap-4 items-start flex-1 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
+                          <Award className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold leading-none">{cert.name}</h4>
+                          <p className="text-xs text-muted-foreground font-medium">{cert.issuing_org}</p>
+                          <p className="text-[11px] text-muted-foreground font-medium">
+                            Issued {new Date(cert.issue_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                            {!cert.does_not_expire && cert.expiration_date
+                              ? ` • Expires ${new Date(cert.expiration_date).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
+                              : " • No Expiration Date"}
+                          </p>
+                          {cert.credential_id && (
+                            <p className="text-[11px] text-muted-foreground">Credential ID: {cert.credential_id}</p>
                           )}
-                          {cert.certificate_path && (
-                            <a
-                              href={getStorageUrl(supabase, "certificates", cert.certificate_path) ?? "#"}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                            >
-                              <FileText className="h-3 w-3" /> View certificate document
-                            </a>
-                          )}
+                          <div className="flex flex-wrap items-center gap-3 mt-2">
+                            {cert.credential_url && (
+                              <a
+                                href={cert.credential_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                              >
+                                <Link2 className="h-3 w-3" /> Show credential
+                              </a>
+                            )}
+                            {cert.certificate_path && (
+                              <a
+                                href={getStorageUrl(supabase, "certificates", cert.certificate_path) ?? "#"}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                              >
+                                <FileText className="h-3 w-3" /> View certificate document
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="absolute right-0 top-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                      <div className="flex items-center gap-1 shrink-0">
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => handleEditCertification(cert)}>
                           <Edit2 className="h-3.5 w-3.5" />
                         </Button>
@@ -2558,25 +2996,43 @@ export function CandidateProfileClient({
               <div className="space-y-2">
                 <Label>Skills Used</Label>
                 <Combobox
-                  items={SOFTWARE_SKILLS}
+                  items={(() => {
+                    const grouped = allSkills.reduce<Record<string, string[]>>((acc, skill) => {
+                      if (!acc[skill.category]) acc[skill.category] = [];
+                      acc[skill.category].push(skill.name);
+                      return acc;
+                    }, {});
+                    return Object.entries(grouped).map(([category, items]) => ({ value: category, items }));
+                  })()}
                   value={activeProject.skills || []}
                   onValueChange={(v) => setActiveProject(prev => prev ? { ...prev, skills: v as string[] } : null)}
                   multiple
                 >
-                  <ComboboxChips>
+                  <ComboboxChips ref={projectSkillsAnchor}>
                     {(activeProject.skills || []).map((skill) => (
-                      <ComboboxChip key={skill} showRemove>{skill}</ComboboxChip>
+                      <ComboboxChip key={skill} showRemove>
+                        <SkillIcon name={skill} className="mr-1 text-[11px]" />
+                        {skill}
+                      </ComboboxChip>
                     ))}
                     <ComboboxChipsInput placeholder={(activeProject.skills || []).length ? "Add more…" : "Search skills…"} />
                   </ComboboxChips>
-                  <ComboboxContent>
+                  <ComboboxContent anchor={projectSkillsAnchor}>
                     <ComboboxEmpty>No skill found.</ComboboxEmpty>
                     <ComboboxList>
-                      {SOFTWARE_SKILLS.map((item) => (
-                        <ComboboxItem key={item} value={item}>
-                          <ComboboxValue>{item}</ComboboxValue>
-                        </ComboboxItem>
-                      ))}
+                      {(group: { value: string; items: string[] }) => (
+                        <ComboboxGroup key={group.value} items={group.items}>
+                          <ComboboxLabel>{group.value}</ComboboxLabel>
+                          <ComboboxCollection>
+                            {(item: string) => (
+                              <ComboboxItem key={item} value={item}>
+                                <SkillIcon name={item} className="mr-1.5 text-base" />
+                                <span className="text-sm font-medium">{item}</span>
+                              </ComboboxItem>
+                            )}
+                          </ComboboxCollection>
+                        </ComboboxGroup>
+                      )}
                     </ComboboxList>
                   </ComboboxContent>
                 </Combobox>
@@ -2696,12 +3152,13 @@ export function CandidateProfileClient({
                     {uploadingCert ? (
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading…</>
                     ) : (
-                      <><Upload className="h-4 w-4 mr-2" />Upload Document</>
+                      <><Upload className="h-4 w-4 mr-2" />Choose File</>
                     )}
                   </Button>
-                  {activeCertification.certificate_path && (
+                  {(activeCertification.certificate_path || pendingCertFile) && (
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Check className="h-4 w-4 text-green-500" /> Document uploaded
+                      <Check className="h-4 w-4 text-green-500" />
+                      {pendingCertFile ? `${pendingCertFile.name} (will save on submit)` : "Document uploaded"}
                     </span>
                   )}
                 </div>

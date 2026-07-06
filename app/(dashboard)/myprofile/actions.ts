@@ -69,7 +69,45 @@ export async function updateCandidateBioAction(bio: string) {
   return { success: true };
 }
 
-// ─── Experience Actions ───────────────────────────────────────────────────────
+// ─── Skills Actions ───────────────────────────────────────────────────────────
+
+export async function syncCandidateSkillsAction(skillIds: string[]) {
+  const profile = await getAuthorizedCandidate();
+  const supabase = await createClient();
+
+  // Delete all existing candidate skills for this profile
+  const { error: deleteError } = await (supabase as any)
+    .from("candidate_skills")
+    .delete()
+    .eq("profile_id", profile.id);
+
+  if (deleteError) {
+    console.error("syncCandidateSkillsAction delete error:", deleteError);
+    throw new Error(deleteError.message);
+  }
+
+  // Insert the new set of skills (if any)
+  if (skillIds.length > 0) {
+    const rows = skillIds.map((skill_id) => ({
+      profile_id: profile.id,
+      skill_id,
+    }));
+
+    const { error: insertError } = await (supabase as any)
+      .from("candidate_skills")
+      .insert(rows);
+
+    if (insertError) {
+      console.error("syncCandidateSkillsAction insert error:", insertError);
+      throw new Error(insertError.message);
+    }
+  }
+
+  revalidatePath("/myprofile");
+  return { success: true };
+}
+
+
 
 export async function saveExperienceAction(payload: any) {
   const profile = await getAuthorizedCandidate();

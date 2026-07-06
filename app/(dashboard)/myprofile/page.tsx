@@ -29,7 +29,9 @@ export default async function MyProfilePage() {
       { data: candidateExperiences },
       { data: candidateProjects },
       { data: candidateCertifications },
-      { data: eventTickets }
+      { data: eventTickets },
+      { data: allSkills },
+      { data: candidateSkillRows }
     ] = await Promise.all([
       (supabase as any).from("candidate_profiles").select("*").eq("profile_id", profile.id).maybeSingle(),
       (supabase as any).from("candidate_education").select("*").eq("profile_id", profile.id).order("passout_year", { ascending: false }),
@@ -49,8 +51,11 @@ export default async function MyProfilePage() {
         `)
         .eq("candidate_id", profile.id)
         .eq("attendance_status", "Present")
-        .eq("events.status", "Concluded")
+        .eq("events.status", "Concluded"),
+      (supabase as any).from("skills").select("*").order("category").order("name"),
+      (supabase as any).from("candidate_skills").select("skill_id").eq("profile_id", profile.id),
     ]);
+
 
     const eventCertificates = (eventTickets ?? [])
       .filter((t: any) => t.event)
@@ -71,6 +76,8 @@ export default async function MyProfilePage() {
       }
     }
 
+    const selectedSkillIds: string[] = (candidateSkillRows ?? []).map((r: any) => r.skill_id);
+
     return (
       <CandidateProfileClient
         userProfile={profile}
@@ -80,6 +87,8 @@ export default async function MyProfilePage() {
         projectsData={candidateProjects ?? []}
         certificationsData={candidateCertifications ?? []}
         eventCertificates={eventCertificates}
+        allSkills={allSkills ?? []}
+        initialSkillIds={selectedSkillIds}
       />
     )
   }
