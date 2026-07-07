@@ -158,9 +158,8 @@ export default async function TestResultPage({
 
   if (!profile) redirect("/auth/login")
 
-  const userIdToCheck = profile.institute_id ?? profile.id;
-
   const isCandidate = profile.account_type === "institute_candidate"
+  const userIdToCheck = isCandidate ? profile.id : (profile.institute_id ?? profile.id)
 
   const { test, attempt } = await fetchResultData(
     testId,
