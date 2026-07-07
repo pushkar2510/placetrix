@@ -26,7 +26,7 @@ import { MathText } from "@/components/ui/math-text"
 import { cn } from "@/lib/utils"
 import {
   Loader2, Save, Send, AlertCircle, AlertTriangle, BookOpen, CheckCircle2, Circle, Plus, Tag, X,
-  PlusCircle, Sparkles, Upload, Trash2, Pencil, ChevronDown, ChevronUp, Info, FileJson
+  PlusCircle, Sparkles, Upload, Trash2, Pencil, ChevronDown, ChevronUp, Info, FileJson, Image
 } from "lucide-react"
 
 import type {
@@ -148,10 +148,14 @@ export function CreateTestClient({
     const updatedQuestions = [...currentQuestions]
     
     const uploadPromises = updatedQuestions.map(async (q, idx) => {
-      if (q.pendingImageFile) {
-        const file = q.pendingImageFile
+      let mediaUrl = q.media_url
+      let pendingFile = q.pendingImageFile
+      
+      // Upload question image if pending
+      if (pendingFile) {
+        const file = pendingFile
         const fileExt = file.name.split(".").pop() ?? "png"
-        const filePath = `test-questions/${testId}/${q.id}/${crypto.randomUUID()}.${fileExt}`
+        const filePath = `test-questions/${testId}/${q.id}/question/${crypto.randomUUID()}.${fileExt}`
         
         const { error } = await supabase.storage.from("test-questions").upload(filePath, file)
         if (error) {
@@ -159,15 +163,41 @@ export function CreateTestClient({
         }
         
         const { data: { publicUrl } } = supabase.storage.from("test-questions").getPublicUrl(filePath)
-        
-        return {
-          ...q,
-          media_url: publicUrl,
-          pendingImageFile: null,
-          pendingImageUrl: null
-        }
+        mediaUrl = publicUrl
       }
-      return q
+      
+      // Upload options images if pending
+      const updatedOptions = await Promise.all(
+        (q.options || []).map(async (opt, optIdx) => {
+          if (opt.pendingImageFile) {
+            const file = opt.pendingImageFile
+            const fileExt = file.name.split(".").pop() ?? "png"
+            const filePath = `test-questions/${testId}/${q.id}/options/${opt._key}/${crypto.randomUUID()}.${fileExt}`
+            
+            const { error } = await supabase.storage.from("test-questions").upload(filePath, file)
+            if (error) {
+              throw new Error(`Failed to upload image for question ${idx + 1} option ${String.fromCharCode(65 + optIdx)}: ${error.message}`)
+            }
+            
+            const { data: { publicUrl } } = supabase.storage.from("test-questions").getPublicUrl(filePath)
+            return {
+              ...opt,
+              media_url: publicUrl,
+              pendingImageFile: null,
+              pendingImageUrl: null,
+            }
+          }
+          return opt
+        })
+      )
+      
+      return {
+        ...q,
+        media_url: mediaUrl,
+        pendingImageFile: null,
+        pendingImageUrl: null,
+        options: updatedOptions,
+      }
     })
     
     return Promise.all(uploadPromises)
@@ -470,48 +500,121 @@ function OptionsBuilder({
     onChange(options.filter((o) => o._key !== key))
   }
 
+  const handleOptionImageChange = (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file.")
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB.")
+      return
+    }
+    const previewUrl = URL.createObjectURL(file)
+    onChange(
+      options.map((o) =>
+        o._key === key
+          ? { ...o, pendingImageFile: file, pendingImageUrl: previewUrl, media_url: null }
+          : o
+      )
+    )
+  }
+
+  const removeOptionImage = (key: string) => {
+    onChange(
+      options.map((o) =>
+        o._key === key
+          ? { ...o, media_url: null, pendingImageFile: null, pendingImageUrl: null }
+          : o
+      )
+    )
+  }
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {options.map((opt, idx) => (
-        <div key={opt._key} className="flex items-center gap-2">
-          <span className="w-5 shrink-0 text-center text-xs text-muted-foreground">
-            {String.fromCharCode(65 + idx)}
-          </span>
-          <Input
-            placeholder={`Option ${String.fromCharCode(65 + idx)}`}
-            value={opt.option_text}
-            onChange={(e) => updateText(opt._key, e.target.value)}
-            className={cn(
-              "flex-1 text-sm",
-              opt.is_correct && "border-emerald-500 focus-visible:ring-emerald-400"
-            )}
-          />
-          <button
-            type="button"
-            onClick={() => toggleCorrect(opt._key)}
-            title="Mark as correct"
-            className={cn(
-              "flex shrink-0 items-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
-              opt.is_correct
-                ? "border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                : "border-border text-muted-foreground hover:border-emerald-400 hover:text-emerald-600"
-            )}
-          >
-            {opt.is_correct ? (
-              <CheckCircle2 className="h-3.5 w-3.5" />
+        <div key={opt._key} className="flex flex-col gap-2 rounded-lg border p-3 bg-muted/5">
+          <div className="flex items-center gap-2">
+            <span className="w-5 shrink-0 text-center text-xs font-bold text-muted-foreground">
+              {String.fromCharCode(65 + idx)}
+            </span>
+            <Input
+              placeholder={`Option ${String.fromCharCode(65 + idx)}`}
+              value={opt.option_text}
+              onChange={(e) => updateText(opt._key, e.target.value)}
+              className={cn(
+                "flex-1 text-sm",
+                opt.is_correct && "border-emerald-500 focus-visible:ring-emerald-400"
+              )}
+            />
+            <button
+              type="button"
+              onClick={() => toggleCorrect(opt._key)}
+              title="Mark as correct"
+              className={cn(
+                "flex shrink-0 items-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                opt.is_correct
+                  ? "border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                  : "border-border text-muted-foreground hover:border-emerald-400 hover:text-emerald-600"
+              )}
+            >
+              {opt.is_correct ? (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              ) : (
+                <Circle className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">Correct</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => remove(opt._key)}
+              disabled={options.length <= 2}
+              className="text-muted-foreground transition-colors hover:text-destructive disabled:opacity-25"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          
+          {/* Option Image Picker & Preview */}
+          <div className="pl-7 flex items-center gap-2">
+            {opt.pendingImageUrl || opt.media_url ? (
+              <div className="relative flex items-center gap-3 border rounded-md p-1 bg-background/50">
+                <img
+                  src={opt.pendingImageUrl || opt.media_url || undefined}
+                  alt={`Option ${String.fromCharCode(65 + idx)}`}
+                  className="h-12 w-auto object-contain rounded"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeOptionImage(opt._key)}
+                  className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  title="Remove image"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             ) : (
-              <Circle className="h-3.5 w-3.5" />
+              <div>
+                <Label
+                  htmlFor={`opt-image-${opt._key}`}
+                  className="flex items-center gap-1.5 border border-dashed hover:border-primary/50 rounded px-2.5 py-1.5 cursor-pointer bg-background/50 hover:bg-muted/10 text-muted-foreground hover:text-primary transition-all text-xs"
+                >
+                  <Image className="h-3.5 w-3.5" />
+                  <span>Add Option Image</span>
+                  <input
+                    id={`opt-image-${opt._key}`}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleOptionImageChange(opt._key, e)}
+                    className="hidden"
+                  />
+                </Label>
+              </div>
             )}
-            <span className="hidden sm:inline">Correct</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => remove(opt._key)}
-            disabled={options.length <= 2}
-            className="text-muted-foreground transition-colors hover:text-destructive disabled:opacity-25"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          </div>
         </div>
       ))}
       {options.length < 6 && (

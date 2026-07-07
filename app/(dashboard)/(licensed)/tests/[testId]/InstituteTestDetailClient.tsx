@@ -298,11 +298,20 @@ function QuestionCard({
               )}
               <span
                 className={cn(
-                  "flex-1 text-sm leading-snug",
+                  "flex-1 text-sm leading-snug space-y-1.5",
                   opt.is_correct ? "font-medium text-foreground" : "text-muted-foreground"
                 )}
               >
-                <MathText>{opt.option_text}</MathText>
+                <div><MathText>{opt.option_text}</MathText></div>
+                {opt.media_url && (
+                  <div className="border rounded-lg overflow-hidden max-w-sm bg-background/50 p-1 inline-block">
+                    <img
+                      src={opt.media_url}
+                      alt="Option illustration"
+                      className="max-h-24 w-auto object-contain rounded"
+                    />
+                  </div>
+                )}
               </span>
               {opt.is_correct && (
                 <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-500">

@@ -29,7 +29,7 @@ export type AttemptDetail = Views<"view_test_attempt_details">   // the view
 // We only re-export a Pick so callers don't import from a deep path.
 export type CandidateOption = Pick<
   OptionRow,
-  "id" | "option_text" | "is_correct" | "order_index"
+  "id" | "option_text" | "is_correct" | "order_index" | "media_url"
 >
 
 export interface CandidateAnswerDetail {
@@ -83,7 +83,7 @@ export interface CandidateTestDetail
 
 export type InstituteOption = Pick<
   OptionRow,
-  "id" | "option_text" | "is_correct" | "order_index"
+  "id" | "option_text" | "is_correct" | "order_index" | "media_url"
 >
 
 export interface InstituteQuestion

@@ -348,8 +348,17 @@ function OptionButton({
                     <Square className="h-5 w-5 text-muted-foreground/50" />
                 )}
             </span>
-            <span className={cn("min-w-0 flex-1 break-words leading-snug", isSelected && "font-medium")}>
-                <MathText>{option.option_text}</MathText>
+            <span className={cn("min-w-0 flex-1 break-words leading-snug space-y-2", isSelected && "font-medium")}>
+                <div><MathText>{option.option_text}</MathText></div>
+                {option.media_url && (
+                    <div className="mt-2 border rounded-lg overflow-hidden max-w-sm bg-muted/5 p-1 inline-block">
+                        <img
+                            src={option.media_url}
+                            alt="Option illustration"
+                            className="max-h-24 w-auto object-contain rounded"
+                        />
+                    </div>
+                )}
             </span>
             {isSaving && isSelected && (
                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />

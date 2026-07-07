@@ -122,18 +122,20 @@ BEGIN
     
     v_opt_idx := 1;
     FOR v_opt IN SELECT jsonb_array_elements(v_q_json->'options') LOOP
-      INSERT INTO public.test_question_options (id, question_id, option_text, is_correct, order_index)
+      INSERT INTO public.test_question_options (id, question_id, option_text, is_correct, order_index, media_url)
       VALUES (
         COALESCE((v_opt->>'id')::uuid, gen_random_uuid()),
         (v_q_json->>'id')::uuid,
         v_opt->>'option_text',
         (v_opt->>'is_correct')::boolean,
-        v_opt_idx
+        v_opt_idx,
+        v_opt->>'media_url'
       )
       ON CONFLICT (id) DO UPDATE SET
         option_text = EXCLUDED.option_text,
         is_correct = EXCLUDED.is_correct,
-        order_index = EXCLUDED.order_index;
+        order_index = EXCLUDED.order_index,
+        media_url = EXCLUDED.media_url;
       v_opt_idx := v_opt_idx + 1;
     END LOOP;
 
