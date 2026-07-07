@@ -1,10 +1,5 @@
 // app/resume/page.tsx
-import dynamic from "next/dynamic"
-
-const ResumeGeneratorClient = dynamic(
-  () => import("./ResumeGeneratorClient").then(mod => ({ default: mod.ResumeGeneratorClient })),
-  { ssr: false }
-)
+import { ResumeGeneratorWrapper } from "./ResumeGeneratorWrapper"
 
 export const metadata = {
   title: "Resume Builder",
@@ -12,5 +7,5 @@ export const metadata = {
 }
 
 export default function ResumePage() {
-  return <ResumeGeneratorClient />
+  return <ResumeGeneratorWrapper />
 }

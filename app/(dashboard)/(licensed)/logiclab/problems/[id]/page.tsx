@@ -1,12 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { redirect, notFound } from "next/navigation"
-import dynamic from "next/dynamic"
-
-const ProblemWorkspaceClient = dynamic(
-  () => import("../../_components/ProblemWorkspaceClient/ProblemWorkspaceClient").then(mod => ({ default: mod.ProblemWorkspaceClient })),
-  { ssr: false }
-)
+import { ProblemWorkspaceWrapper } from "./ProblemWorkspaceWrapper"
 import { getCachedGlobalProblemsList } from "../../actions"
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -87,7 +82,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <ProblemWorkspaceClient
+    <ProblemWorkspaceWrapper
       problem={problem}
       sampleTestCases={sampleTestCases ?? []}
       totalTestCases={totalTestCases ?? 0}
