@@ -547,7 +547,7 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
           }
           
           let instId = initialData?.id;
-          const newDisplayName = instituteName.trim() || userProfile.display_name;
+          const newDisplayName = instituteName.trim() || userProfile.full_name;
 
           if (instId) {
             const { error } = await (supabase as any)
@@ -567,14 +567,14 @@ export function InstituteProfileClient({ userProfile, initialData }: Props) {
 
           await (supabase as any)
             .from("profiles")
-            .update({ display_name: newDisplayName, profile_updated: true })
+            .update({ full_name: newDisplayName, profile_updated: true })
             .eq("id", userProfile.id)
 
           await (supabase as any)
             .from("institute_profiles")
             .upsert({ profile_id: userProfile.id, institute_id: instId, profile_updated: true }, { onConflict: "profile_id" })
 
-          await supabase.auth.updateUser({ data: { display_name: newDisplayName } })
+          await supabase.auth.updateUser({ data: { full_name: newDisplayName } })
           toast.success("Basic information saved!")
         }
 

@@ -300,8 +300,8 @@ export default function TicketDetailClient({
                   index === 0 || allMessages[index - 1].sender_type !== msg.sender_type;
 
                 const displayName = msg.sender_type === "user"
-                  ? (isAdmin ? (msg.profiles?.display_name || "Customer") : "You")
-                  : `${msg.profiles?.display_name || "Support"} (Support)`;
+                  ? (isAdmin ? (msg.profiles?.full_name || "Customer") : "You")
+                  : `${msg.profiles?.full_name || "Support"} (Support)`;
 
                 const email = msg.profiles?.email || "";
 

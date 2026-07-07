@@ -177,13 +177,13 @@ export function NavUser({ user }: { user: UserProfile | null }) {
   const [mounted, setMounted] = React.useState(false)
   React.useEffect(() => setMounted(true), [])
 
-  const displayName = user?.display_name?.trim() || "User"
+  const displayName = user?.full_name?.trim() || "User"
   const email = user?.email?.trim() || "No email"
   const sidebarSubtitle = user?.username?.trim()
     ? `@${user.username.trim()}`
     : email
   const accountType = safeAccountType(user?.account_type)
-  const initials = user?.display_name?.trim()
+  const initials = user?.full_name?.trim()
     ? displayName.split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : (user?.email?.trim()[0]?.toUpperCase() ?? "?")
 

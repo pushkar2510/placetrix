@@ -76,12 +76,20 @@ export default async function MyProfilePage() {
       }
     }
 
+    const initialCandidateData = candidateProfile ? {
+      ...candidateProfile,
+      first_name: profile.first_name,
+      middle_name: profile.middle_name,
+      last_name: profile.last_name,
+      full_name: profile.full_name,
+    } : null;
+
     const selectedSkillIds: string[] = (candidateSkillRows ?? []).map((r: any) => r.skill_id);
 
     return (
       <CandidateProfileClient
         userProfile={profile}
-        initialData={candidateProfile ?? null}
+        initialData={initialCandidateData}
         educationData={candidateEducation ?? []}
         experienceData={candidateExperiences ?? []}
         projectsData={candidateProjects ?? []}

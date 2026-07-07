@@ -151,7 +151,7 @@ export async function exportPlacementData(filters: ExportFilters): Promise<Recor
       passout_year,
       phone_number,
       profiles!inner (
-        display_name,
+        full_name,
         email,
         institute_id
       )
@@ -192,7 +192,7 @@ export async function exportPlacementData(filters: ExportFilters): Promise<Recor
     const { data: matchedProfiles } = await (supabase as any)
       .from("profiles")
       .select("id")
-      .ilike("display_name", `%${filters.search.trim()}%`)
+      .ilike("full_name", `%${filters.search.trim()}%`)
     const matchedIds = (matchedProfiles || []).map((p: any) => p.id)
     if (matchedIds.length === 0) return []
     query = query.in("profile_id", matchedIds)
@@ -237,7 +237,7 @@ export async function exportPlacementData(filters: ExportFilters): Promise<Recor
     const status = pt?.company_name ? "Placed" : "Not Placed"
 
     const row: Record<string, any> = {}
-    if (cols.includes("display_name")) row["Student Name"] = r.profiles?.display_name ?? ""
+    if (cols.includes("full_name")) row["Student Name"] = r.profiles?.full_name ?? ""
     if (cols.includes("email")) row["Email"] = r.profiles?.email ?? ""
     if (cols.includes("phone_number")) row["Phone"] = r.phone_number ?? ""
     if (cols.includes("course_name")) row["Course"] = r.course_name ?? ""

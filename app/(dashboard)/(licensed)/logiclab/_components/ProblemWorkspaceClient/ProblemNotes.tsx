@@ -655,11 +655,11 @@ export function ProblemNotes({ problemId, currentCode, currentLanguage, submissi
                     <div className="flex items-center justify-between p-3 border-b border-border/30 bg-muted/20">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                          {((note.profiles as any)?.display_name || (note.profiles as any)?.[0]?.display_name)?.charAt(0)?.toUpperCase() || "U"}
+                          {((note.profiles as any)?.full_name || (note.profiles as any)?.[0]?.full_name)?.charAt(0)?.toUpperCase() || "U"}
                         </div>
                         <div>
                           <span className="text-sm font-medium block leading-tight">
-                            {((note.profiles as any)?.display_name || (note.profiles as any)?.[0]?.display_name) || "Unknown User"}
+                            {((note.profiles as any)?.full_name || (note.profiles as any)?.[0]?.full_name) || "Unknown User"}
                           </span>
                           <span className="text-[10px] text-muted-foreground">
                             {new Date(note.updated_at || note.created_at).toLocaleDateString()}

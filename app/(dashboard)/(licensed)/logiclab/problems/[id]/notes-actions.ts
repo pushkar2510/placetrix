@@ -107,7 +107,7 @@ export async function getCommunityNotes(problemId: string, isDailyChallenge?: bo
   const userIds = Array.from(new Set((publicNotes || []).map((n: any) => n.user_id)))
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, display_name, avatar_path")
+    .select("id, full_name, avatar_path")
     .in("id", userIds)
 
   const notesWithProfiles = (publicNotes || []).map((note: any) => ({

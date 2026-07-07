@@ -36,13 +36,41 @@ export async function updateCandidatePersonalDetails(payload: any) {
 
   const supabase = await createClient();
 
-  const { error } = await (supabase as any)
-    .from("candidate_profiles")
-    .upsert(payload, { onConflict: "profile_id" });
+  // Extract profiles table fields
+  const first_name = payload.first_name;
+  const middle_name = payload.middle_name;
+  const last_name = payload.last_name;
 
-  if (error) {
-    console.error("Supabase Error:", error);
-    throw new Error(error.message);
+  // Create payload for candidate_profiles
+  const candidatePayload = { ...payload };
+  delete candidatePayload.first_name;
+  delete candidatePayload.middle_name;
+  delete candidatePayload.last_name;
+
+  // Update profiles table first
+  const { error: profileError } = await (supabase as any)
+    .from("profiles")
+    .update({
+      first_name,
+      middle_name,
+      last_name,
+      profile_updated: true
+    })
+    .eq("id", profile.id);
+
+  if (profileError) {
+    console.error("Profiles Table Error:", profileError);
+    throw new Error(profileError.message);
+  }
+
+  // Update candidate_profiles table
+  const { error: candidateError } = await (supabase as any)
+    .from("candidate_profiles")
+    .upsert(candidatePayload, { onConflict: "profile_id" });
+
+  if (candidateError) {
+    console.error("Candidate Profiles Table Error:", candidateError);
+    throw new Error(candidateError.message);
   }
 
   revalidatePath("/myprofile");

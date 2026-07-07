@@ -19,7 +19,7 @@ interface VerifyCertificateClientProps {
       title: string
     } | null
     profiles: {
-      display_name: string | null
+      full_name: string | null
     } | null
   } | null
   errorOccurred: boolean
@@ -125,7 +125,7 @@ export default function VerifyCertificateClient({
                       <span className="font-medium text-xs">Recipient Name</span>
                     </div>
                     <span className="font-semibold text-right text-foreground">
-                      {certificate.issued_to_name ?? certificate.profiles?.display_name ?? "Candidate"}
+                      {certificate.issued_to_name ?? certificate.profiles?.full_name ?? "Candidate"}
                     </span>
                   </div>
 

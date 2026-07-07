@@ -358,7 +358,7 @@ export async function generateCertificateAction(courseId: string) {
     .insert({
       course_id: courseId,
       user_id: profile.id,
-      issued_to_name: profile.display_name || "Candidate",
+      issued_to_name: profile.full_name || "Candidate",
       issued_at: new Date().toISOString(),
     })
     .select("id")

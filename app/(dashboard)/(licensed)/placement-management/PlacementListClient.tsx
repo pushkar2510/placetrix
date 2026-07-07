@@ -80,7 +80,7 @@ import { useRouter, usePathname } from "next/navigation"
 
 export interface PlacementRecord {
   profile_id: string
-  display_name: string
+  full_name: string
   email: string | null
   phone_number: string | null
   course_name: string | null
@@ -138,7 +138,7 @@ const INDIAN_CITIES = [
 ]
 
 const EXPORT_COLUMNS: { key: string; label: string }[] = [
-  { key: "display_name", label: "Student Name" },
+  { key: "full_name", label: "Student Name" },
   { key: "email", label: "Email" },
   { key: "phone_number", label: "Phone" },
   { key: "course_name", label: "Course" },
@@ -347,12 +347,12 @@ function StudentDetailPanel({ open, onOpenChange, record, onSaved, availableDriv
             <Avatar className="size-14 shrink-0 ring-2 ring-background shadow-sm">
               <AvatarImage src={record.profile_image_path || undefined} />
               <AvatarFallback className="text-lg font-semibold bg-primary/10 text-primary">
-                {record.display_name.charAt(0).toUpperCase()}
+                {record.full_name.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col min-w-0">
               <SheetTitle className="text-lg font-bold leading-tight truncate">
-                {record.display_name}
+                {record.full_name}
               </SheetTitle>
               <SheetDescription className="text-sm text-muted-foreground mt-0.5">
                 {record.course_name || "—"}{record.passout_year ? ` · ${record.passout_year}` : ""}
@@ -988,11 +988,11 @@ function CompanyGroupView({ records }: { records: PlacementRecord[] }) {
                     <Avatar className="size-8 shrink-0">
                       <AvatarImage src={record.profile_image_path || undefined} />
                       <AvatarFallback className="text-[10px]">
-                        {record.display_name.charAt(0).toUpperCase()}
+                        {record.full_name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col min-w-0 flex-1">
-                      <span className="text-sm font-medium truncate">{record.display_name}</span>
+                      <span className="text-sm font-medium truncate">{record.full_name}</span>
                       <span className="text-xs text-muted-foreground truncate">
                         {record.course_name || "—"} · {record.passout_year || "—"}
                       </span>
@@ -1566,10 +1566,10 @@ export function PlacementListClient({
                             <Avatar className="size-8 shrink-0">
                               <AvatarImage src={record.profile_image_path || undefined} />
                               <AvatarFallback className="text-[10px]">
-                                {record.display_name.charAt(0).toUpperCase()}
+                                {record.full_name.charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium truncate">{record.display_name}</span>
+                            <span className="text-sm font-medium truncate">{record.full_name}</span>
                           </div>
                         </TableCell>
 
@@ -1667,11 +1667,11 @@ export function PlacementListClient({
                       <Avatar className="size-10 shrink-0">
                         <AvatarImage src={record.profile_image_path || undefined} />
                         <AvatarFallback className="text-xs">
-                          {record.display_name.charAt(0).toUpperCase()}
+                          {record.full_name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col min-w-0 flex-1">
-                        <span className="text-sm font-semibold truncate">{record.display_name}</span>
+                        <span className="text-sm font-semibold truncate">{record.full_name}</span>
                         <span className="text-xs text-muted-foreground truncate">
                           {record.course_name || "No course"} · {record.passout_year || "—"}
                         </span>

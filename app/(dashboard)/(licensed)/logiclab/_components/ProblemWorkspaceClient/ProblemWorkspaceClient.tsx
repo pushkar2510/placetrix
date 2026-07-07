@@ -2030,7 +2030,7 @@ export function ProblemWorkspaceClient({
                     (seed % 100) / 100
                   ).toFixed(2);
 
-                  const displayName = userProfile?.display_name || userProfile?.email?.split("@")[0] || "Active User";
+                  const displayName = userProfile?.full_name || userProfile?.email?.split("@")[0] || "Active User";
                   const initials = displayName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
                   const submissionTimeStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " " + new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
                   const avatarUrl = buildStorageUrl("avatars", userProfile?.avatar_path) || "";

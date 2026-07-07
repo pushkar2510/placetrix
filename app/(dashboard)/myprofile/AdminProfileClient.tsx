@@ -110,7 +110,7 @@ export function AdminProfileClient({ userProfile }: Props) {
   const { refresh } = useRouter()
   const [isPending, startTransition] = useTransition()
 
-  const isFirstTime = !userProfile.username || !userProfile.display_name
+  const isFirstTime = !userProfile.username || !userProfile.full_name
   const [editingSection, setEditingSection] = useState<SectionId | null>(
     isFirstTime ? "profile" : null
   )
@@ -149,10 +149,10 @@ export function AdminProfileClient({ userProfile }: Props) {
     }
   }, [tempImageSrc])
 
-  const [displayName, setDisplayName] = useState(userProfile.display_name ?? "")
+  const [displayName, setDisplayName] = useState(userProfile.full_name ?? "")
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const profileComplete = !!userProfile.display_name
+  const profileComplete = !!userProfile.full_name
 
   function handleUsernameChange(value: string) {
     const trimmed = value.trim()
@@ -192,7 +192,7 @@ export function AdminProfileClient({ userProfile }: Props) {
       setUsername(userProfile.username ?? "")
       setUsernameStatus("idle")
     } else if (section === "profile") {
-      setDisplayName(userProfile.display_name ?? "")
+      setDisplayName(userProfile.full_name ?? "")
     }
     setEditingSection(null)
   }
@@ -262,7 +262,7 @@ export function AdminProfileClient({ userProfile }: Props) {
           const trimmedDisplayName = displayName.trim()
           const { error } = await supabase
             .from("profiles")
-            .update({ display_name: trimmedDisplayName })
+            .update({ full_name: trimmedDisplayName })
             .eq("id", userProfile.id)
 
           if (error) {
@@ -272,7 +272,7 @@ export function AdminProfileClient({ userProfile }: Props) {
 
           await supabase.auth.updateUser({
             data: {
-              display_name: trimmedDisplayName,
+              full_name: trimmedDisplayName,
               account_type: userProfile.account_type,
             }
           })

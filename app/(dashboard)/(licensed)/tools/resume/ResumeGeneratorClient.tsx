@@ -1025,7 +1025,7 @@ export function ResumeGeneratorClient() {
           return {
             ...prev,
             personal: {
-              fullName: candidate?.full_name || (candidate?.first_name ? `${candidate.first_name} ${candidate.last_name}` : profile?.display_name || prev.personal.fullName),
+              fullName: profile?.full_name || prev.personal.fullName,
               email: profile?.email || prev.personal.email,
               phone: candidate?.phone_number || prev.personal.phone,
               location: candidate?.current_address || prev.personal.location,

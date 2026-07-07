@@ -48,7 +48,7 @@ export default async function EventDetailPage({ params }: { params: Promise<Para
       .from("event_tickets")
       .select(`
         id, status, attendance_status, candidate_id, created_at,
-        profile:profiles!candidate_id(display_name, email),
+        profile:profiles!candidate_id(full_name, email),
         candidate:candidate_profiles!candidate_id(course_name, passout_year)
       `)
       .eq("event_id", eventId)
@@ -61,7 +61,7 @@ export default async function EventDetailPage({ params }: { params: Promise<Para
       status: t.status,
       attendance_status: t.attendance_status,
       created_at: t.created_at,
-      candidate_name: t.profile?.display_name ?? "Unknown",
+      candidate_name: t.profile?.full_name ?? "Unknown",
       candidate_email: t.profile?.email ?? "",
       candidate_course: t.candidate?.course_name ?? null,
       candidate_passout_year: t.candidate?.passout_year ?? null,
@@ -108,7 +108,7 @@ export default async function EventDetailPage({ params }: { params: Promise<Para
         status: myTicket.status,
         attendance_status: myTicket.attendance_status,
       } : null}
-      candidateName={profile.display_name}
+      candidateName={profile.full_name}
     />
   )
 }

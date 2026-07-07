@@ -45,7 +45,7 @@ export default async function StudentsPage(props: {
       cgpa,
       created_at,
       profiles!inner (
-        display_name,
+        full_name,
         email,
         institute_id,
         institute_verified,
@@ -65,11 +65,11 @@ export default async function StudentsPage(props: {
   if (search.trim()) {
     const s = search.trim()
     
-    // First, search profiles table for matching display_name or email
+    // First, search profiles table for matching full_name or email
     const { data: matchedProfiles } = await (supabase as any)
       .from("profiles")
       .select("id")
-      .or(`display_name.ilike.%${s}%,email.ilike.%${s}%`)
+      .or(`full_name.ilike.%${s}%,email.ilike.%${s}%`)
       
     const matchedProfileIds = (matchedProfiles || []).map((p: any) => p.id)
     
@@ -84,7 +84,7 @@ export default async function StudentsPage(props: {
   const ascending = sortOrder === "asc"
   switch (sortBy) {
     case "name":
-      query = query.order("profiles(display_name)", { ascending })
+      query = query.order("profiles(full_name)", { ascending })
       break
     case "course":
       query = query.order("course_name", { ascending })
@@ -116,7 +116,7 @@ export default async function StudentsPage(props: {
 
   const students: Student[] = (studentsData || []).map((s: any) => ({
     profile_id: s.profile_id,
-    display_name: s.profiles.display_name,
+    full_name: s.profiles.full_name,
     email: s.profiles.email,
     course_name: s.course_name,
     passout_year: s.passout_year,

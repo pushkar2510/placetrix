@@ -37,13 +37,13 @@ export default async function AdminPage() {
   // Fetch student profiles (limit to 500 to prevent huge payloads)
   const { data: rawAllProfiles } = await (supabase as any)
     .from("profiles" as any)
-    .select("id, display_name, email, account_type")
+    .select("id, full_name, email, account_type")
     .in("account_type", ["institute_candidate", "user", null])
     .limit(1000)
 
-  let profileMap: Record<string, { display_name: string; email: string; account_type: string }> = {}
+  let profileMap: Record<string, { full_name: string; email: string; account_type: string }> = {}
     ; (rawAllProfiles || []).forEach((p: any) => {
-      profileMap[p.id] = { display_name: p.display_name || "", email: p.email || "", account_type: p.account_type || "institute_candidate" }
+      profileMap[p.id] = { full_name: p.full_name || "", email: p.email || "", account_type: p.account_type || "institute_candidate" }
     })
 
   // Fetch any missing profiles for users who have submitted (e.g. admins testing)
@@ -53,11 +53,11 @@ export default async function AdminPage() {
   if (missingUserIds.length > 0) {
     const { data: missingProfiles } = await (supabase as any)
       .from("profiles" as any)
-      .select("id, display_name, email, account_type")
+      .select("id, full_name, email, account_type")
       .in("id", missingUserIds)
 
       ; (missingProfiles || []).forEach((p: any) => {
-        profileMap[p.id] = { display_name: p.display_name || "", email: p.email || "", account_type: p.account_type || "institute_candidate" }
+        profileMap[p.id] = { full_name: p.full_name || "", email: p.email || "", account_type: p.account_type || "institute_candidate" }
       })
   }
 
@@ -97,7 +97,7 @@ export default async function AdminPage() {
   Object.entries(profileMap).forEach(([uid, prof]) => {
     if (prof.account_type !== "admin") {
       const email = prof.email || "student@placetrix.app"
-      const name = prof.display_name || email.split("@")[0] || "Active Student"
+      const name = prof.full_name || email.split("@")[0] || "Active Student"
       studentMap[uid] = {
         user_id: uid,
         student_name: name,
@@ -116,7 +116,7 @@ export default async function AdminPage() {
       // Submission from a user not in initial seed (e.g. an admin testing the code)
       const prof = profileMap[s.user_id]
       const email = prof?.email || "student@placetrix.app"
-      const name = prof?.display_name || email.split("@")[0] || "Active Student"
+      const name = prof?.full_name || email.split("@")[0] || "Active Student"
 
       studentMap[s.user_id] = {
         user_id: s.user_id,
@@ -210,7 +210,7 @@ export default async function AdminPage() {
       language_id: s.language_id,
       created_at: s.created_at,
       problem_title: problemTitleMap[s.problem_id] || "Deleted Challenge",
-      student_name: prof?.display_name || "Active Student",
+      student_name: prof?.full_name || "Active Student",
       student_email: prof?.email || "student@placetrix.app",
     }
   })

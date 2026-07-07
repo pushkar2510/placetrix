@@ -27,7 +27,7 @@ export default async function VerifyCertificatePage({ params }: PageProps) {
         issued_at,
         issued_to_name,
         courses(title),
-        profiles(display_name)
+        profiles(full_name)
       `)
       .eq("id", certificateId)
       .maybeSingle()

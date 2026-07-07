@@ -364,7 +364,7 @@ export function CandidateCourseDetailClient({ course, isEnrolled, certificateId,
                     Your certificate will be printed with the name:
                   </span>
                   <span className="block text-lg font-bold text-foreground bg-muted p-2.5 rounded-lg text-center my-2 border border-border/40 select-all">
-                    {userProfile?.display_name || "Shabbir Ezzy"}
+                    {userProfile?.full_name || "Shabbir Ezzy"}
                   </span>
                   <span className="block text-xs text-muted-foreground leading-relaxed">
                     Please verify that this name is correct and has no typos before generating your certificate.

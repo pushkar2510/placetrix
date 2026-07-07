@@ -28,7 +28,7 @@ export default async function CoursesPage() {
         course_modules(count),
         course_enrollments(count),
         instructor:profiles!courses_instructor_id_fkey(
-          display_name,
+          full_name,
           avatar_path
         )
       `)
@@ -45,7 +45,7 @@ export default async function CoursesPage() {
       level: course.level,
       duration: course.duration,
       cover_image_path: course.cover_image_path,
-      instructor_name: course.instructor?.display_name || "Instructor",
+      instructor_name: course.instructor?.full_name || "Instructor",
       instructor_avatar_path: course.instructor?.avatar_path || null,
       is_published: course.is_published,
       created_at: course.created_at,
@@ -63,7 +63,7 @@ export default async function CoursesPage() {
     .select(`
       *,
       instructor:profiles!courses_instructor_id_fkey(
-        display_name,
+        full_name,
         avatar_path
       )
     `)
@@ -122,7 +122,7 @@ export default async function CoursesPage() {
       duration: course.duration,
       cover_image_path: course.cover_image_path || undefined,
       instructor: {
-        name: course.instructor?.display_name || "Instructor",
+        name: course.instructor?.full_name || "Instructor",
         role: "Course Instructor",
         avatar: course.instructor?.avatar_path 
           ? buildStorageUrl("avatars", course.instructor.avatar_path) 

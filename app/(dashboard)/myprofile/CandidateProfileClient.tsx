@@ -1231,10 +1231,9 @@ export function CandidateProfileClient({
           };
           await updateCandidatePersonalDetails(payload);
 
-          const newDisplayName = [firstName.trim(), lastName.trim()]
-            .filter(Boolean).join(" ") || userProfile.display_name;
-          await (supabase as any).from("profiles").update({ display_name: newDisplayName, profile_updated: true }).eq("id", userProfile.id);
-          await supabase.auth.updateUser({ data: { display_name: newDisplayName, account_type: userProfile.account_type } });
+          const newFullName = [firstName.trim(), middleName.trim(), lastName.trim()]
+            .filter(Boolean).join(" ") || userProfile.full_name;
+          await supabase.auth.updateUser({ data: { full_name: newFullName, display_name: newFullName, account_type: userProfile.account_type } });
           toast.success("Personal details saved!");
         }
 
@@ -1588,7 +1587,7 @@ export function CandidateProfileClient({
       doc.text("This is proudly presented to", width / 2, 60, { align: "center" });
 
       // Candidate Name
-      const fullName = `${firstName} ${lastName}`.trim() || userProfile.display_name;
+      const fullName = `${firstName} ${lastName}`.trim() || userProfile.full_name;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(24);
       doc.setTextColor(194, 120, 3); // Gold for the name

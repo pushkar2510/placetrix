@@ -337,9 +337,9 @@ export function RecruiterProfileClient({ userProfile, initialData }: Props) {
             .from("recruiter_profiles")
             .upsert(payload, { onConflict: "profile_id" })
           if (error) throw error
-          const newDisplayName = companyName.trim() || userProfile.display_name
-          await (supabase as any).from("profiles").update({ display_name: newDisplayName }).eq("id", userProfile.id)
-          await supabase.auth.updateUser({ data: { display_name: newDisplayName } })
+          const newDisplayName = companyName.trim() || userProfile.full_name
+          await (supabase as any).from("profiles").update({ full_name: newDisplayName }).eq("id", userProfile.id)
+          await supabase.auth.updateUser({ data: { full_name: newDisplayName } })
           toast.success("Company information saved!")
         }
 

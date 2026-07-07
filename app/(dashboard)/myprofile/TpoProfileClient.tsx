@@ -140,7 +140,7 @@ export function TpoProfileClient({ userProfile, initialData }: Props) {
   }, [tempImageSrc])
 
   // Profile Form State
-  const [displayName, setDisplayName] = useState(userProfile.display_name ?? "")
+  const [displayName, setDisplayName] = useState(userProfile.full_name ?? "")
   
   // Professional Info Form State
   const [designation, setDesignation] = useState(initialData?.designation ?? "")
@@ -150,7 +150,7 @@ export function TpoProfileClient({ userProfile, initialData }: Props) {
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const profileComplete = !!userProfile.display_name
+  const profileComplete = !!userProfile.full_name
   const professionalComplete = !!(initialData?.designation && initialData?.department)
 
   function handleUsernameChange(value: string) {
@@ -191,7 +191,7 @@ export function TpoProfileClient({ userProfile, initialData }: Props) {
       setUsername(userProfile.username ?? "")
       setUsernameStatus("idle")
     } else if (section === "profile") {
-      setDisplayName(userProfile.display_name ?? "")
+      setDisplayName(userProfile.full_name ?? "")
     } else if (section === "professional") {
       setDesignation(initialData?.designation ?? "")
       setDepartment(initialData?.department ?? "")
@@ -277,7 +277,7 @@ export function TpoProfileClient({ userProfile, initialData }: Props) {
           const trimmedDisplayName = displayName.trim()
           const { error } = await supabase
             .from("profiles")
-            .update({ display_name: trimmedDisplayName })
+            .update({ full_name: trimmedDisplayName })
             .eq("id", userProfile.id)
 
           if (error) {
@@ -287,7 +287,7 @@ export function TpoProfileClient({ userProfile, initialData }: Props) {
 
           await supabase.auth.updateUser({
             data: {
-              display_name: trimmedDisplayName,
+              full_name: trimmedDisplayName,
               account_type: userProfile.account_type,
             }
           })

@@ -119,15 +119,15 @@ function UserAvatar({
 	className?: string;
 }) {
 	const initials = React.useMemo(() => {
-		return user.display_name
-			? user.display_name
+		return user.full_name
+			? user.full_name
 				.split(" ")
 				.map((n) => n[0])
 				.join("")
 				.toUpperCase()
 				.slice(0, 2)
 			: user.email[0].toUpperCase();
-	}, [user.display_name, user.email]);
+	}, [user.full_name, user.email]);
 
 	const avatarUrl = React.useMemo(() => {
 		return buildStorageUrl("avatars", user.avatar_path);
@@ -137,7 +137,7 @@ function UserAvatar({
 		<Avatar className={cn(AVATAR_SHELL, className)}>
 			<AvatarImage
 				src={avatarUrl ?? undefined}
-				alt={user.display_name || user.email}
+				alt={user.full_name || user.email}
 				className="object-cover"
 			/>
 			<AvatarFallback className="text-xs font-medium">
@@ -254,7 +254,7 @@ function MobileNav({
 										<UserAvatar user={user} className="size-10" />
 										<div className="min-w-0">
 											<p className="truncate text-sm font-medium text-zinc-900 dark:text-white">
-												{user.display_name || "Your account"}
+												{user.full_name || "Your account"}
 											</p>
 											<p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
 												{user.email}

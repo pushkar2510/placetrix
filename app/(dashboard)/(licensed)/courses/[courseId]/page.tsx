@@ -40,7 +40,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
     .select(`
       *,
       instructor:profiles!courses_instructor_id_fkey(
-        display_name,
+        full_name,
         avatar_path
       )
     `)
@@ -74,7 +74,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
     // Fetch all enrollments joined with profile data
     const { data: enrollments } = await (supabase as any)
       .from("course_enrollments")
-      .select("id, user_id, enrolled_at, profiles(display_name, email)")
+      .select("id, user_id, enrolled_at, profiles(full_name, email)")
       .eq("course_id", courseId)
       .order("enrolled_at", { ascending: false })
 
@@ -104,7 +104,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
 
     const students = (enrollments ?? []).map((enr: any) => {
       const userId = enr.user_id
-      const displayName = enr.profiles?.display_name ?? null
+      const displayName = enr.profiles?.full_name ?? null
       const email = enr.profiles?.email ?? "unknown@email.com"
 
       const modulesCompleted = progressMap[userId] || 0
@@ -113,7 +113,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
       return {
         enrollment_id: enr.id,
         user_id: userId,
-        display_name: displayName,
+        full_name: displayName,
         email,
         enrolled_at: enr.enrolled_at,
         modules_completed: modulesCompleted,
@@ -130,7 +130,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
       level: course.level,
       duration: course.duration,
       cover_image_path: course.cover_image_path || undefined,
-      instructor_name: course.instructor?.display_name || "Instructor",
+      instructor_name: course.instructor?.full_name || "Instructor",
       is_published: course.is_published,
       created_at: course.created_at,
       modules: courseModules,
@@ -183,7 +183,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
     duration: course.duration,
     cover_image_path: course.cover_image_path || undefined,
     instructor: {
-      name: course.instructor?.display_name || "Instructor",
+      name: course.instructor?.full_name || "Instructor",
       role: "Course Instructor",
       avatar: course.instructor?.avatar_path 
         ? buildStorageUrl("avatars", course.instructor.avatar_path) 

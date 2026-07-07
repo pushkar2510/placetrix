@@ -228,13 +228,9 @@ export type Database = {
           created_at: string
           current_address: string | null
           date_of_birth: string | null
-          first_name: string | null
-          full_name: string | null
           gender: string | null
           github_url: string | null
-          last_name: string | null
           linkedin_url: string | null
-          middle_name: string | null
           passout_year: number | null
           permanent_address: string | null
           phone_number: string | null
@@ -253,13 +249,9 @@ export type Database = {
           created_at?: string
           current_address?: string | null
           date_of_birth?: string | null
-          first_name?: string | null
-          full_name?: string | null
           gender?: string | null
           github_url?: string | null
-          last_name?: string | null
           linkedin_url?: string | null
-          middle_name?: string | null
           passout_year?: number | null
           permanent_address?: string | null
           phone_number?: string | null
@@ -278,13 +270,9 @@ export type Database = {
           created_at?: string
           current_address?: string | null
           date_of_birth?: string | null
-          first_name?: string | null
-          full_name?: string | null
           gender?: string | null
           github_url?: string | null
-          last_name?: string | null
           linkedin_url?: string | null
-          middle_name?: string | null
           passout_year?: number | null
           permanent_address?: string | null
           phone_number?: string | null
@@ -352,6 +340,40 @@ export type Database = {
             foreignKeyName: "candidate_projects_profile_id_fkey"
             columns: ["profile_id"]
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_skills: {
+        Row: {
+          created_at: string | null
+          id: string
+          profile_id: string
+          skill_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          profile_id: string
+          skill_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          profile_id?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_skills_profile_id_fkey"
+            columns: ["profile_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            referencedRelation: "skills"
             referencedColumns: ["id"]
           },
         ]
@@ -1169,12 +1191,15 @@ export type Database = {
           account_type: string
           avatar_path: string | null
           created_at: string
-          display_name: string | null
           email: string
+          first_name: string | null
+          full_name: string | null
           id: string
           institute_id: string | null
           institute_verified: boolean | null
           is_active: boolean
+          last_name: string | null
+          middle_name: string | null
           profile_updated: boolean | null
           signature_path: string | null
           updated_at: string
@@ -1184,12 +1209,15 @@ export type Database = {
           account_type?: string
           avatar_path?: string | null
           created_at?: string
-          display_name?: string | null
           email: string
+          first_name?: string | null
+          full_name?: string | null
           id: string
           institute_id?: string | null
           institute_verified?: boolean | null
           is_active?: boolean
+          last_name?: string | null
+          middle_name?: string | null
           profile_updated?: boolean | null
           signature_path?: string | null
           updated_at?: string
@@ -1199,12 +1227,15 @@ export type Database = {
           account_type?: string
           avatar_path?: string | null
           created_at?: string
-          display_name?: string | null
           email?: string
+          first_name?: string | null
+          full_name?: string | null
           id?: string
           institute_id?: string | null
           institute_verified?: boolean | null
           is_active?: boolean
+          last_name?: string | null
+          middle_name?: string | null
           profile_updated?: boolean | null
           signature_path?: string | null
           updated_at?: string
@@ -1258,6 +1289,27 @@ export type Database = {
             referencedColumns: ["tag_id"]
           },
         ]
+      }
+      skills: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       staff_profiles: {
         Row: {

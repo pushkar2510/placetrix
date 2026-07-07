@@ -35,7 +35,7 @@ async function fetchResultData(
       test_attempts!inner (
         id, candidate_id, status, submitted_at, score, total_marks, percentage, 
         time_spent_seconds, tab_switch_count,
-        student:profiles(display_name),
+        student:profiles(full_name),
         test_attempt_answers (
           question_id, selected_option_ids, is_correct, marks_awarded, time_spent_seconds
         )
@@ -92,7 +92,7 @@ async function fetchResultData(
 
   const rawAttempt = raw.test_attempts[0]
   const student = (rawAttempt as any).student
-  const studentName = student?.display_name ?? null
+  const studentName = student?.full_name ?? null
 
   const attemptBase = {
     id: rawAttempt.id,

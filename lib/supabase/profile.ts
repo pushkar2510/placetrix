@@ -18,7 +18,10 @@ export type AccountType =
 
 export interface UserProfile {
   id: string;
-  display_name: string;
+  full_name: string;
+  first_name?: string | null;
+  middle_name?: string | null;
+  last_name?: string | null;
   email: string;
   avatar_path: string | null;
   username: string | null;
@@ -95,11 +98,14 @@ function profileFromClaims(
   return {
     id: sub,
     email: email ?? "",
-    display_name: (meta.display_name as string)
-      ?? (meta.full_name as string)
+    full_name: (meta.full_name as string)
       ?? (meta.name as string)
+      ?? (meta.display_name as string)
       ?? email
       ?? "User",
+    first_name: (meta.first_name as string) ?? null,
+    middle_name: (meta.middle_name as string) ?? null,
+    last_name: (meta.last_name as string) ?? null,
     avatar_path: (meta.avatar_path as string) ?? (meta.avatar_url as string) ?? (meta.picture as string) ?? null,
     username: (meta.username as string) ?? null,
     account_type: account_type as AccountType,
@@ -129,11 +135,14 @@ function profileFromAuthUser(
   return {
     id,
     email: user.email ?? "",
-    display_name: (meta.display_name as string)
-      ?? (meta.full_name as string)
+    full_name: (meta.full_name as string)
       ?? (meta.name as string)
+      ?? (meta.display_name as string)
       ?? user.email
       ?? "User",
+    first_name: (meta.first_name as string) ?? null,
+    middle_name: (meta.middle_name as string) ?? null,
+    last_name: (meta.last_name as string) ?? null,
     avatar_path: (meta.avatar_path as string) ?? (meta.avatar_url as string) ?? (meta.picture as string) ?? null,
     username: (meta.username as string) ?? null,
     account_type: (account_type ?? "institute_candidate") as AccountType,
@@ -231,7 +240,7 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
       const { data: dbProfile, error: dbError } = await (supabase as any)
         .from("profiles")
         .select(`
-          username, display_name, avatar_path, account_type, signature_path, profile_updated, institute_id, institute_verified,
+          username, full_name, first_name, middle_name, last_name, avatar_path, account_type, signature_path, profile_updated, institute_id, institute_verified,
           candidate_profiles!candidate_profiles_profile_id_fkey (profile_complete)
         `)
         .eq("id", built.id)
@@ -243,7 +252,10 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
 
       if (dbProfile) {
         if (dbProfile.username !== undefined) built.username = dbProfile.username;
-        if (dbProfile.display_name !== undefined) built.display_name = dbProfile.display_name;
+        if (dbProfile.full_name !== undefined) built.full_name = dbProfile.full_name;
+        if (dbProfile.first_name !== undefined) built.first_name = dbProfile.first_name;
+        if (dbProfile.middle_name !== undefined) built.middle_name = dbProfile.middle_name;
+        if (dbProfile.last_name !== undefined) built.last_name = dbProfile.last_name;
         if (dbProfile.avatar_path !== undefined) built.avatar_path = dbProfile.avatar_path;
         if (dbProfile.account_type !== undefined) built.account_type = dbProfile.account_type as AccountType;
         

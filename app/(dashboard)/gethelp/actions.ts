@@ -44,7 +44,7 @@ export async function getTicketAction(ticketId: string) {
   const { data: profile } = await supabase.from("profiles").select("account_type").eq("id", userId).maybeSingle();
   const isAdmin = profile?.account_type === "admin";
 
-  let query = supabase.from("tickets").select("*, profiles(avatar_path, display_name, email)").eq("id", ticketId);
+  let query = supabase.from("tickets").select("*, profiles(avatar_path, full_name, email)").eq("id", ticketId);
   if (!isAdmin) {
     query = query.eq("user_id", userId);
   }
@@ -57,7 +57,7 @@ export async function getTicketAction(ticketId: string) {
 
   const { data: messages, error: messagesError } = await supabase
     .from("ticket_messages")
-    .select("*, profiles(avatar_path, display_name, email)")
+    .select("*, profiles(avatar_path, full_name, email)")
     .eq("ticket_id", ticketId)
     .order("created_at", { ascending: true });
 

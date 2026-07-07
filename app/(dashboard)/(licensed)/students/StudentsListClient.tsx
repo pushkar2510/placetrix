@@ -49,7 +49,7 @@ import { useRouter, usePathname } from "next/navigation"
 
 export interface Student {
   profile_id: string
-  display_name: string
+  full_name: string
   email: string
   course_name: string | null
   passout_year: number | null
@@ -304,11 +304,11 @@ export function StudentsListClient({
                         <Avatar className="size-8 shrink-0">
                           <AvatarImage src={student.profile_image_path || undefined} />
                           <AvatarFallback className="text-[10px]">
-                            {student.display_name.charAt(0).toUpperCase()}
+                            {student.full_name.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-medium truncate">{student.display_name}</span>
+                          <span className="text-sm font-medium truncate">{student.full_name}</span>
                           <span className="text-[11px] text-muted-foreground truncate">{student.email}</span>
                         </div>
                       </div>
@@ -391,11 +391,11 @@ export function StudentsListClient({
                     <Avatar className="size-10 shrink-0">
                       <AvatarImage src={student.profile_image_path || undefined} />
                       <AvatarFallback className="text-xs">
-                        {student.display_name.charAt(0).toUpperCase()}
+                        {student.full_name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col min-w-0">
-                      <span className="text-sm font-semibold truncate">{student.display_name}</span>
+                      <span className="text-sm font-semibold truncate">{student.full_name}</span>
                       <span className="text-xs text-muted-foreground truncate">{student.email}</span>
                     </div>
                   </div>

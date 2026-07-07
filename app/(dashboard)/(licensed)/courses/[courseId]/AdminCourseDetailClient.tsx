@@ -34,7 +34,7 @@ interface Module {
 interface EnrolledStudent {
   enrollment_id: string
   user_id: string
-  display_name: string | null
+  full_name: string | null
   email: string
   enrolled_at: string
   modules_completed: number
@@ -152,7 +152,7 @@ export function AdminCourseDetailClient({ course, students }: Props) {
     if (search.trim()) {
       const q = search.toLowerCase()
       rows = rows.filter(s =>
-        (s.display_name ?? "").toLowerCase().includes(q) ||
+        (s.full_name ?? "").toLowerCase().includes(q) ||
         s.email.toLowerCase().includes(q)
       )
     }
@@ -170,7 +170,7 @@ export function AdminCourseDetailClient({ course, students }: Props) {
       let diff = 0
       switch (sortCol) {
         case "name":
-          diff = (a.display_name ?? a.email).localeCompare(b.display_name ?? b.email)
+          diff = (a.full_name ?? a.email).localeCompare(b.full_name ?? b.email)
           break
         case "email":
           diff = a.email.localeCompare(b.email)
@@ -418,11 +418,11 @@ export function AdminCourseDetailClient({ course, students }: Props) {
                           <TableCell className="min-w-[180px]">
                             <div className="flex items-center gap-3">
                               <div className="h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                                {(student.display_name ?? student.email).charAt(0).toUpperCase()}
+                                {(student.full_name ?? student.email).charAt(0).toUpperCase()}
                               </div>
                               <div className="min-w-0">
                                 <p className="text-sm font-medium text-foreground truncate">
-                                  {student.display_name ?? "—"}
+                                  {student.full_name ?? "—"}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate">
                                   {student.email}

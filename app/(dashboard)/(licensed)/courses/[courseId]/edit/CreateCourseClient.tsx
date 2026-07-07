@@ -45,7 +45,7 @@ interface Props {
   initialModules?: AdminModuleInput[]
   adminProfile?: {
     id: string
-    display_name: string | null
+    full_name: string | null
     avatar_path: string | null
   } | null
 }

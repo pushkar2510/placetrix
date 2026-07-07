@@ -154,11 +154,11 @@ export async function GET(_request: NextRequest, props: RouteParams) {
       courses(
         title,
         instructor:profiles!courses_instructor_id_fkey(
-          display_name,
+          full_name,
           signature_path
         )
       ),
-      profiles(display_name)
+      profiles(full_name)
     `)
     .eq("id", certificateId)
     .maybeSingle()
@@ -172,9 +172,9 @@ export async function GET(_request: NextRequest, props: RouteParams) {
   }
 
   const courseData     = certificate.courses as any
-  const recipientName  = (certificate as any).issued_to_name ?? certificate.profiles?.display_name ?? "Candidate"
+  const recipientName  = (certificate as any).issued_to_name ?? certificate.profiles?.full_name ?? "Candidate"
   const courseTitle    = courseData?.title ?? "Training Track"
-  const instructorName = courseData?.instructor?.display_name || "Course Instructor"
+  const instructorName = courseData?.instructor?.full_name || "Course Instructor"
   const signaturePath  = courseData?.instructor?.signature_path || null
   const issueDateStr   = new Date(certificate.issued_at).toLocaleDateString("en-IN", {
     year: "numeric", month: "long", day: "numeric",

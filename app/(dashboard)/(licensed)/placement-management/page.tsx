@@ -96,7 +96,7 @@ export default async function PlacementManagementPage(props: {
       passout_year,
       phone_number,
       profiles!inner (
-        display_name,
+        full_name,
         email,
         institute_id,
         avatar_path
@@ -162,7 +162,7 @@ export default async function PlacementManagementPage(props: {
     const { data: matchedProfiles } = await (supabase as any)
       .from("profiles")
       .select("id")
-      .ilike("display_name", `%${s}%`)
+      .ilike("full_name", `%${s}%`)
 
     const matchedIds = (matchedProfiles || []).map((p: any) => p.id)
     if (matchedIds.length === 0) {
@@ -176,7 +176,7 @@ export default async function PlacementManagementPage(props: {
   const ascending = sortOrder === "asc"
   switch (sortBy) {
     case "name":
-      query = query.order("profiles(display_name)", { ascending })
+      query = query.order("profiles(full_name)", { ascending })
       break
     case "course":
       query = query.order("course_name", { ascending })
@@ -186,7 +186,7 @@ export default async function PlacementManagementPage(props: {
       break
     // company / ctc: sorted in code after merge
     default:
-      query = query.order("profiles(display_name)", { ascending: true })
+      query = query.order("profiles(full_name)", { ascending: true })
       break
   }
 
@@ -241,7 +241,7 @@ export default async function PlacementManagementPage(props: {
     const pt = ptMap.get(r.profile_id)
     return {
       profile_id: r.profile_id,
-      display_name: r.profiles?.display_name ?? "Unknown",
+      full_name: r.profiles?.full_name ?? "Unknown",
       email: r.profiles?.email ?? null,
       phone_number: r.phone_number ?? null,
       course_name: r.course_name,

@@ -45,7 +45,7 @@ export default async function ModuleDetailPage({ params }: PageProps) {
     .select(`
       *,
       instructor:profiles!courses_instructor_id_fkey(
-        display_name,
+        full_name,
         avatar_path
       )
     `)
@@ -102,7 +102,7 @@ export default async function ModuleDetailPage({ params }: PageProps) {
     duration: course.duration,
     cover_image_path: course.cover_image_path || undefined,
     instructor: {
-      name: course.instructor?.display_name || "Instructor",
+      name: course.instructor?.full_name || "Instructor",
       role: "Course Instructor",
       avatar: course.instructor?.avatar_path 
         ? buildStorageUrl("avatars", course.instructor.avatar_path) 
