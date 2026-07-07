@@ -178,7 +178,11 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground select-none;
+  }
+
+  input, textarea, [contenteditable="true"], pre, code, kbd, samp, .select-text {
+    @apply select-text;
   }
 
   .font-cirka {
@@ -441,7 +445,7 @@
   );
   background-color: var(--muted);
   background-size: 200% 100%;
-  animation: shimmer-sweep 1.6s ease-in-out infinite;
+  animation: shimmer-sweep 2.8s ease-in-out infinite;
 }
 
 .dark .animate-shimmer {
