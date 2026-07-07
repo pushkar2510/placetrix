@@ -3,6 +3,7 @@ import { getUserProfile } from "@/lib/supabase/profile";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Suspense } from "react";
 import { RecentSupportTickets } from "./RecentSupportTickets";
@@ -67,13 +68,24 @@ function StatCard({
           ? "text-blue-600 dark:text-blue-400"
           : "text-foreground";
 
+  const accentBg =
+    accent === "green"
+      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+      : accent === "amber"
+        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+        : accent === "blue"
+          ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+          : "bg-muted/40 text-muted-foreground";
+
   return (
-    <div className="rounded-lg border bg-card p-4 flex flex-col gap-3">
+    <div className="group rounded-2xl border border-border/40 bg-card p-5 flex flex-col gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-300">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        <span className="text-muted-foreground/50">{icon}</span>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
+        <span className={`p-2 rounded-xl transition-all duration-300 group-hover:scale-110 ${accentBg}`}>
+          {icon}
+        </span>
       </div>
-      <p className={`text-2xl font-bold tabular-nums tracking-tight ${accentClass}`}>
+      <p className={`text-3xl font-extrabold tabular-nums tracking-tight leading-none mt-1 ${accentClass}`}>
         {value}
       </p>
     </div>
@@ -414,39 +426,51 @@ export default async function HomePage() {
             <div className="space-y-3">
               <SectionHeader title="Tests Overview" href="/tests" />
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                <StatCard
-                  icon={<ListCheck className="h-4 w-4" />}
-                  label="Total Tests"
-                  value={stats.total_tests}
-                />
-                <StatCard
-                  icon={<PlayCircle className="h-4 w-4" />}
-                  label="Live"
-                  value={stats.live_tests}
-                  accent={stats.live_tests > 0 ? "green" : "muted"}
-                />
-                <StatCard
-                  icon={<CalendarClock className="h-4 w-4" />}
-                  label="Upcoming"
-                  value={stats.upcoming_tests}
-                  accent={stats.upcoming_tests > 0 ? "amber" : "muted"}
-                />
-                <StatCard
-                  icon={<CheckCircle2 className="h-4 w-4" />}
-                  label="Past"
-                  value={stats.past_tests}
-                />
-                <StatCard
-                  icon={<PenLine className="h-4 w-4" />}
-                  label="Drafts"
-                  value={stats.draft_tests}
-                />
-                <StatCard
-                  icon={<Users className="h-4 w-4" />}
-                  label="Attempts"
-                  value={stats.total_attempts}
-                  accent={stats.total_attempts > 0 ? "blue" : "muted"}
-                />
+                <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 [animation-delay:50ms]">
+                  <StatCard
+                    icon={<ListCheck className="h-4 w-4" />}
+                    label="Total Tests"
+                    value={stats.total_tests}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 [animation-delay:100ms]">
+                  <StatCard
+                    icon={<PlayCircle className="h-4 w-4" />}
+                    label="Live"
+                    value={stats.live_tests}
+                    accent={stats.live_tests > 0 ? "green" : "muted"}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 [animation-delay:150ms]">
+                  <StatCard
+                    icon={<CalendarClock className="h-4 w-4" />}
+                    label="Upcoming"
+                    value={stats.upcoming_tests}
+                    accent={stats.upcoming_tests > 0 ? "amber" : "muted"}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 [animation-delay:200ms]">
+                  <StatCard
+                    icon={<CheckCircle2 className="h-4 w-4" />}
+                    label="Past"
+                    value={stats.past_tests}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 [animation-delay:250ms]">
+                  <StatCard
+                    icon={<PenLine className="h-4 w-4" />}
+                    label="Drafts"
+                    value={stats.draft_tests}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 [animation-delay:300ms]">
+                  <StatCard
+                    icon={<Users className="h-4 w-4" />}
+                    label="Attempts"
+                    value={stats.total_attempts}
+                    accent={stats.total_attempts > 0 ? "blue" : "muted"}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -483,43 +507,56 @@ export default async function HomePage() {
         <div className="flex flex-col gap-1.5">
           <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Home</h1>
           <p className="text-sm text-muted-foreground">
-            Platform overview and recent support ticket queue
+            Platform overview and recent support ticket queue · Admin
           </p>
         </div>
 
-        <div className="space-y-6">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <StatCard
-              icon={<Users className="h-4 w-4" />}
-              label="Candidates"
-              value={stats.candidates}
-            />
-            <StatCard
-              icon={<Users className="h-4 w-4" />}
-              label="Institutes"
-              value={stats.institutes}
-            />
-            <StatCard
-              icon={<PlayCircle className="h-4 w-4" />}
-              label="Pending Tickets"
-              value={stats.pendingTickets}
-              accent={stats.pendingTickets > 0 ? "amber" : "muted"}
-            />
-          </div>
-
-          {/* Support Queue Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold tracking-tight text-foreground">Recent Support Tickets</h2>
-              <Link href="/support" className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
-                Go to Support Queue
-                <ArrowRight className="h-3 w-3" />
-              </Link>
+        {/* Bento Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
+          {/* Column 1: Stats stack */}
+          <div className="flex flex-col gap-4 lg:col-span-1">
+            <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 [animation-delay:50ms]">
+              <StatCard
+                icon={<Users className="h-4 w-4" />}
+                label="Candidates"
+                value={stats.candidates}
+                accent="blue"
+              />
             </div>
-
-            <RecentSupportTickets initialTickets={recentTickets} />
+            <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 [animation-delay:150ms]">
+              <StatCard
+                icon={<Users className="h-4 w-4" />}
+                label="Institutes"
+                value={stats.institutes}
+                accent="green"
+              />
+            </div>
+            <div className="animate-in fade-in slide-in-from-bottom-3 duration-500 [animation-delay:250ms]">
+              <StatCard
+                icon={<PlayCircle className="h-4 w-4" />}
+                label="Pending Tickets"
+                value={stats.pendingTickets}
+                accent={stats.pendingTickets > 0 ? "amber" : "muted"}
+              />
+            </div>
           </div>
+
+          {/* Column 2 & 3: Support Queue Bento Card */}
+          <Card className="lg:col-span-2 bg-card border border-border/40 shadow-sm rounded-2xl p-0 gap-0 hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 flex flex-col animate-in fade-in slide-in-from-bottom-3 duration-500 [animation-delay:350ms]">
+            <CardContent className="p-5 flex flex-col gap-3 flex-1 justify-start">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Recent Support Tickets
+                </h2>
+                <Link href="/support" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 flex items-center gap-1">
+                  Go to Support Queue
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+
+              <RecentSupportTickets initialTickets={recentTickets} />
+            </CardContent>
+          </Card>
         </div>
       </div>
     );

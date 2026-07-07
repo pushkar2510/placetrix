@@ -6,24 +6,17 @@ import Link from "next/link"
 import {
   Flame,
   Award,
-  Briefcase,
   ArrowRight,
   Clock,
-  AlertCircle,
-  MapPin,
-  Building2,
-  Sparkles,
   Laptop,
   BookOpen,
   ChevronRight,
-  Info,
   FileText,
   Search,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Empty,
   EmptyHeader,
@@ -33,7 +26,6 @@ import {
   EmptyMedia,
 } from "@/components/ui/empty"
 import { Progress } from "@/components/ui/progress"
-import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { LicenseBanner } from "@/components/license/LicenseBanner"
 import { Suspense } from "react"
@@ -135,6 +127,30 @@ function ConcentricRing({
   )
 }
 
+// Staggered layout variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 110,
+      damping: 15,
+    },
+  },
+} as const
+
 export function CandidateDashboardClient({
   profile,
   stats,
@@ -162,245 +178,258 @@ export function CandidateDashboardClient({
   return (
     <div className="flex flex-col gap-6 px-4 py-8 md:px-8 w-full animate-in fade-in duration-500">
       <Suspense><LicenseBanner /></Suspense>
-      {/* ─── Hero Welcome Banner (Using Card) ─── */}
-      <Card className="relative overflow-hidden border-border/40 bg-card shadow-sm py-6">
 
-        <CardContent className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10 px-6 py-0">
-          <div className="space-y-2">
-            {streakStats.currentStreak > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 text-xs font-semibold text-orange-600 dark:text-orange-400 bg-orange-500/10 px-2.5 py-1 rounded-full">
-                  <Flame className="h-3.5 w-3.5 fill-orange-500 text-orange-500" strokeWidth={1.5} />
-                  <span>{streakStats.currentStreak} Day Streak</span>
+      {/* ─── Bento Grid Layout ─── */}
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full"
+      >
+        
+        {/* Cell 1: Welcome & Streak (col-span-3 - natural height header) */}
+        <motion.div variants={itemVariants} className="lg:col-span-3 md:col-span-2 col-span-1">
+          <Card className="relative overflow-hidden bg-card border border-border/40 shadow-sm rounded-2xl group hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 flex flex-col p-0 gap-0">
+            {/* Glowing gradients */}
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.08] via-purple-500/[0.03] to-sky-500/[0.06] pointer-events-none" />
+            
+            {/* Tech Dot Pattern */}
+            <div className="absolute inset-0 bg-[radial-gradient(#cbd5e1_1.5px,transparent_1.5px)] dark:bg-[radial-gradient(#334155_1.5px,transparent_1.5px)] [background-size:20px_20px] opacity-60 pointer-events-none" />
+            
+            {/* Dynamic background blur blobs (Indigo, Purple, and Sky Blue) */}
+            <div className="absolute top-0 right-0 -mt-6 -mr-6 w-44 h-44 bg-indigo-500/20 rounded-full blur-3xl group-hover:bg-indigo-500/25 transition-all duration-300 pointer-events-none" />
+            <div className="absolute right-1/4 top-1/4 w-32 h-32 bg-sky-500/15 rounded-full blur-3xl group-hover:bg-sky-500/20 transition-all duration-300 pointer-events-none" />
+            <div className="absolute bottom-0 left-1/3 -mb-6 w-36 h-36 bg-purple-500/15 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all duration-300 pointer-events-none" />
+            
+            <CardContent className="p-5 relative z-10 flex flex-col justify-start gap-3.5">
+              {streakStats.currentStreak > 0 && (
+                <div className="flex items-center gap-2">
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 dark:text-orange-400 bg-orange-500/15 px-3 py-1 rounded-full border border-orange-500/30"
+                  >
+                    <Flame className="h-3.5 w-3.5 fill-orange-500 text-orange-500 animate-pulse" strokeWidth={1.5} />
+                    <span>{streakStats.currentStreak} Day Streak</span>
+                  </motion.div>
                 </div>
+              )}
+              <div className="flex flex-col gap-1">
+                <h1 className="text-3xl md:text-4xl font-bold font-cirka tracking-tight text-foreground leading-tight">
+                  {greeting}, {profileName}!
+                </h1>
+                <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+                  Track your Placements, Mock Tests, and Progress in Coding Challenges all from One Dashboard.
+                </p>
               </div>
-            )}
-            <h1 className="text-3xl md:text-4xl font-bold font-cirka tracking-tight text-foreground">
-              {greeting}, {profileName}!
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Track your Placements, Mock Tests, and Progress in Coding Challenges all from One Dashboard.
-            </p>
-          </div>
+              
+              {!isProfileComplete && (
+                <div className="pt-1">
+                  <Link href="/myprofile">
+                    <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs border-indigo-500/30 hover:border-indigo-500 hover:bg-indigo-500/5">
+                      Complete Profile
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        </CardContent>
-      </Card>
-
-      {/* ─── Main Content ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* ── COLUMN 1: Performance & Practice (Span 2) ── */}
-        <div className="lg:col-span-2 space-y-6">
-
-          {/* Card: Practice & Mock Test Insights */}
-          <Card className="bg-card border-border/40 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg font-semibold tracking-tight text-foreground">
-                Performance Insights
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Left Panel: LogicLab Coding Stats */}
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.45, ease: "easeOut" }}
-                  whileHover={{ y: -3, scale: 1.01 }}
-                  className="flex flex-row items-center justify-between gap-6 p-5 md:p-6 rounded-2xl bg-muted/15 border border-border/30 hover:border-border/60 hover:bg-muted/20 transition duration-300 shadow-sm"
-                >
-                  <div className="space-y-4 flex-1">
-                    <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                        Coding Challenges
-                      </p>
-                      <p className="text-2xl font-bold mt-0.5 text-foreground">
-                        {globalStats.solved} <span className="text-xs font-normal text-muted-foreground">/ {globalStats.total} Solved</span>
-                      </p>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      {/* Easy */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[10px]">
-                          <div className="flex items-center gap-1.5 text-muted-foreground">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            <span className="font-medium">Easy</span>
-                          </div>
-                          <span className="font-semibold text-foreground">{globalStats.easy.solved}/{globalStats.easy.total}</span>
-                        </div>
-                        <Progress
-                          value={globalStats.easy.total > 0 ? (globalStats.easy.solved / globalStats.easy.total) * 100 : 0}
-                          className="h-1.5 bg-emerald-500/10 [&>div]:bg-emerald-500"
-                        />
-                      </div>
-                      {/* Medium */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[10px]">
-                          <div className="flex items-center gap-1.5 text-muted-foreground">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                            <span className="font-medium">Medium</span>
-                          </div>
-                          <span className="font-semibold text-foreground">{globalStats.medium.solved}/{globalStats.medium.total}</span>
-                        </div>
-                        <Progress
-                          value={globalStats.medium.total > 0 ? (globalStats.medium.solved / globalStats.medium.total) * 100 : 0}
-                          className="h-1.5 bg-amber-500/10 [&>div]:bg-amber-500"
-                        />
-                      </div>
-                      {/* Hard */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[10px]">
-                          <div className="flex items-center gap-1.5 text-muted-foreground">
-                            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                            <span className="font-medium">Hard</span>
-                          </div>
-                          <span className="font-semibold text-foreground">{globalStats.hard.solved}/{globalStats.hard.total}</span>
-                        </div>
-                        <Progress
-                          value={globalStats.hard.total > 0 ? (globalStats.hard.solved / globalStats.hard.total) * 100 : 0}
-                          className="h-1.5 bg-rose-500/10 [&>div]:bg-rose-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator orientation="vertical" className="h-28 hidden sm:block bg-border/40" />
-
-                  {/* SVG Concentric Ring with premium motion transition */}
-                  <div className="relative h-28 w-28 shrink-0 flex items-center justify-center">
-                    <svg className="w-full h-full" viewBox="0 0 100 100">
-                      <ConcentricRing
-                        radius={42}
-                        value={globalStats.easy.solved}
-                        max={globalStats.easy.total}
-                        className="stroke-emerald-500"
-                      />
-                      <ConcentricRing
-                        radius={32}
-                        value={globalStats.medium.solved}
-                        max={globalStats.medium.total}
-                        className="stroke-amber-500"
-                      />
-                      <ConcentricRing
-                        radius={22}
-                        value={globalStats.hard.solved}
-                        max={globalStats.hard.total}
-                        className="stroke-rose-500"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-lg font-bold text-foreground">
-                        {globalStats.total > 0 ? Math.round((globalStats.solved / globalStats.total) * 100) : 0}%
-                      </span>
-                      <span className="text-[9px] text-muted-foreground uppercase font-semibold">Progress</span>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Right Panel: Mock Test Performance */}
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.45, ease: "easeOut", delay: 0.1 }}
-                  whileHover={{ y: -3, scale: 1.01 }}
-                  className="flex flex-row items-center justify-between gap-6 p-5 md:p-6 rounded-2xl bg-muted/15 border border-border/30 hover:border-border/60 hover:bg-muted/20 transition duration-300 shadow-sm"
-                >
-                  <div className="space-y-4 flex-1">
-                    <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                        Mock Test Performance
-                      </p>
-                      <p className="text-2xl font-bold mt-0.5 text-foreground">
-                        {stats.completed_tests} <span className="text-xs font-normal text-muted-foreground">Tests Taken</span>
-                      </p>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[10px] text-muted-foreground">
-                          <span className="font-medium">Test Accuracy</span>
-                          <span className="font-semibold text-foreground">{Math.round(stats.average_score)}%</span>
-                        </div>
-                        <Progress
-                          value={stats.average_score}
-                          className="h-1.5 bg-primary/10 [&>div]:bg-primary"
-                        />
-                      </div>
-
-                      {/* Refined stats grid */}
-                      <div className="grid grid-cols-3 gap-2 mt-4 bg-background/50 dark:bg-muted/10 rounded-xl p-2.5 border border-border/20 select-none text-center">
-                        <div>
-                          <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider block">Assigned</span>
-                          <span className="text-sm font-bold text-foreground mt-0.5 block">{stats.total_tests}</span>
-                        </div>
-                        <div className="border-x border-border/20">
-                          <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider block">Live</span>
-                          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 block">{stats.live_tests}</span>
-                        </div>
-                        <div>
-                          <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider block">Completed</span>
-                          <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-0.5 block">{stats.completed_tests}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator orientation="vertical" className="h-28 hidden sm:block bg-border/40" />
-
-                  {/* Score Radial Ring with dynamic grow transition */}
-                  <div className="relative h-28 w-28 shrink-0 flex items-center justify-center">
-                    <svg className="w-full h-full" viewBox="0 0 100 100">
-                      <ConcentricRing
-                        radius={36}
-                        value={stats.average_score}
-                        max={100}
-                        className="stroke-primary"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-lg font-bold text-primary">
-                        {Math.round(stats.average_score)}%
-                      </span>
-                      <span className="text-[9px] text-muted-foreground uppercase font-semibold text-center leading-none mt-0.5">Avg Score</span>
-                    </div>
-                  </div>
-                </motion.div>
+        {/* Cell 2: Coding Challenges (col-span-1) */}
+        <motion.div variants={itemVariants} className="col-span-1">
+          <Card className="bg-card border border-border/40 shadow-sm rounded-2xl hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 flex flex-col p-0 gap-0 h-full">
+            <CardContent className="p-5 flex flex-col justify-between flex-1 gap-4">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Coding Challenges
               </div>
+              
+              <div className="flex items-center justify-between gap-4 flex-1">
+                <div className="space-y-2 flex-1">
+                  <div>
+                    <p className="text-2xl font-extrabold text-foreground tracking-tight">
+                      {globalStats.solved} <span className="text-xs font-normal text-muted-foreground">/ {globalStats.total} Solved</span>
+                    </p>
+                  </div>
 
-              {/* 14-Day Activity Tracker Section */}
-              <div className="border-t border-border/30 pt-5 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                    <Info className="h-3.5 w-3.5 text-muted-foreground/80" strokeWidth={1.5} />
-                    Practice Activity (Last 14 Days)
-                  </span>
-
-                  {/* Calendar Legend */}
-                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-sm bg-background border border-border/30" />
-                      <span>No Activity</span>
+                  <div className="space-y-1.5">
+                    {/* Easy */}
+                    <div className="space-y-0.5">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          <span className="font-medium">Easy</span>
+                        </div>
+                        <span className="font-semibold text-foreground">{globalStats.easy.solved}/{globalStats.easy.total}</span>
+                      </div>
+                      <Progress
+                        value={globalStats.easy.total > 0 ? (globalStats.easy.solved / globalStats.easy.total) * 100 : 0}
+                        className="h-1 bg-emerald-500/10 [&>div]:bg-emerald-500"
+                      />
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-sm bg-amber-500/10 border border-amber-500/30" />
-                      <span>Attempted</span>
+                    {/* Medium */}
+                    <div className="space-y-0.5">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          <span className="font-medium">Medium</span>
+                        </div>
+                        <span className="font-semibold text-foreground">{globalStats.medium.solved}/{globalStats.medium.total}</span>
+                      </div>
+                      <Progress
+                        value={globalStats.medium.total > 0 ? (globalStats.medium.solved / globalStats.medium.total) * 100 : 0}
+                        className="h-1 bg-amber-500/10 [&>div]:bg-amber-500"
+                      />
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-sm bg-emerald-500/10 border border-emerald-500/30" />
-                      <span>Solved</span>
+                    {/* Hard */}
+                    <div className="space-y-0.5">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                          <span className="font-medium">Hard</span>
+                        </div>
+                        <span className="font-semibold text-foreground">{globalStats.hard.solved}/{globalStats.hard.total}</span>
+                      </div>
+                      <Progress
+                        value={globalStats.hard.total > 0 ? (globalStats.hard.solved / globalStats.hard.total) * 100 : 0}
+                        className="h-1 bg-rose-500/10 [&>div]:bg-rose-500"
+                      />
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                {/* Concentric Ring Graphic */}
+                <div className="relative h-24 w-24 shrink-0 flex items-center justify-center transition-transform duration-500 hover:scale-105">
+                  <svg className="w-full h-full" viewBox="0 0 100 100">
+                    <ConcentricRing
+                      radius={42}
+                      value={globalStats.easy.solved}
+                      max={globalStats.easy.total}
+                      className="stroke-emerald-500"
+                    />
+                    <ConcentricRing
+                      radius={32}
+                      value={globalStats.medium.solved}
+                      max={globalStats.medium.total}
+                      className="stroke-amber-500"
+                    />
+                    <ConcentricRing
+                      radius={22}
+                      value={globalStats.hard.solved}
+                      max={globalStats.hard.total}
+                      className="stroke-rose-500"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-lg font-extrabold tracking-tight text-foreground">
+                      {globalStats.total > 0 ? Math.round((globalStats.solved / globalStats.total) * 100) : 0}
+                      <span className="text-xs font-semibold text-muted-foreground/80 ml-0.5">%</span>
+                    </span>
+                    <span className="text-[7px] font-bold tracking-widest text-muted-foreground/80 uppercase">Progress</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Streak Footer Grid */}
+              <div className="grid grid-cols-2 gap-1 bg-background/50 dark:bg-muted/10 rounded-xl p-2 border border-border/20 select-none text-center">
+                <div>
+                  <span className="text-[8px] text-muted-foreground font-semibold uppercase tracking-wider block">Current Streak</span>
+                  <span className="text-xs font-bold text-orange-600 dark:text-orange-400 block">{streakStats.currentStreak} Days</span>
+                </div>
+                <div className="border-l border-border/20">
+                  <span className="text-[8px] text-muted-foreground font-semibold uppercase tracking-wider block">Max Streak</span>
+                  <span className="text-xs font-bold text-foreground block">{streakStats.maxStreak} Days</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Cell 3: Mock Test Performance (col-span-1) */}
+        <motion.div variants={itemVariants} className="col-span-1">
+          <Card className="bg-card border border-border/40 shadow-sm rounded-2xl hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 flex flex-col p-0 gap-0 h-full">
+            <CardContent className="p-5 flex flex-col justify-between flex-1 gap-4">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Mock Test Performance
+              </div>
+              
+              <div className="flex items-center justify-between gap-4 flex-1">
+                <div className="space-y-2 flex-1">
+                  <div>
+                    <p className="text-2xl font-extrabold text-foreground tracking-tight">
+                      {stats.completed_tests} <span className="text-xs font-normal text-muted-foreground">Tests Taken</span>
+                    </p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span className="font-medium">Test Accuracy</span>
+                      <span className="font-semibold text-foreground">{Math.round(stats.average_score)}%</span>
+                    </div>
+                    <Progress
+                      value={stats.average_score}
+                      className="h-1 bg-primary/10 [&>div]:bg-primary"
+                    />
+                  </div>
+                </div>
+
+                {/* Accuracy Circular Indicator */}
+                <div className="relative h-24 w-24 shrink-0 flex items-center justify-center transition-transform duration-500 hover:scale-105">
+                  <svg className="w-full h-full" viewBox="0 0 100 100">
+                    <ConcentricRing
+                      radius={36}
+                      value={stats.average_score}
+                      max={100}
+                      className="stroke-primary"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-lg font-extrabold tracking-tight text-primary">
+                      {Math.round(stats.average_score)}
+                      <span className="text-xs font-semibold text-primary/70 ml-0.5">%</span>
+                    </span>
+                    <span className="text-[7px] font-bold tracking-widest text-muted-foreground/80 uppercase text-center leading-none mt-0.5">Avg Score</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Micro grid stats */}
+              <div className="grid grid-cols-3 gap-1 bg-background/50 dark:bg-muted/10 rounded-xl p-2 border border-border/20 select-none text-center">
+                <div>
+                  <span className="text-[8px] text-muted-foreground font-semibold uppercase tracking-wider block">Assigned</span>
+                  <span className="text-xs font-bold text-foreground block">{stats.total_tests}</span>
+                </div>
+                <div className="border-x border-border/20">
+                  <span className="text-[8px] text-muted-foreground font-semibold uppercase tracking-wider block">Live</span>
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block">{stats.live_tests}</span>
+                </div>
+                <div>
+                  <span className="text-[8px] text-muted-foreground font-semibold uppercase tracking-wider block">Done</span>
+                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 block">{stats.completed_tests}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Cell 4: Practice Activity Calendar (md:col-span-2 lg:col-span-1) */}
+        <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-1">
+          <Card className="bg-card border border-border/40 shadow-sm rounded-2xl hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 flex flex-col p-0 gap-0 h-full">
+            <CardContent className="p-5 flex flex-col justify-between flex-1 gap-4">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Practice Activity
+              </div>
+
+              <div className="flex-1 flex items-center justify-center w-full my-auto">
+                <div className="grid grid-cols-7 gap-2 w-full">
                   {activityCalendar.map((day) => {
                     const isToday = day.date === todayStr
                     return (
                       <div
                         key={day.date}
                         className={cn(
-                          "h-10 flex-1 min-w-[36px] rounded-lg border flex flex-col items-center justify-center gap-0.5 transition-all relative group cursor-default hover:scale-105",
+                          "aspect-square w-full rounded-full border flex flex-col items-center justify-center gap-0.5 transition-all relative group cursor-default hover:scale-105",
                           day.status === "solved"
                             ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
                             : day.status === "attempted"
@@ -409,10 +438,10 @@ export function CandidateDashboardClient({
                           isToday && "ring-2 ring-indigo-500 ring-offset-2 ring-offset-background"
                         )}
                       >
-                        <span className="text-[10px] font-bold">
+                        <span className="text-xs font-bold leading-none">
                           {new Date(day.date).getDate()}
                         </span>
-                        <span className="text-[8px] opacity-75">
+                        <span className="text-[8px] opacity-75 uppercase font-medium leading-none">
                           {new Date(day.date).toLocaleDateString("en-US", { weekday: "short" }).substring(0, 1)}
                         </span>
 
@@ -428,19 +457,44 @@ export function CandidateDashboardClient({
                   })}
                 </div>
               </div>
+
+              {/* Legend Footer */}
+              <div className="grid grid-cols-2 gap-1 bg-background/50 dark:bg-muted/10 rounded-xl p-2 border border-border/20 select-none text-center">
+                <div>
+                  <span className="text-[8px] text-muted-foreground font-semibold uppercase tracking-wider block">Timeframe</span>
+                  <span className="text-xs font-bold text-foreground block">Last 14 Days</span>
+                </div>
+                <div className="border-l border-border/20 flex flex-col justify-center items-center">
+                  <span className="text-[8px] text-muted-foreground font-semibold uppercase tracking-wider block">Legend</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex items-center gap-1 text-[9px] font-semibold text-foreground">
+                      <span className="h-1.5 w-1.5 rounded-full bg-background border border-border/30" />
+                      <span>No Activity</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      <span>Attempted</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[9px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      <span>Solved</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
+        </motion.div>
 
-          {/* Card: Active / Upcoming Mock Tests */}
-          <Card className="bg-card border-border/40 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold tracking-tight text-foreground">
+        {/* Cell 5: Active & Upcoming Tests (col-span-2 on lg) */}
+        <motion.div variants={itemVariants} className="lg:col-span-2 md:col-span-2 col-span-1">
+          <Card className="bg-card border border-border/40 shadow-sm rounded-2xl hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 flex flex-col p-0 gap-0 h-full">
+            <CardContent className="p-5 flex flex-col justify-between flex-1 gap-4">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Active & Upcoming Tests
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </div>
               {liveTests.length === 0 && upcomingTests.length === 0 ? (
-                <Empty className="p-8 border-dashed border-border/30 rounded-xl bg-background/10">
+                <Empty className="p-8 border-dashed border-border/30 rounded-xl bg-background/10 flex-1 flex flex-col justify-center">
                   <EmptyHeader>
                     <EmptyMedia variant="icon" className="bg-blue-500/10 text-blue-500 rounded-full">
                       <BookOpen className="h-5 w-5" strokeWidth={1.5} />
@@ -452,7 +506,7 @@ export function CandidateDashboardClient({
                   </EmptyHeader>
                 </Empty>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
                   {/* Live Tests */}
                   {liveTests.map((test) => (
                     <div
@@ -461,7 +515,7 @@ export function CandidateDashboardClient({
                     >
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 border-transparent font-medium">
+                          <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 border-transparent font-medium text-[10px] px-2 py-0.5">
                             Live Now
                           </Badge>
                           {test.time_limit_seconds && (
@@ -491,7 +545,7 @@ export function CandidateDashboardClient({
                     >
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 font-medium">
+                          <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 font-medium text-[10px] px-2 py-0.5">
                             Upcoming
                           </Badge>
                           {test.time_limit_seconds && (
@@ -516,91 +570,86 @@ export function CandidateDashboardClient({
               )}
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
 
-        {/* ── COLUMN 2: Tasks & Applications Tracker (Span 1) ── */}
-        <div className="space-y-6">
-
-          {/* Card: Quick Shortcuts */}
-          <Card className="bg-card border-border/40 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {/* Cell 6: Quick Navigation (md:col-span-2 lg:col-span-1) */}
+        <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-1">
+          <Card className="bg-card border border-border/40 shadow-sm rounded-2xl hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 flex flex-col p-0 gap-0 h-full">
+            <CardContent className="p-5 flex flex-col justify-between flex-1 gap-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Quick Navigation
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-2">
-              <Link href="/logiclab" className="group flex items-center justify-between p-3 rounded-xl border border-border/30 hover:border-indigo-500/30 hover:bg-indigo-500/[0.02] transition-all">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-105 transition-transform">
-                    <Laptop className="h-4 w-4 text-indigo-500" strokeWidth={1.5} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-2 flex-1 justify-center">
+                <Link href="/logiclab" className="group flex items-center justify-between p-2 rounded-xl border border-border/30 hover:border-indigo-500/30 hover:bg-indigo-500/[0.02] transition-all duration-200">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-105 transition-transform">
+                      <Laptop className="h-3.5 w-3.5 text-indigo-500" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">Logic Lab</p>
+                      <p className="text-[10px] text-muted-foreground">Practice coding challenges</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-foreground">Logic Lab</p>
-                    <p className="text-[10px] text-muted-foreground">Practice coding challenges</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" strokeWidth={1.5} />
-              </Link>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" strokeWidth={1.5} />
+                </Link>
 
-              <Link href="/courses" className="group flex items-center justify-between p-3 rounded-xl border border-border/30 hover:border-sky-500/30 hover:bg-sky-500/[0.02] transition-all">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 group-hover:scale-105 transition-transform">
-                    <BookOpen className="h-4 w-4 text-sky-500" strokeWidth={1.5} />
+                <Link href="/courses" className="group flex items-center justify-between p-2 rounded-xl border border-border/30 hover:border-sky-500/30 hover:bg-sky-500/[0.02] transition-all duration-200">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400 group-hover:scale-105 transition-transform">
+                      <BookOpen className="h-3.5 w-3.5 text-sky-500" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">Courses</p>
+                      <p className="text-[10px] text-muted-foreground">Learn and upgrade your skills</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-foreground">Courses</p>
-                    <p className="text-[10px] text-muted-foreground">Learn and upgrade your skills</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" strokeWidth={1.5} />
-              </Link>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" strokeWidth={1.5} />
+                </Link>
 
-              <Link href="/tests" className="group flex items-center justify-between p-3 rounded-xl border border-border/30 hover:border-emerald-500/30 hover:bg-emerald-500/[0.02] transition-all">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
-                    <Award className="h-4 w-4 text-emerald-500" strokeWidth={1.5} />
+                <Link href="/tests" className="group flex items-center justify-between p-2 rounded-xl border border-border/30 hover:border-emerald-500/30 hover:bg-emerald-500/[0.02] transition-all duration-200">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
+                      <Award className="h-3.5 w-3.5 text-emerald-500" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">Tests</p>
+                      <p className="text-[10px] text-muted-foreground">View and take mock tests</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-foreground">Tests</p>
-                    <p className="text-[10px] text-muted-foreground">View and take mock tests</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" strokeWidth={1.5} />
-              </Link>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" strokeWidth={1.5} />
+                </Link>
 
+                <Link href="/tools/resume" className="group flex items-center justify-between p-2 rounded-xl border border-border/30 hover:border-rose-500/30 hover:bg-rose-500/[0.02] transition-all duration-200">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-600 dark:text-rose-400 group-hover:scale-105 transition-transform">
+                      <FileText className="h-3.5 w-3.5 text-rose-500" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">Resume Generator</p>
+                      <p className="text-[10px] text-muted-foreground">Create ATS-friendly resumes</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" strokeWidth={1.5} />
+                </Link>
 
-              <Link href="/tools/resume" className="group flex items-center justify-between p-3 rounded-xl border border-border/30 hover:border-rose-500/30 hover:bg-rose-500/[0.02] transition-all">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-600 dark:text-rose-400 group-hover:scale-105 transition-transform">
-                    <FileText className="h-4 w-4 text-rose-500" strokeWidth={1.5} />
+                <Link href="/tools/resume-analyzer" className="group flex items-center justify-between p-2 rounded-xl border border-border/30 hover:border-violet-500/30 hover:bg-violet-500/[0.02] transition-all duration-200">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:scale-105 transition-transform">
+                      <Search className="h-3.5 w-3.5 text-violet-500" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">Resume Analyzer</p>
+                      <p className="text-[10px] text-muted-foreground">Analyze match scores with AI</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-foreground">Resume Generator</p>
-                    <p className="text-[10px] text-muted-foreground">Create ATS-friendly resumes</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" strokeWidth={1.5} />
-              </Link>
-
-              <Link href="/tools/resume-analyzer" className="group flex items-center justify-between p-3 rounded-xl border border-border/30 hover:border-violet-500/30 hover:bg-violet-500/[0.02] transition-all">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:scale-105 transition-transform">
-                    <Search className="h-4 w-4 text-violet-500" strokeWidth={1.5} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-foreground">Resume Analyzer</p>
-                    <p className="text-[10px] text-muted-foreground">Analyze match scores with AI</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" strokeWidth={1.5} />
-              </Link>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" strokeWidth={1.5} />
+                </Link>
+              </div>
             </CardContent>
           </Card>
+        </motion.div>
 
-
-        </div>
-
-      </div>
+      </motion.div>
     </div>
   )
 }
