@@ -1,5 +1,29 @@
--- SQL Migration: Support media_url in test_save function
+-- SQL Migration: Support media_url and test-questions storage policies
 
+-- 1. Create storage policies for the 'test-questions' bucket
+DROP POLICY IF EXISTS "Allow public select from test-questions" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated insert to test-questions" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated update to test-questions" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated delete to test-questions" ON storage.objects;
+
+CREATE POLICY "Allow public select from test-questions"
+ON storage.objects FOR SELECT TO public
+USING (bucket_id = 'test-questions');
+
+CREATE POLICY "Allow authenticated insert to test-questions"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'test-questions');
+
+CREATE POLICY "Allow authenticated update to test-questions"
+ON storage.objects FOR UPDATE TO authenticated
+USING (bucket_id = 'test-questions')
+WITH CHECK (bucket_id = 'test-questions');
+
+CREATE POLICY "Allow authenticated delete to test-questions"
+ON storage.objects FOR DELETE TO authenticated
+USING (bucket_id = 'test-questions');
+
+-- 2. Create or Replace test_save database function
 CREATE OR REPLACE FUNCTION public.test_save(p_test_id uuid, p_settings jsonb, p_questions jsonb[], p_status text)
  RETURNS void
  LANGUAGE plpgsql
