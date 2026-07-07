@@ -209,6 +209,7 @@ export function AdminProfileClient({ userProfile }: Props) {
     const e: Record<string, string> = {}
     const trimmed = displayName.trim()
     if (!trimmed) e.displayName = "Display name is required."
+    else if (!/^[a-zA-Z\s]+$/.test(trimmed)) e.displayName = "Display name must contain only alphabets and spaces."
     else if (trimmed.length < 3) e.displayName = "Display name must be at least 3 characters."
     else if (trimmed.length > 50) e.displayName = "Display name cannot exceed 50 characters."
     return e
@@ -696,7 +697,7 @@ export function AdminProfileClient({ userProfile }: Props) {
                     id="displayName"
                     placeholder="e.g. Administrator"
                     value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value.replace(/[<>]/g, ''))}
+                    onChange={(e) => setDisplayName(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
                     className={errors.displayName ? "border-destructive" : ""}
                   />
                   <FieldError message={errors.displayName} />

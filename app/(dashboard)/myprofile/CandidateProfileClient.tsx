@@ -1028,16 +1028,33 @@ export function CandidateProfileClient({
 
   function validatePersonal(): Record<string, string> {
     const e: Record<string, string> = {};
-    if (!firstName.trim()) e.firstName = "First name is required";
-    else if (firstName.trim().length < 2) e.firstName = "First name must be at least 2 characters";
-    else if (firstName.trim().length > 50) e.firstName = "First name cannot exceed 50 characters";
+    if (!firstName.trim()) {
+      e.firstName = "First name is required";
+    } else if (!/^[a-zA-Z]+$/.test(firstName.trim())) {
+      e.firstName = "First name must contain only alphabets";
+    } else if (firstName.trim().length < 2) {
+      e.firstName = "First name must be at least 2 characters";
+    } else if (firstName.trim().length > 50) {
+      e.firstName = "First name cannot exceed 50 characters";
+    }
 
-    if (!middleName.trim()) e.middleName = "Middle name is required";
-    else if (middleName.trim().length > 50) e.middleName = "Middle name cannot exceed 50 characters";
+    if (!middleName.trim()) {
+      e.middleName = "Middle name is required";
+    } else if (!/^[a-zA-Z]+$/.test(middleName.trim())) {
+      e.middleName = "Middle name must contain only alphabets";
+    } else if (middleName.trim().length > 50) {
+      e.middleName = "Middle name cannot exceed 50 characters";
+    }
 
-    if (!lastName.trim()) e.lastName = "Last name is required";
-    else if (lastName.trim().length < 2) e.lastName = "Last name must be at least 2 characters";
-    else if (lastName.trim().length > 50) e.lastName = "Last name cannot exceed 50 characters";
+    if (!lastName.trim()) {
+      e.lastName = "Last name is required";
+    } else if (!/^[a-zA-Z]+$/.test(lastName.trim())) {
+      e.lastName = "Last name must contain only alphabets";
+    } else if (lastName.trim().length < 2) {
+      e.lastName = "Last name must be at least 2 characters";
+    } else if (lastName.trim().length > 50) {
+      e.lastName = "Last name cannot exceed 50 characters";
+    }
 
     if (!gender) e.gender = "Gender is required";
     if (!phoneNumber.trim()) e.phoneNumber = "Contact number is required";
@@ -1888,7 +1905,7 @@ export function CandidateProfileClient({
                       placeholder="First name"
                       maxLength={50}
                       value={firstName}
-                      onChange={(e) => setFirstName(e.target.value.replace(/[<>]/g, ''))}
+                      onChange={(e) => setFirstName(e.target.value.replace(/[^a-zA-Z]/g, ''))}
                       onBlur={() => setFirstName(capitalizeFirstLetterOnly(firstName))}
                     />
                     <FieldError message={errors.firstName} />
@@ -1899,7 +1916,7 @@ export function CandidateProfileClient({
                       placeholder="Middle name"
                       maxLength={50}
                       value={middleName}
-                      onChange={(e) => setMiddleName(e.target.value.replace(/[<>]/g, ''))}
+                      onChange={(e) => setMiddleName(e.target.value.replace(/[^a-zA-Z]/g, ''))}
                       onBlur={() => setMiddleName(capitalizeFirstLetterOnly(middleName))}
                     />
                     <FieldError message={errors.middleName} />
@@ -1910,7 +1927,7 @@ export function CandidateProfileClient({
                       placeholder="Last name"
                       maxLength={50}
                       value={lastName}
-                      onChange={(e) => setLastName(e.target.value.replace(/[<>]/g, ''))}
+                      onChange={(e) => setLastName(e.target.value.replace(/[^a-zA-Z]/g, ''))}
                       onBlur={() => setLastName(capitalizeFirstLetterOnly(lastName))}
                     />
                     <FieldError message={errors.lastName} />
