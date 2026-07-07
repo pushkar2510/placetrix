@@ -73,31 +73,31 @@ function StatusBadge({ status }: { status: TabType }) {
   switch (status) {
     case "open":
       return (
-        <Badge className="gap-1 border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300 text-[11px] px-2 py-0.5">
+        <Badge variant="info" className="gap-1 text-[11px] px-2 py-0.5">
           Open
         </Badge>
       )
     case "in_progress":
       return (
-        <Badge className="gap-1 border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 text-[11px] px-2 py-0.5">
+        <Badge variant="warning" className="gap-1 text-[11px] px-2 py-0.5">
           In Progress
         </Badge>
       )
     case "resolved":
       return (
-        <Badge className="gap-1 border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 text-[11px] px-2 py-0.5">
+        <Badge variant="success" className="gap-1 text-[11px] px-2 py-0.5">
           Resolved
         </Badge>
       )
     case "closed":
       return (
-        <Badge className="gap-1 border border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-500/20 dark:bg-zinc-500/10 dark:text-zinc-300 text-[11px] px-2 py-0.5">
+        <Badge variant="outline" className="gap-1 text-[11px] px-2 py-0.5">
           Closed
         </Badge>
       )
     default:
       return (
-        <Badge className="gap-1 border border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-500/20 dark:bg-zinc-500/10 dark:text-zinc-300 text-[11px] px-2 py-0.5">
+        <Badge variant="outline" className="gap-1 text-[11px] px-2 py-0.5">
           {status}
         </Badge>
       )

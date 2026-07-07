@@ -135,24 +135,6 @@ const NAV_SECONDARY: NavItem[] = [
 ]
 
 
-const ROLE_LABELS: Record<AccountType, string> = {
-  admin: "Admin",
-  institute_candidate: "Candidate",
-  institute_primary: "Institute",
-  institute_staff: "Staff",
-  institute_placement_officer: "TPO",
-}
-
-
-const ROLE_COLORS: Record<AccountType, string> = {
-  admin: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  institute_candidate: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  institute_primary: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-  institute_staff: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
-  institute_placement_officer: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
-}
-
-
 // ─── Theme options ────────────────────────────────────────────────────────────
 
 

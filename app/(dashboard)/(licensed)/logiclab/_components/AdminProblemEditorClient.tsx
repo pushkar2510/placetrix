@@ -26,6 +26,8 @@ import {
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { generateTemplatesFromSignature, FunctionSignature } from "@/lib/generator/templateGenerator"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Loader2 } from "lucide-react"
 
 const LANGUAGES = [
   { id: 62, name: "Java (OpenJDK 13)", value: "java" },
@@ -628,7 +630,7 @@ export function AdminProblemEditorClient({
             className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-muted disabled:text-muted-foreground/60 text-black px-5 py-2 rounded-lg text-xs font-bold shadow-[0_0_16px_rgba(16,185,129,0.25)] hover:shadow-[0_0_22px_rgba(16,185,129,0.4)] disabled:shadow-none transition-all cursor-pointer"
           >
             {saving ? (
-              <><div className="h-3.5 w-3.5 border border-current border-t-transparent rounded-full animate-spin" /> Importing...</>
+              <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Importing...</>
             ) : (
               <><IconCircleCheck className="h-4 w-4" /> Import {parsedProblems.filter((p) => p.isValid).length} Problems</>
             )}
@@ -636,30 +638,27 @@ export function AdminProblemEditorClient({
         )}
       </div>
 
-      {/* Tabs bar */}
       {!isEdit && (
-        <div className="flex border-b border-border shrink-0">
-          <button
-            onClick={() => setActiveTab("single")}
-            className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-              activeTab === "single"
-                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold"
-                : "border-transparent text-muted-foreground/80 hover:text-foreground/80"
-            }`}
-          >
-            Single Problem Creator
-          </button>
-          <button
-            onClick={() => setActiveTab("bulk")}
-            className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-              activeTab === "bulk"
-                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold"
-                : "border-transparent text-muted-foreground/80 hover:text-foreground/80"
-            }`}
-          >
-            Bulk Import Problems (JSON/CSV)
-          </button>
-        </div>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as "single" | "bulk")}
+          className="shrink-0"
+        >
+          <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
+            <TabsTrigger
+              value="single"
+              className="rounded-none border-b-2 border-transparent px-5 py-2.5 text-xs font-bold uppercase tracking-wider cursor-pointer data-[state=active]:border-emerald-500 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-none data-[state=active]:bg-transparent"
+            >
+              Single Problem Creator
+            </TabsTrigger>
+            <TabsTrigger
+              value="bulk"
+              className="rounded-none border-b-2 border-transparent px-5 py-2.5 text-xs font-bold uppercase tracking-wider cursor-pointer data-[state=active]:border-emerald-500 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-none data-[state=active]:bg-transparent"
+            >
+              Bulk Import Problems (JSON/CSV)
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       )}
 
       {/* Workspace */}

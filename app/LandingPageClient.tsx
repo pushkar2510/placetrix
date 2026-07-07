@@ -612,7 +612,7 @@ function FeatureCard({
       fillOpacity={glowEnabled ? 0.08 : 0}
       coneSpread={glowEnabled ? 14 : 0}
     >
-      <article className="h-full rounded-3xl bg-white/95 p-6 backdrop-blur-sm transition-all duration-300 dark:bg-white/[0.03]">
+      <article className="h-full rounded-3xl bg-white/95 p-6 transition duration-300 dark:bg-white/[0.03]">
         <div className="flex h-full flex-col">
           <div className="flex-1">
             <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-zinc-900 dark:text-white md:text-base">
@@ -733,7 +733,7 @@ function TestimonialCard({
       fillOpacity={glowEnabled ? 0.08 : 0}
       coneSpread={glowEnabled ? 14 : 0}
     >
-      <figure className="h-full rounded-3xl bg-white/95 p-6 backdrop-blur-sm transition-all duration-300 dark:bg-white/[0.03] md:p-7">
+      <figure className="h-full rounded-3xl bg-white/95 p-6 transition duration-300 dark:bg-white/[0.03] md:p-7">
         <div className="flex h-full flex-col">
           <blockquote className="flex-1">
             <p className="max-w-[48ch] text-[15px] leading-7 font-medium tracking-[-0.01em] text-stone-700 dark:text-stone-300 md:text-base">

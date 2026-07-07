@@ -62,6 +62,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
@@ -234,14 +235,15 @@ function Req() { return <span className="text-destructive ml-0.5">*</span> }
 
 function TipCard({ tips }: { tips: string[] }) {
   return (
-    <div className="border rounded-lg p-4 bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40">
-      <p className="text-sm font-medium flex items-center gap-1.5 mb-2 text-amber-800 dark:text-amber-400">
-        <Sparkles className="size-3.5" /> Tips
-      </p>
-      <ul className="text-sm text-amber-900/70 dark:text-amber-300/70 space-y-1 list-disc list-inside leading-relaxed">
-        {tips.map((tip) => <li key={tip}>{tip}</li>)}
-      </ul>
-    </div>
+    <Alert variant="warning">
+      <Sparkles className="size-4 text-warning" />
+      <AlertDescription className="text-amber-900/70 dark:text-amber-300/70">
+        <span className="font-semibold block mb-1.5 text-warning">Tips</span>
+        <ul className="space-y-1 list-disc list-inside leading-relaxed text-sm">
+          {tips.map((tip) => <li key={tip}>{tip}</li>)}
+        </ul>
+      </AlertDescription>
+    </Alert>
   )
 }
 

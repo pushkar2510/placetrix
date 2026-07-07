@@ -163,7 +163,7 @@ export function CandidateDashboardClient({
     <div className="flex flex-col gap-6 px-4 py-8 md:px-8 w-full animate-in fade-in duration-500">
       <Suspense><LicenseBanner /></Suspense>
       {/* ─── Hero Welcome Banner (Using Card) ─── */}
-      <Card className="relative overflow-hidden border-border/40 bg-card/50 backdrop-blur-sm shadow-sm py-6">
+      <Card className="relative overflow-hidden border-border/40 bg-card shadow-sm py-6">
 
         <CardContent className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10 px-6 py-0">
           <div className="space-y-2">
@@ -193,7 +193,7 @@ export function CandidateDashboardClient({
         <div className="lg:col-span-2 space-y-6">
 
           {/* Card: Practice & Mock Test Insights */}
-          <Card className="bg-card/50 backdrop-blur-sm border-border/40 shadow-sm">
+          <Card className="bg-card border-border/40 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-lg font-semibold tracking-tight text-foreground">
                 Performance Insights
@@ -207,7 +207,7 @@ export function CandidateDashboardClient({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.45, ease: "easeOut" }}
                   whileHover={{ y: -3, scale: 1.01 }}
-                  className="flex flex-row items-center justify-between gap-6 p-5 md:p-6 rounded-2xl bg-muted/15 border border-border/30 hover:border-border/60 hover:bg-muted/20 transition-all duration-300 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)]"
+                  className="flex flex-row items-center justify-between gap-6 p-5 md:p-6 rounded-2xl bg-muted/15 border border-border/30 hover:border-border/60 hover:bg-muted/20 transition duration-300 shadow-sm"
                 >
                   <div className="space-y-4 flex-1">
                     <div>
@@ -304,7 +304,7 @@ export function CandidateDashboardClient({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.45, ease: "easeOut", delay: 0.1 }}
                   whileHover={{ y: -3, scale: 1.01 }}
-                  className="flex flex-row items-center justify-between gap-6 p-5 md:p-6 rounded-2xl bg-muted/15 border border-border/30 hover:border-border/60 hover:bg-muted/20 transition-all duration-300 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)]"
+                  className="flex flex-row items-center justify-between gap-6 p-5 md:p-6 rounded-2xl bg-muted/15 border border-border/30 hover:border-border/60 hover:bg-muted/20 transition duration-300 shadow-sm"
                 >
                   <div className="space-y-4 flex-1">
                     <div>
@@ -432,7 +432,7 @@ export function CandidateDashboardClient({
           </Card>
 
           {/* Card: Active / Upcoming Mock Tests */}
-          <Card className="bg-card/50 backdrop-blur-sm border-border/40 shadow-sm">
+          <Card className="bg-card border-border/40 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-semibold tracking-tight text-foreground">
                 Active & Upcoming Tests
@@ -522,7 +522,7 @@ export function CandidateDashboardClient({
         <div className="space-y-6">
 
           {/* Card: Quick Shortcuts */}
-          <Card className="bg-card/50 backdrop-blur-sm border-border/40 shadow-sm">
+          <Card className="bg-card border-border/40 shadow-sm">
             <CardHeader>
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Quick Navigation

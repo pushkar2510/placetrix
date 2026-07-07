@@ -360,7 +360,7 @@ export function AdminCoursesListClient({ courses: initialCourses }: Props) {
                     className={cn(
                       "group flex flex-col justify-between overflow-hidden border border-border/50 dark:border-zinc-800/80 bg-card cursor-pointer",
                       "hover:border-primary/40 hover:shadow-[0_8px_30px_rgb(99,102,241,0.08)] hover:-translate-y-1.5",
-                      "transition-all duration-300 h-full p-0 gap-0"
+                      "transition duration-300 h-full p-0 gap-0"
                     )}
                   >
                     <div className="flex flex-col h-full">

@@ -34,6 +34,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { OTPInput } from "@/components/ui/otp-input";
+import { Separator } from "@/components/ui/separator";
 import {
   AtSignIcon,
   EyeIcon,
@@ -414,10 +415,10 @@ function LoginContent() {
           {isGoogleLoading ? "Redirecting…" : "Continue with Google"}
         </Button>
 
-        <div className="flex w-full items-center justify-center">
-          <div className="h-px w-full bg-border" />
-          <span className="px-2 text-muted-foreground text-xs">OR</span>
-          <div className="h-px w-full bg-border" />
+        <div className="flex w-full items-center justify-center gap-2">
+          <Separator className="flex-1" />
+          <span className="shrink-0 text-muted-foreground text-xs">OR</span>
+          <Separator className="flex-1" />
         </div>
 
         <form className="space-y-2" onSubmit={handleLogin}>

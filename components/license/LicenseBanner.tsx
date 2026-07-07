@@ -17,52 +17,52 @@ interface BannerConfig {
 
 const BANNER_CONFIG: Record<BannerVariant, BannerConfig> = {
   expired: {
-    icon: <XCircle className="h-4 w-4 shrink-0" />,
+    icon: <XCircle className="h-4 w-4 shrink-0 text-destructive" />,
     title: "License Expired",
     description:
       "Your college's Placetrix license has expired. Please contact Placetrix to renew access.",
     className:
-      "border-red-200 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300",
+      "border-destructive/20 bg-destructive/10 text-destructive dark:border-destructive/30 dark:bg-destructive/10",
   },
   pending: {
-    icon: <Clock className="h-4 w-4 shrink-0" />,
+    icon: <Clock className="h-4 w-4 shrink-0 text-warning" />,
     title: "License Pending",
     description:
       "Your college's Placetrix license is pending activation. Contact your Placetrix representative to get started.",
     className:
-      "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300",
+      "border-warning/20 bg-warning/10 text-warning dark:border-warning/30 dark:bg-warning/10",
   },
   none: {
-    icon: <ShieldOff className="h-4 w-4 shrink-0" />,
+    icon: <ShieldOff className="h-4 w-4 shrink-0 text-warning" />,
     title: "No License",
     description:
       "Your college does not have an active Placetrix license. Contact Placetrix to get set up.",
     className:
-      "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300",
+      "border-warning/20 bg-warning/10 text-warning dark:border-warning/30 dark:bg-warning/10",
   },
   unverified: {
-    icon: <AlertTriangle className="h-4 w-4 shrink-0" />,
+    icon: <AlertTriangle className="h-4 w-4 shrink-0 text-info" />,
     title: "Approval Pending",
     description:
       "Your account is pending approval by your college TPO. You'll get full access once approved.",
     className:
-      "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300",
+      "border-info/20 bg-info/10 text-info dark:border-info/30 dark:bg-info/10",
   },
   revoked: {
-    icon: <XCircle className="h-4 w-4 shrink-0" />,
+    icon: <XCircle className="h-4 w-4 shrink-0 text-destructive" />,
     title: "License Revoked",
     description:
       "Your college's Placetrix license has been manually suspended or revoked. Please contact support.",
     className:
-      "border-red-200 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300",
+      "border-destructive/20 bg-destructive/10 text-destructive dark:border-destructive/30 dark:bg-destructive/10",
   },
   incomplete: {
-    icon: <AlertCircle className="h-5 w-5 shrink-0 animate-pulse text-amber-600 dark:text-amber-400" />,
+    icon: <AlertCircle className="h-5 w-5 shrink-0 animate-pulse text-warning" />,
     title: "Your profile is incomplete!",
     description:
       "Please complete your profile to unlock custom placements, track mock tests, and get verified by your institution.",
     className:
-      "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300",
+      "border-warning/20 bg-warning/10 text-warning dark:border-warning/30 dark:bg-warning/10",
   },
 };
 
@@ -118,7 +118,7 @@ export function LicenseBanner() {
         </div>
       </div>
       {variant === "incomplete" && (
-        <Button asChild size="sm" className="bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-500 dark:hover:bg-amber-600 dark:text-zinc-950 rounded-full font-semibold px-5 shrink-0 shadow-xs shadow-amber-500/10 self-start sm:self-center">
+        <Button asChild size="sm" className="bg-warning hover:bg-warning/90 text-warning-foreground rounded-full font-semibold px-5 shrink-0 shadow-xs shadow-warning/10 self-start sm:self-center">
           <Link href="/myprofile" className="flex items-center gap-1.5 text-xs">
             Complete Profile
             <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
