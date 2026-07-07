@@ -152,71 +152,84 @@ export async function POST(req: NextRequest) {
       let maxMemory = 0
       const results: any[] = []
 
-      const pLimit = (await import('p-limit')).default
-      const limit = pLimit(2)
-
-      const runTestCase = async (tc: any, i: number) => {
-        const encodedStdin = Buffer.from(tc.input || "").toString("base64")
-        let retries = 3
-        let delay = 500
-
-        while (retries > 0) {
-          const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 15000)
-
-          try {
-            const response = await fetch(submissionsUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Accept: "application/json" },
-              body: JSON.stringify({
-                source_code: encodedSource,
-                language_id,
-                stdin: encodedStdin,
-                cpu_time_limit: timeLimit,
-                memory_limit: memoryLimit,
-              }),
-              signal: controller.signal,
-            })
-            clearTimeout(timeoutId)
-
-            const textResponse = await response.text()
-            let data
-            try {
-              data = JSON.parse(textResponse)
-            } catch {
-              return { index: i + 1, tc, error: "Judge0 service error (invalid JSON response)." }
-            }
-
-            if (!response.ok) {
-              if (response.status === 429 || response.status >= 500) {
-                retries--
-                if (retries > 0) {
-                  await new Promise((resolve) => setTimeout(resolve, delay))
-                  delay *= 2
-                  continue
-                }
-              }
-              return { index: i + 1, tc, error: `Judge0 error: ${data.error || response.statusText}` }
-            }
-
-            return { index: i + 1, tc, data }
-          } catch (err: any) {
-            clearTimeout(timeoutId)
-            retries--
-            if (retries > 0) {
-              await new Promise((resolve) => setTimeout(resolve, delay))
-              delay *= 2
-              continue
-            }
-            if (err.name === 'AbortError') return { index: i + 1, tc, error: "Judge0 service timed out." }
-            return { index: i + 1, tc, error: err.message }
-        }
+      // Prepare batch submissions
+      const batchPayload = {
+        submissions: sampleTestCases.map((tc: any) => ({
+          source_code: encodedSource,
+          language_id,
+          stdin: Buffer.from(tc.input || "").toString("base64"),
+          cpu_time_limit: timeLimit,
+          memory_limit: memoryLimit
+        }))
       }
-      return { index: i + 1, tc, error: "Unknown execution error" }
-    }
 
-      const testCasePromises = sampleTestCases.map((tc, i) => limit(() => runTestCase(tc, i)))
-      const executedResults = await Promise.all(testCasePromises)
+      let executedResults: any[] = []
+
+      try {
+        // Step 1: Submit batch
+        const batchResponse = await fetch(`${judge0Endpoint}/submissions/batch?base64_encoded=true`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(batchPayload),
+        })
+
+        if (!batchResponse.ok) {
+          throw new Error("Failed to submit batch to Judge0")
+        }
+
+        const batchTokens = await batchResponse.json()
+        if (!Array.isArray(batchTokens) || batchTokens.length !== sampleTestCases.length) {
+          throw new Error("Invalid token count returned from Judge0")
+        }
+
+        const tokensStr = batchTokens.map(t => t.token).join(",")
+        const batchGetUrl = `${judge0Endpoint}/submissions/batch?tokens=${tokensStr}&base64_encoded=true`
+
+        // Step 2: Poll for results
+        let allDone = false
+        let attempts = 0
+        let finalBatchResults: any[] = []
+
+        while (!allDone && attempts < 60) { // Max 30 seconds
+          await new Promise(resolve => setTimeout(resolve, 500))
+          
+          try {
+            const statusRes = await fetch(batchGetUrl)
+            if (statusRes.ok) {
+              const statusData = await statusRes.json()
+              if (statusData && Array.isArray(statusData.submissions)) {
+                finalBatchResults = statusData.submissions
+                
+                allDone = finalBatchResults.every((sub: any) => sub.status && sub.status.id > 2)
+              }
+            }
+          } catch (pollErr) {
+            console.warn(`[LogicLab] Polling network drop on attempt ${attempts}, retrying in 500ms...`)
+          }
+          attempts++
+        }
+
+        // Step 3: Format to executedResults
+        executedResults = sampleTestCases.map((tc: any, i: number) => {
+          const data = finalBatchResults[i]
+          if (!data) {
+            return { index: i + 1, tc, error: "Judge0 service timed out or dropped token." }
+          }
+          if (data.status?.id <= 2) {
+            return { index: i + 1, tc, error: "Judge0 Timeout: Execution stuck in queue or processing too long." }
+          }
+          if (data.status?.id === 13) {
+             return { index: i + 1, tc, error: "Internal Error in Judge0." }
+          }
+          return { index: i + 1, tc, data }
+        })
+      } catch (err: any) {
+        executedResults = sampleTestCases.map((tc: any, i: number) => ({
+          index: i + 1, 
+          tc, 
+          error: `Batch execution failed: ${err.message}`
+        }))
+      }
       executedResults.sort((a, b) => a.index - b.index)
 
       for (const execution of executedResults) {
