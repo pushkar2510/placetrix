@@ -38,9 +38,9 @@ const CACHE_TTL_MS = 30_000; // 30 seconds
 async function getSystemStatus(): Promise<SystemStatus> {
   // Bypass maintenance mode in local development environment
   // Temporarily commented out to test/run connection error and maintenance mode on localhost
-  // if (process.env.NODE_ENV === "development") {
-  //   return "online";
-  // }
+  if (process.env.NODE_ENV === "development") {
+    return "online";
+  }
 
   const now = Date.now();
 
