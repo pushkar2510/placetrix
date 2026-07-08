@@ -29,7 +29,7 @@ export type AttemptDetail = Views<"view_test_attempt_details">   // the view
 // We only re-export a Pick so callers don't import from a deep path.
 export type CandidateOption = Pick<
   OptionRow,
-  "id" | "option_text" | "is_correct" | "order_index" | "media_url"
+  "id" | "option_text" | "is_correct" | "order_index"
 >
 
 export interface CandidateAnswerDetail {
@@ -43,7 +43,6 @@ export interface CandidateAnswerDetail {
   explanation: string | null
   options: CandidateOption[]
   tags: Pick<TagRow, "id" | "name">[]
-  media_url?: string | null
 }
 
 export interface CandidateAttemptDetail
@@ -83,13 +82,13 @@ export interface CandidateTestDetail
 
 export type InstituteOption = Pick<
   OptionRow,
-  "id" | "option_text" | "is_correct" | "order_index" | "media_url"
+  "id" | "option_text" | "is_correct" | "order_index"
 >
 
 export interface InstituteQuestion
   extends Pick<
     QuestionRow,
-    "id" | "question_text" | "question_type" | "marks" | "order_index" | "explanation" | "media_url"
+    "id" | "question_text" | "question_type" | "marks" | "order_index" | "explanation"
   > {
   question_type: "single_correct" | "multiple_correct"  // narrow
   options: InstituteOption[]

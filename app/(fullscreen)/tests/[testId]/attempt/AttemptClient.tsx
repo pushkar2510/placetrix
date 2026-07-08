@@ -350,15 +350,6 @@ function OptionButton({
             </span>
             <span className={cn("min-w-0 flex-1 break-words leading-snug space-y-2", isSelected && "font-medium")}>
                 <div><MathText>{option.option_text}</MathText></div>
-                {option.media_url && (
-                    <div className="mt-2 border rounded-lg overflow-hidden max-w-sm bg-muted/5 p-1 inline-block">
-                        <img
-                            src={option.media_url}
-                            alt="Option illustration"
-                            className="max-h-24 w-auto object-contain rounded"
-                        />
-                    </div>
-                )}
             </span>
             {isSaving && isSelected && (
                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
@@ -440,16 +431,6 @@ function QuestionView({
                 <p className="break-words text-base font-medium leading-relaxed">
                     <MathText>{question.question_text}</MathText>
                 </p>
-
-                {question.media_url && (
-                    <div className="my-4 border rounded-xl overflow-hidden max-w-lg bg-muted/10 p-2">
-                        <img
-                            src={question.media_url}
-                            alt="Question illustration"
-                            className="max-h-80 w-auto object-contain mx-auto rounded-lg"
-                        />
-                    </div>
-                )}
 
                 {question.tags.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5">

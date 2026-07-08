@@ -271,15 +271,6 @@ function QuestionCard({
 
       <AccordionContent className="px-4 pb-4 pt-0">
         <Separator className="mb-3" />
-        {question.media_url && (
-          <div className="mb-3 border rounded-xl overflow-hidden max-w-lg bg-muted/10 p-2">
-            <img
-              src={question.media_url}
-              alt="Question illustration"
-              className="max-h-64 w-auto object-contain mx-auto rounded-lg"
-            />
-          </div>
-        )}
         <div className="space-y-1.5">
           {sortedOptions.map((opt) => (
             <div
@@ -303,15 +294,6 @@ function QuestionCard({
                 )}
               >
                 <div><MathText>{opt.option_text}</MathText></div>
-                {opt.media_url && (
-                  <div className="border rounded-lg overflow-hidden max-w-sm bg-background/50 p-1 inline-block">
-                    <img
-                      src={opt.media_url}
-                      alt="Option illustration"
-                      className="max-h-24 w-auto object-contain rounded"
-                    />
-                  </div>
-                )}
               </span>
               {opt.is_correct && (
                 <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-500">

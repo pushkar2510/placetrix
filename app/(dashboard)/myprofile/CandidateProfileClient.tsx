@@ -1142,17 +1142,6 @@ export function CandidateProfileClient({
 
   function validateEducation(): Record<string, string> {
     const e: Record<string, string> = {};
-    if (!instituteId) e.institute = "Institution is required";
-    if (!courseName) e.courseName = "Branch/Course is required";
-    if (!passoutYear) e.passoutYear = "Expected graduation year is required";
-
-    const currentYear = new Date().getFullYear();
-    const gradYear = Number(passoutYear);
-
-    if (gradYear && gradYear < currentYear - 5) {
-      e.passoutYear = "Expected graduation year must be a reasonable value.";
-    }
-
     // SSC Validation
     if (!sscPercentage) {
       e.sscPercentage = "SSC percentage is required";
@@ -2182,81 +2171,33 @@ export function CandidateProfileClient({
           <CardContent>
             {editing("education") ? (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Institution<RequiredMark /></Label>
-                  <Combobox items={instituteNames} value={instituteName} onValueChange={handleInstituteSelect}>
-                    <ComboboxInput placeholder="Search institution…" />
-                    <ComboboxContent>
-                      <ComboboxEmpty>No institution found.</ComboboxEmpty>
-                      <ComboboxList>
-                        {(item: string) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
-                  {selectedAffiliation && (
-                    <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5">
-                      <ShieldAlert className="h-3.5 w-3.5" />
-                      Affiliated to {selectedAffiliation}
-                    </p>
-                  )}
-                  <FieldError message={errors.institute} />
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Branch / Course<RequiredMark /></Label>
-                    <Combobox items={availableCourses} value={courseName} onValueChange={(v) => setCourseName(v)} disabled={!instituteId}>
-                      <ComboboxInput
-                        placeholder={!instituteId ? "Select institution first" : availableCourses.length ? "Select course" : "No courses available"}
-                      />
-                      <ComboboxContent>
-                        <ComboboxEmpty>No course found.</ComboboxEmpty>
-                        <ComboboxList>
-                          {(item: string) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}
-                        </ComboboxList>
-                      </ComboboxContent>
-                    </Combobox>
-                    <FieldError message={errors.courseName} />
+                  <div className="md:col-span-2 space-y-2">
+                    <Label>Institution</Label>
+                    <div className="flex items-center h-9 w-full rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground cursor-not-allowed select-none">
+                      {instituteName || <span className="italic">Not set</span>}
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <div className="flex items-center gap-1.5">
-                      <Label>Expected Graduation Year<RequiredMark /></Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button type="button" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="What is graduation year?">
-                              <HelpCircle className="h-3.5 w-3.5" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed p-3">
-                            <p className="font-medium mb-1">How to pick the right year?</p>
-                            <p>Select the year when you will finish your degree and receive your marksheet/certificate.</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                    <Label>Affiliation</Label>
+                    <div className="flex items-center h-9 w-full rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground cursor-not-allowed select-none">
+                      {selectedAffiliation || <span className="italic">—</span>}
                     </div>
-                    <Combobox items={PASSOUT_YEAR_OPTIONS} value={passoutYear} onValueChange={(v) => setPassoutYear(v ?? "")}>
-                      <ComboboxInput placeholder="Select graduation year" />
-                      <ComboboxContent>
-                        <ComboboxEmpty>No year found.</ComboboxEmpty>
-                        <ComboboxList>
-                          {(item: string) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}
-                        </ComboboxList>
-                      </ComboboxContent>
-                    </Combobox>
-                    {errors.passoutYear ? (
-                      <FieldError message={errors.passoutYear} />
-                    ) : passoutYear ? (
-                      <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                        {getGraduationYearHint(passoutYear)}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        The year you will receive your final degree marksheet/certificate
-                      </p>
-                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Branch / Course</Label>
+                    <div className="flex items-center h-9 w-full rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground cursor-not-allowed select-none">
+                      {courseName || <span className="italic">Not set</span>}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Expected Graduation Year</Label>
+                    <div className="flex items-center h-9 w-full rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground cursor-not-allowed select-none">
+                      {passoutYear || <span className="italic">Not set</span>}
+                    </div>
                   </div>
                 </div>
+                <p className="text-[10px] text-muted-foreground -mt-2">Institution, affiliation, branch/course and graduation year are managed by the platform.</p>
 
                 <Separator />
 

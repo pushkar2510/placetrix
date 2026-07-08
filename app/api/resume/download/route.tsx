@@ -442,7 +442,7 @@ export async function POST(req: NextRequest) {
       ? `${data.personal.fullName.replace(/[^a-zA-Z0-9 ]/g, "").replace(/\s+/g, "_")}_Resume.pdf`
       : "Resume.pdf"
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",

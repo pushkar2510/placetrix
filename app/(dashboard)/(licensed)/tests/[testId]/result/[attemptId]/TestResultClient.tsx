@@ -119,15 +119,6 @@ function OptionItem({ opt, isSelected }: { opt: CandidateOption; isSelected: boo
       {Icon}
       <div className="flex flex-col gap-1.5 flex-1 min-w-0">
         <span className={cn("text-sm leading-snug break-words", textClass)}><MathText>{opt.option_text}</MathText></span>
-        {opt.media_url && (
-          <div className="border rounded-lg overflow-hidden max-w-sm bg-muted/5 p-1 inline-block my-1">
-            <img
-              src={opt.media_url}
-              alt="Option illustration"
-              className="max-h-24 w-auto object-contain rounded"
-            />
-          </div>
-        )}
         {label}
       </div>
     </div>
@@ -199,15 +190,6 @@ function QuestionReviewItem({
 
       <AccordionContent className="px-4 pb-4 pt-0">
         <Separator className="mb-3" />
-        {answer.media_url && (
-          <div className="mb-4 border rounded-xl overflow-hidden max-w-lg bg-muted/10 p-2">
-            <img
-              src={answer.media_url}
-              alt="Question illustration"
-              className="max-h-64 w-auto object-contain mx-auto rounded-lg"
-            />
-          </div>
-        )}
         <div className="space-y-2.5">
           {(answer.options ?? []).map((opt) => (
             <OptionItem

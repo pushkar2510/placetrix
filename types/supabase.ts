@@ -1633,7 +1633,6 @@ export type Database = {
         Row: {
           id: string
           is_correct: boolean
-          media_url: string | null
           option_text: string
           order_index: number
           question_id: string
@@ -1641,7 +1640,6 @@ export type Database = {
         Insert: {
           id?: string
           is_correct?: boolean
-          media_url?: string | null
           option_text: string
           order_index: number
           question_id: string
@@ -1649,7 +1647,6 @@ export type Database = {
         Update: {
           id?: string
           is_correct?: boolean
-          media_url?: string | null
           option_text?: string
           order_index?: number
           question_id?: string
@@ -1693,7 +1690,6 @@ export type Database = {
           explanation: string | null
           id: string
           marks: number
-          media_url: string | null
           negative_marks: number
           order_index: number
           question_text: string
@@ -1706,7 +1702,6 @@ export type Database = {
           explanation?: string | null
           id?: string
           marks?: number
-          media_url?: string | null
           negative_marks?: number
           order_index: number
           question_text: string
@@ -1719,7 +1714,6 @@ export type Database = {
           explanation?: string | null
           id?: string
           marks?: number
-          media_url?: string | null
           negative_marks?: number
           order_index?: number
           question_text?: string
