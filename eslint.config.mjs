@@ -10,6 +10,9 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  {
+    ignores: ["supabase/**", ".supabase/**"],
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 ];
 

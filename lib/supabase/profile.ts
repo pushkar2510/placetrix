@@ -29,7 +29,6 @@ export interface UserProfile {
   institute_id: string | null;
   signature_path?: string | null;
   profile_updated?: boolean | null;
-  institute_verified?: boolean | null;
   profile_complete?: boolean | null;
 
   // Generic profile columns
@@ -250,7 +249,7 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
         .from("profiles")
         .select(`
           username, full_name, first_name, middle_name, last_name, avatar_path, account_type, signature_path, 
-          profile_updated, institute_id, institute_verified, bio, gender, phone_number, date_of_birth, 
+          profile_updated, institute_id, bio, gender, phone_number, date_of_birth, 
           aadhaar_number, current_address, permanent_address, linkedin_url, github_url, portfolio_links, profile_complete
         `)
         .eq("id", built.id)
@@ -269,7 +268,6 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
         if (dbProfile.avatar_path !== undefined) built.avatar_path = dbProfile.avatar_path;
         if (dbProfile.account_type !== undefined) built.account_type = dbProfile.account_type as AccountType;
         
-        built.institute_verified = dbProfile.institute_verified ?? null;
         built.profile_complete = dbProfile.profile_complete ?? null;
 
         if (dbProfile.profile_updated !== undefined) built.profile_updated = dbProfile.profile_updated;

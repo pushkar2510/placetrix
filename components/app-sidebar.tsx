@@ -103,7 +103,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
   ],
   institute_primary: [
     { title: "Home", url: "/home", icon: Home },
-    { title: "Students", url: "/students", icon: GraduationCap },
+    { title: "Users", url: "/users", icon: Users },
   ],
   institute_staff: [
     { title: "Home", url: "/home", icon: Home },
@@ -321,8 +321,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
     ? (user?.profile_complete === true && user?.profile_updated === true)
     : true
   const isProfileIncomplete = user?.account_type === "institute_candidate" && !isProfileComplete
-  const isCandidateUnverified = user?.account_type === "institute_candidate" && user?.institute_verified !== true
-  const hasAccess = isAdmin || (isLicenseActive && !isCandidateUnverified && !isProfileIncomplete)
+  const hasAccess = isAdmin || (isLicenseActive && !isProfileIncomplete)
 
   return (
     <SidebarGroup>
@@ -358,9 +357,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                             e.stopPropagation()
                             const reason = isProfileIncomplete
                               ? "Please complete your profile to unlock this feature."
-                              : isCandidateUnverified 
-                                ? "Your account is pending approval by your college TPO."
-                                : "Your institution does not have an active license."
+                              : "Your institution does not have an active license."
                             toast.error(`Feature Locked`, {
                               description: reason
                             })
@@ -423,9 +420,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                       e.preventDefault()
                       const reason = isProfileIncomplete
                         ? "Please complete your profile to unlock this feature."
-                        : isCandidateUnverified 
-                          ? "Your account is pending approval by your college TPO."
-                          : "Your institution does not have an active license."
+                        : "Your institution does not have an active license."
                       toast.error(`Feature Locked`, {
                         description: reason
                       })

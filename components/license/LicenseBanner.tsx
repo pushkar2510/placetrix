@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-type BannerVariant = "expired" | "pending" | "none" | "unverified" | "revoked" | "incomplete";
+type BannerVariant = "expired" | "pending" | "none" | "revoked" | "incomplete";
 
 interface BannerConfig {
   icon: React.ReactNode;
@@ -40,14 +40,7 @@ const BANNER_CONFIG: Record<BannerVariant, BannerConfig> = {
     className:
       "border-warning/20 bg-warning/10 text-warning dark:border-warning/30 dark:bg-warning/10",
   },
-  unverified: {
-    icon: <AlertTriangle className="h-4 w-4 shrink-0 text-info" />,
-    title: "Approval Pending",
-    description:
-      "Your account is pending approval by your college TPO. You'll get full access once approved.",
-    className:
-      "border-info/20 bg-info/10 text-info dark:border-info/30 dark:bg-info/10",
-  },
+
   revoked: {
     icon: <XCircle className="h-4 w-4 shrink-0 text-destructive" />,
     title: "License Revoked",
@@ -94,10 +87,7 @@ export function LicenseBanner() {
       variant = "none";
     }
   } 
-  // 3. Student Verification Check (only if license is active and profile is complete)
-  else if (user?.account_type === "institute_candidate" && user?.institute_verified !== true) {
-    variant = "unverified";
-  }
+
 
   if (!variant || !BANNER_CONFIG[variant]) return null;
 

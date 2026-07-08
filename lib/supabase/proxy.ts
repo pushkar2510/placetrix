@@ -17,7 +17,6 @@ const PROTECTED_PATHS = [
   "/tests",
   "/events",
   "/logiclab",
-  "/students",
   "/placement-management",
   "/users",
   "/licenses",

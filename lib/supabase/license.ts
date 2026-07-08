@@ -82,10 +82,7 @@ export async function requireActiveLicense(
 ): Promise<InstituteLicense | null> {
   if (profile.account_type === "admin") return null;
 
-  // Student verification gate: candidates must be verified by TPO to access features
-  if (profile.account_type === "institute_candidate" && profile.institute_verified !== true) {
-    redirect("/home");
-  }
+  // (Verification gate removed)
 
   const license = await getLicenseForProfile(profile);
   const status = license?.status ?? null;
@@ -105,9 +102,7 @@ export async function verifyActiveLicense(): Promise<void> {
   if (!profile) throw new Error("Unauthorized");
   if (profile.account_type === "admin") return; // bypass
 
-  if (profile.account_type === "institute_candidate" && profile.institute_verified !== true) {
-    throw new Error("Student verification required");
-  }
+  // (Verification gate removed)
 
   const license = await getLicenseForProfile(profile);
   if (license?.status !== "active") {
