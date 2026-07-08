@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getUserProfile } from "@/lib/supabase/profile";
 import type { UserProfile } from "@/lib/supabase/profile";
 import { revalidatePath } from "next/cache";
 
@@ -100,7 +101,6 @@ export async function requireActiveLicense(
 // Helper for API routes and server actions to check active license without Next.js redirects.
 // Throws an error if the user's institute has no active license.
 export async function verifyActiveLicense(): Promise<void> {
-  const { getUserProfile } = await import("./profile");
   const profile = await getUserProfile();
   if (!profile) throw new Error("Unauthorized");
   if (profile.account_type === "admin") return; // bypass
@@ -215,7 +215,6 @@ export async function upsertInstituteLicense(payload: {
 // Helper to check if current user is admin
 async function getUserProfileAdminCheck() {
   try {
-    const { getUserProfile } = require("./profile");
     const profile = await getUserProfile();
     if (profile && profile.account_type === "admin") {
       return profile;

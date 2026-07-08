@@ -24,7 +24,7 @@ export default async function MyProfilePage() {
 
   if (profile.account_type === "institute_candidate") {
     const [
-      { data: candidateProfile },
+      { data: academicDetails },
       { data: candidateEducation },
       { data: candidateExperiences },
       { data: candidateProjects },
@@ -34,7 +34,7 @@ export default async function MyProfilePage() {
       { data: candidateSkillRows },
       { data: semesterGrades }
     ] = await Promise.all([
-      (supabase as any).from("candidate_profiles").select("*").eq("profile_id", profile.id).maybeSingle(),
+      (supabase as any).from("candidate_academic_details").select("course_id, passout_year, university_prn, course:institute_courses(course_name)").eq("profile_id", profile.id).maybeSingle(),
       (supabase as any).from("candidate_education").select("*").eq("profile_id", profile.id).order("passout_year", { ascending: false }),
       (supabase as any).from("candidate_experiences").select("*").eq("profile_id", profile.id).order("start_date", { ascending: false }),
       (supabase as any).from("candidate_projects").select("*").eq("profile_id", profile.id).order("start_date", { ascending: false }),
@@ -60,12 +60,11 @@ export default async function MyProfilePage() {
 
     let semestersCount = 8;
     let courseConfigured = true;
-    if (profile.institute_id && candidateProfile?.course_name) {
+    if (profile.institute_id && academicDetails?.course_id) {
       const { data: courseData } = await (supabase as any)
         .from("institute_courses")
         .select("semesters_count")
-        .eq("institute_id", profile.institute_id)
-        .eq("course_name", candidateProfile.course_name)
+        .eq("id", academicDetails.course_id)
         .maybeSingle();
       if (courseData) {
         semestersCount = courseData.semesters_count;
@@ -88,24 +87,44 @@ export default async function MyProfilePage() {
         eventDate: t.event.date,
       }));
 
-    if (candidateProfile?.aadhaar_number) {
+    let maskedAadhaar = null;
+    if (profile?.aadhaar_number) {
       try {
-        const decrypted = decryptString(candidateProfile.aadhaar_number);
-        candidateProfile.aadhaar_number = maskAadhaar(decrypted);
+        const decrypted = decryptString(profile.aadhaar_number);
+        maskedAadhaar = maskAadhaar(decrypted);
       } catch (err) {
         console.error("Failed to decrypt Aadhaar number for profile", profile.id);
-        candidateProfile.aadhaar_number = maskAadhaar(candidateProfile.aadhaar_number);
+        maskedAadhaar = maskAadhaar(profile.aadhaar_number);
       }
     }
 
-    const initialCandidateData = candidateProfile ? {
-      ...candidateProfile,
+    const courseName = Array.isArray(academicDetails?.course)
+      ? (academicDetails?.course as any)[0]?.course_name
+      : (academicDetails?.course as any)?.course_name;
+
+    const initialCandidateData = {
+      profile_id: profile.id,
       first_name: profile.first_name,
       middle_name: profile.middle_name,
       last_name: profile.last_name,
       full_name: profile.full_name,
+      bio: profile.bio,
+      gender: profile.gender,
+      phone_number: profile.phone_number,
+      date_of_birth: profile.date_of_birth,
+      aadhaar_number: maskedAadhaar,
+      current_address: profile.current_address,
+      permanent_address: profile.permanent_address,
+      linkedin_url: profile.linkedin_url,
+      github_url: profile.github_url,
+      portfolio_links: profile.portfolio_links,
+      profile_complete: profile.profile_complete,
+      course_id: academicDetails?.course_id ?? null,
+      course_name: courseName ?? null,
+      passout_year: academicDetails?.passout_year ?? null,
+      university_prn: academicDetails?.university_prn ?? null,
       sgpa_semesters: initialSgpaArray,
-    } : null;
+    };
 
     const selectedSkillIds: string[] = (candidateSkillRows ?? []).map((r: any) => r.skill_id);
 

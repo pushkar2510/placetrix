@@ -23,16 +23,10 @@ export default async function SettingsPage() {
   }
 
   if (profile.account_type === "institute_candidate") {
-    const { data: candidateProfile } = await (supabase as any)
-      .from("candidate_profiles")
-      .select("*")
-      .eq("profile_id", profile.id)
-      .maybeSingle() // Fix: prevents throwing if 0 rows exist
-
     return (
       <CandidateSettingsClient
         userProfile={profile}
-        initialData={candidateProfile ?? null}
+        initialData={profile}
       />
     )
   }

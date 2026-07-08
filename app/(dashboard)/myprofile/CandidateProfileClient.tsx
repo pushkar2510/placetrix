@@ -14,7 +14,10 @@ import {
   saveCertificationAction,
   deleteCertificationAction,
   updateCandidateBioAction,
-  syncCandidateSkillsAction
+  syncCandidateSkillsAction,
+  updateCandidateAccountAction,
+  updateCandidateEducationSectionAction,
+  updateCandidateProfessionalLinksAction
 } from "./actions";
 import {
   CandidateEducation,
@@ -618,7 +621,7 @@ export function CandidateProfileClient({
 
   // Institute lookup
   const [institutes, setInstitutes] = useState<InstituteOption[]>([]);
-  const [availableCoursesData, setAvailableCoursesData] = useState<{ course_name: string; semesters_count: number }[]>([]);
+  const [availableCoursesData, setAvailableCoursesData] = useState<{ id: string; course_name: string; semesters_count: number }[]>([]);
   const [availableCourses, setAvailableCourses] = useState<string[]>([]);
   const [selectedAffiliation, setSelectedAffiliation] = useState<string | null>(null);
 
@@ -693,7 +696,7 @@ export function CandidateProfileClient({
       (async () => {
         const { data } = await (supabase as any)
           .from("institute_courses")
-          .select("course_name, semesters_count")
+          .select("id, course_name, semesters_count")
           .eq("institute_id", instituteId)
           .order("course_name");
         if (data) {
@@ -1242,25 +1245,21 @@ export function CandidateProfileClient({
     startTransition(async () => {
       try {
         if (section === "account") {
-          const trimmedUsername = username.trim() || null;
-          if (trimmedUsername !== (userProfile.username ?? null)) {
-            const { error } = await (supabase as any)
-              .from("profiles")
-              .update({ username: trimmedUsername })
-              .eq("id", userProfile.id);
-            if (error) {
-              if (error.code === "23505") {
+          if (username.trim() !== (userProfile.username ?? "")) {
+            try {
+              await updateCandidateAccountAction(username);
+              if (username.trim()) {
+                initialUsername.current = username.trim();
+                setUsernameStatus("unchanged");
+              }
+            } catch (error: any) {
+              if (error.message.includes("taken")) {
                 setErrors({ username: "This username is already taken." });
                 setUsernameStatus("taken");
               } else {
                 toast.error("Failed to update username. Please try again.");
               }
               return;
-            }
-            await supabase.auth.updateUser({ data: { username: trimmedUsername, account_type: userProfile.account_type } });
-            if (trimmedUsername) {
-              initialUsername.current = trimmedUsername;
-              setUsernameStatus("unchanged");
             }
           }
           toast.success("Account settings saved!");
@@ -1288,143 +1287,28 @@ export function CandidateProfileClient({
         }
 
         else if (section === "education") {
-          const calculatedCgpaNum = (() => {
-            const validSgpas = sgpaValues
-              .map(v => v ? parseFloat(v) : null)
-              .filter((v): v is number => v !== null && !isNaN(v));
-            if (validSgpas.length === 0) return null;
-            const sum = validSgpas.reduce((acc, val) => acc + val, 0);
-            return parseFloat((sum / validSgpas.length).toFixed(2));
-          })();
+          const matchedCourse = availableCoursesData.find(c => c.course_name === courseName);
+          const courseId = matchedCourse?.id || null;
 
-          // 1. Save main profile details
-          const { error: profileError } = await (supabase as any)
-            .from("candidate_profiles")
-            .upsert({
-              profile_id: userProfile.id,
-              course_name: courseName || null,
-              passout_year: passoutYear ? Number(passoutYear) : null,
-              university_prn: universityPrn.trim() || null,
-              cgpa: calculatedCgpaNum,
-            }, { onConflict: 'profile_id' });
-
-          await (supabase as any)
-            .from("profiles")
-            .update({ institute_id: instituteId || null })
-            .eq("id", userProfile.id);
-
-          if (profileError) {
-            if (profileError.code === "PGRST116") {
-              toast.error("Please save Personal Details first.");
-              return;
-            }
-            throw profileError;
-          }
-
-          // 1.5. Save Semester Grades
-          if (isCourseConfigured) {
-            await (supabase as any)
-              .from("candidate_semester_grades")
-              .delete()
-              .eq("profile_id", userProfile.id);
-
-            const gradesToInsert = sgpaValues.map((val, index) => {
-              const num = val ? parseFloat(val) : null;
-              if (num !== null && !isNaN(num)) {
-                return {
-                  profile_id: userProfile.id,
-                  semester_number: index + 1,
-                  sgpa: num
-                };
-              }
-              return null;
-            }).filter(Boolean);
-
-            if (gradesToInsert.length > 0) {
-              const { error: gradesError } = await (supabase as any)
-                .from("candidate_semester_grades")
-                .insert(gradesToInsert);
-              if (gradesError) throw gradesError;
-            }
-          }
-
-          // 2. Save SSC Education
-          if (sscPercentage && sscPassYear) {
-            const { data: sscExist } = await (supabase as any)
-              .from("candidate_education")
-              .select("id")
-              .eq("profile_id", userProfile.id)
-              .eq("type", "ssc")
-              .maybeSingle();
-
-            const { error: sscError } = await (supabase as any)
-              .from("candidate_education")
-              .upsert({
-                id: sscExist?.id || undefined,
-                profile_id: userProfile.id,
-                type: "ssc",
-                institution_name: sscInstitution.trim() || "High School",
-                grade_or_percentage: Number(sscPercentage),
-                passout_year: Number(sscPassYear),
-              });
-            if (sscError) throw sscError;
-          }
-
-          // 3. Save HSC Education
-          if (isHsc && hscPercentage && hscPassYear) {
-            const { data: hscExist } = await (supabase as any)
-              .from("candidate_education")
-              .select("id")
-              .eq("profile_id", userProfile.id)
-              .eq("type", "hsc")
-              .maybeSingle();
-
-            const { error: hscError } = await (supabase as any)
-              .from("candidate_education")
-              .upsert({
-                id: hscExist?.id || undefined,
-                profile_id: userProfile.id,
-                type: "hsc",
-                institution_name: hscInstitution.trim() || "Junior College",
-                grade_or_percentage: Number(hscPercentage),
-                passout_year: Number(hscPassYear),
-              });
-            if (hscError) throw hscError;
-          } else {
-            await (supabase as any)
-              .from("candidate_education")
-              .delete()
-              .eq("profile_id", userProfile.id)
-              .eq("type", "hsc");
-          }
-
-          // 4. Save Diploma Education
-          if (isDiploma && diplomaPercentage && diplomaPassYear) {
-            const { data: dipExist } = await (supabase as any)
-              .from("candidate_education")
-              .select("id")
-              .eq("profile_id", userProfile.id)
-              .eq("type", "diploma")
-              .maybeSingle();
-
-            const { error: dipError } = await (supabase as any)
-              .from("candidate_education")
-              .upsert({
-                id: dipExist?.id || undefined,
-                profile_id: userProfile.id,
-                type: "diploma",
-                institution_name: diplomaInstitution.trim() || "Diploma Institute",
-                grade_or_percentage: Number(diplomaPercentage),
-                passout_year: Number(diplomaPassYear),
-              });
-            if (dipError) throw dipError;
-          } else {
-            await (supabase as any)
-              .from("candidate_education")
-              .delete()
-              .eq("profile_id", userProfile.id)
-              .eq("type", "diploma");
-          }
+          await updateCandidateEducationSectionAction({
+            courseId,
+            passoutYear,
+            universityPrn,
+            instituteId,
+            isCourseConfigured,
+            sgpaValues,
+            sscPercentage,
+            sscPassYear,
+            sscInstitution,
+            isHsc,
+            hscPercentage,
+            hscPassYear,
+            hscInstitution,
+            isDiploma,
+            diplomaPercentage,
+            diplomaPassYear,
+            diplomaInstitution
+          });
 
           toast.success("Education details saved!");
         }
@@ -1439,22 +1323,20 @@ export function CandidateProfileClient({
           await syncCandidateSkillsAction(selectedSkillIds);
 
           // Save other professional details
-          const { error } = await (supabase as any)
-            .from("candidate_profiles")
-            .update({
-              linkedin_url: linkedinUrl.trim() || null,
-              github_url: githubUrl.trim() || null,
-              portfolio_links: portfolioLinks.filter((l) => l.trim()),
-            })
-            .eq("profile_id", userProfile.id);
-          if (error) {
-            if (error.code === "PGRST116") {
+          try {
+            await updateCandidateProfessionalLinksAction({
+              linkedin_url: linkedinUrl,
+              github_url: githubUrl,
+              portfolio_links: portfolioLinks
+            });
+            toast.success("Professional details saved!");
+          } catch (error: any) {
+            if (error.message.includes("Personal Details first")) {
               toast.error("Please save Personal Details first.");
-              return;
+            } else {
+              toast.error("Failed to save professional details. Please try again.");
             }
-            throw error;
           }
-          toast.success("Professional details saved!");
         }
 
         setErrors({});
@@ -2369,17 +2251,7 @@ export function CandidateProfileClient({
                   <FieldError message={errors.sgpa} />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>CGPA</Label>
-                    <Input
-                      value={calculatedCgpa != null ? calculatedCgpa.toFixed(2) : "—"}
-                      disabled
-                      className="bg-zinc-50 dark:bg-zinc-900/50 text-muted-foreground border-muted cursor-not-allowed"
-                    />
-                    <p className="text-[10px] text-muted-foreground">Calculated and managed directly by the system.</p>
-                  </div>
-                </div>
+
               </div>
             ) : (
               <div className="space-y-4">
@@ -2452,9 +2324,7 @@ export function CandidateProfileClient({
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                  <ReadonlyField label="CGPA" value={calculatedCgpa != null ? calculatedCgpa.toFixed(2) : "—"} />
-                </div>
+
               </div>
             )}
           </CardContent>

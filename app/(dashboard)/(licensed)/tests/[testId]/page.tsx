@@ -45,7 +45,7 @@ async function fetchCandidateView(
       .select(`
         id, title, description, instructions, time_limit_seconds, 
         available_from, available_until, results_available, status, institute_id,
-        shuffle_questions, shuffle_options,
+        shuffle_questions, shuffle_options, max_attempts,
         institute:institutes(institute_name, logo_path),
         test_questions (
           id, question_text, marks, explanation, order_index,
@@ -64,7 +64,6 @@ async function fetchCandidateView(
       // We filter attempts for THIS student only
       .eq("test_attempts.candidate_id", userId)
       .order("created_at", { foreignTable: "test_attempts", ascending: false })
-      .limit(1, { foreignTable: "test_attempts" })
       .maybeSingle()
   ])
 
@@ -80,6 +79,9 @@ async function fetchCandidateView(
     ? supabase.storage.from("avatars").getPublicUrl(logoPath).data.publicUrl
     : null
 
+  const attempts = raw.test_attempts ?? []
+  const completedCount = attempts.filter((a: any) => a.status === "submitted" || a.status === "auto_submitted").length
+
   const test: CandidateTestDetail = {
     id: raw.id,
     title: raw.title,
@@ -91,13 +93,23 @@ async function fetchCandidateView(
     results_available: raw.results_available,
     shuffle_questions: raw.shuffle_questions,
     shuffle_options: raw.shuffle_options,
+    max_attempts: raw.max_attempts,
+    completed_count: completedCount,
+    pastAttempts: attempts.map((a: any) => ({
+      id: a.id,
+      score: a.score ?? null,
+      total_marks: a.total_marks ?? null,
+      percentage: a.percentage ?? null,
+      status: a.status,
+      submitted_at: a.submitted_at ?? null,
+    })),
     institute_name: (raw.institute as any)?.institute_name ?? null,
     institute_logo_url: instituteLogoUrl,
     status: raw.status as any,
     questions: (raw.test_questions ?? []).map((q: any) => ({ marks: q.marks })),
   }
 
-  const rawAttempt = raw.test_attempts?.[0]
+  const rawAttempt = attempts[0]
   if (!rawAttempt) return { test, attempt: null }
 
   const attemptBase = {
@@ -206,8 +218,8 @@ async function fetchInstituteView(
 
   if (error || !raw) notFound()
 
-  // 2. First page of attempts (SSR seed, 20 rows, newest first)
-  const [attemptsRes, statsRes] = await Promise.all([
+  // 2. Parallel fetches (SSR seed, 20 rows, newest first, stats, analytics, feedbacks)
+  const [attemptsRes, statsRes, analyticsRes, feedbacksRes] = await Promise.all([
     (supabase as any)
       .from("view_test_results_detailed")
       .select(
@@ -221,7 +233,29 @@ async function fetchInstituteView(
 
     // 3. Aggregate stats across ALL attempts (pre-aggregated via RPC)
     (supabase as any).rpc("get_test_attempt_stats", { p_test_id: testId }),
+
+    // 4. Question analysis data
+    (supabase as any)
+      .from("view_test_question_analysis")
+      .select("question_id, question_text, marks, total_answers, correct_answers, success_rate_pct, avg_time_spent")
+      .eq("test_id", testId),
+
+    // 5. Test attempt feedback data
+    (supabase as any)
+      .from("test_attempt_feedbacks")
+      .select(`
+        id, rating, overall_comment, bugs_issues, suggestions, difficulty_felt, created_at,
+        candidate:profiles(full_name)
+      `)
+      .eq("test_id", testId)
+      .order("created_at", { ascending: false })
+      .limit(50),
   ])
+
+  if (attemptsRes.error) console.error("[fetchInstituteView] attempts error:", attemptsRes.error)
+  if (statsRes.error) console.error("[fetchInstituteView] stats error:", statsRes.error)
+  if (analyticsRes.error) console.error("[fetchInstituteView] analytics error:", analyticsRes.error)
+  if (feedbacksRes.error) console.error("[fetchInstituteView] feedbacks error:", feedbacksRes.error)
 
   const firstPageAttempts: InstituteAttemptRow[] = (attemptsRes.data ?? []).map(mapAttemptRow)
 
@@ -231,6 +265,27 @@ async function fetchInstituteView(
     in_progress: 0,
     avg_pct: null,
   }
+
+  const questionAnalytics = (analyticsRes.data ?? []).map((a: any) => ({
+    question_id: a.question_id,
+    question_text: a.question_text,
+    marks: Number(a.marks),
+    total_answers: Number(a.total_answers),
+    correct_answers: Number(a.correct_answers),
+    success_rate_pct: a.success_rate_pct != null ? Number(a.success_rate_pct) : null,
+    avg_time_spent: a.avg_time_spent != null ? Number(a.avg_time_spent) : null,
+  }))
+
+  const feedbacks = (feedbacksRes.data ?? []).map((f: any) => ({
+    id: f.id,
+    rating: f.rating,
+    overall_comment: f.overall_comment ?? null,
+    bugs_issues: f.bugs_issues ?? null,
+    suggestions: f.suggestions ?? null,
+    difficulty_felt: f.difficulty_felt as any,
+    created_at: f.created_at,
+    student_name: f.candidate?.full_name ?? "Candidate",
+  }))
 
   const questions: InstituteQuestion[] = (raw.test_questions ?? []).map((q: any) => ({
     id: q.id,
@@ -265,6 +320,8 @@ async function fetchInstituteView(
     questions,
     attempts: firstPageAttempts,
     attemptStats,
+    questionAnalytics,
+    feedbacks,
   }
 }
 

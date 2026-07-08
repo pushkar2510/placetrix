@@ -36,47 +36,48 @@ export default async function StudentsPage(props: {
   const supabase = await createClient()
 
   let query = (supabase as any)
-    .from("candidate_profiles")
+    .from("profiles")
     .select(`
-      profile_id,
-      course_name,
-      passout_year,
-      university_prn,
-      cgpa,
+      id,
+      full_name,
+      email,
+      institute_verified,
+      avatar_path,
       created_at,
-      profiles!inner (
-        full_name,
-        email,
-        institute_id,
-        institute_verified,
-        avatar_path
+      candidate_academic_details (
+        passout_year,
+        university_prn,
+        course:institute_courses (
+          course_name
+        )
       )
     `, { count: "exact" })
-    .eq("profiles.institute_id", profile.institute_id)
+    .eq("account_type", "institute_candidate")
+    .eq("institute_id", profile.institute_id)
 
   // Status Filter
   if (status === "verified") {
-    query = query.eq("profiles.institute_verified", true)
+    query = query.eq("institute_verified", true)
   } else if (status === "pending") {
-    query = query.or("institute_verified.eq.false,institute_verified.is.null", { referencedTable: "profiles" })
+    query = query.or("institute_verified.eq.false,institute_verified.is.null")
   }
 
   // Search Filter
   if (search.trim()) {
     const s = search.trim()
     
-    // First, search profiles table for matching full_name or email
-    const { data: matchedProfiles } = await (supabase as any)
-      .from("profiles")
-      .select("id")
-      .or(`full_name.ilike.%${s}%,email.ilike.%${s}%`)
-      
-    const matchedProfileIds = (matchedProfiles || []).map((p: any) => p.id)
-    
+    // First, search candidate_academic_details for matching university_prn
+    const { data: matchedAcademics } = await (supabase as any)
+      .from("candidate_academic_details")
+      .select("profile_id")
+      .ilike("university_prn", `%${s}%`)
+
+    const matchedProfileIds = (matchedAcademics || []).map((a: any) => a.profile_id)
+
     if (matchedProfileIds.length === 0) {
-      query = query.or(`university_prn.ilike.%${s}%`)
+      query = query.or(`full_name.ilike.%${s}%,email.ilike.%${s}%`)
     } else {
-      query = query.or(`university_prn.ilike.%${s}%,profile_id.in.(${matchedProfileIds.join(",")})`)
+      query = query.or(`full_name.ilike.%${s}%,email.ilike.%${s}%,id.in.(${matchedProfileIds.join(",")})`)
     }
   }
 
@@ -84,19 +85,19 @@ export default async function StudentsPage(props: {
   const ascending = sortOrder === "asc"
   switch (sortBy) {
     case "name":
-      query = query.order("profiles(full_name)", { ascending })
+      query = query.order("full_name", { ascending })
       break
     case "course":
-      query = query.order("course_name", { ascending })
+      query = query.order("candidate_academic_details(course_id)", { ascending })
       break
     case "passout":
-      query = query.order("passout_year", { ascending })
+      query = query.order("candidate_academic_details(passout_year)", { ascending })
       break
     case "cgpa":
-      query = query.order("cgpa", { ascending })
+      query = query.order("full_name", { ascending })
       break
     case "status":
-      query = query.order("institute_verified", { ascending: sortOrder === "asc", referencedTable: "profiles" })
+      query = query.order("institute_verified", { ascending })
       break
     case "created":
     default:
@@ -114,20 +115,29 @@ export default async function StudentsPage(props: {
     console.error("Error fetching students:", error)
   }
 
-  const students: Student[] = (studentsData || []).map((s: any) => ({
-    profile_id: s.profile_id,
-    full_name: s.profiles.full_name,
-    email: s.profiles.email,
-    course_name: s.course_name,
-    passout_year: s.passout_year,
-    university_prn: s.university_prn,
-    institute_verified: s.profiles?.institute_verified || false,
-    cgpa: s.cgpa,
-    profile_image_path: s.profiles?.avatar_path
-      ? supabase.storage.from("avatars").getPublicUrl(s.profiles.avatar_path).data.publicUrl
-      : null,
-    created_at: s.created_at,
-  }))
+  const students: Student[] = (studentsData || []).map((s: any) => {
+    const cad = Array.isArray(s.candidate_academic_details)
+      ? s.candidate_academic_details[0]
+      : s.candidate_academic_details;
+    const courseName = Array.isArray(cad?.course)
+      ? cad?.course[0]?.course_name
+      : cad?.course?.course_name;
+
+    return {
+      profile_id: s.id,
+      full_name: s.full_name,
+      email: s.email,
+      course_name: courseName || null,
+      passout_year: cad?.passout_year || null,
+      university_prn: cad?.university_prn || null,
+      institute_verified: s.institute_verified || false,
+      cgpa: null,
+      profile_image_path: s.avatar_path
+        ? supabase.storage.from("avatars").getPublicUrl(s.avatar_path).data.publicUrl
+        : null,
+      created_at: s.created_at,
+    }
+  })
 
   return (
     <div className="flex flex-col gap-6 px-4 py-8 md:px-8">

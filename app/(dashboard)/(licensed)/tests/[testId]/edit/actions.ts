@@ -17,6 +17,7 @@ export type SettingsForm = {
   shuffle_questions: boolean
   shuffle_options: boolean
   strict_mode: boolean
+  pass_percentage: string
 }
 
 export type OptionForm = {
@@ -87,6 +88,7 @@ async function saveTestToDb(
       shuffle_questions: settings.shuffle_questions,
       shuffle_options: settings.shuffle_options,
       strict_mode: settings.strict_mode,
+      pass_percentage: settings.pass_percentage ? parseFloat(settings.pass_percentage) : null,
     },
     p_questions: questions.map((q) => ({
       id: q.id,
@@ -118,11 +120,10 @@ async function requireAuth(): Promise<string> {
 }
 
 export async function loadTestAction(
-  testId: string,
-  userId: string
+  testId: string
 ): Promise<InitialTestData | null> {
   const profile = await getUserProfile()
-  if (!profile || profile.id !== userId || (profile.account_type !== "institute_primary" && profile.account_type !== "institute_staff" && profile.account_type !== "institute_placement_officer")) {
+  if (!profile || (profile.account_type !== "institute_primary" && profile.account_type !== "institute_staff" && profile.account_type !== "institute_placement_officer")) {
     throw new Error("Unauthorized")
   }
   const supabase = await createClient()
@@ -132,7 +133,7 @@ export async function loadTestAction(
     .select(`
       title, description, instructions,
       time_limit_seconds, available_from, available_until, status,
-      shuffle_questions, shuffle_options, strict_mode,
+      shuffle_questions, shuffle_options, strict_mode, pass_percentage,
       test_questions (
         id, question_text, question_type, marks, order_index, explanation,
         test_question_options ( id, option_text, is_correct, order_index ),
@@ -158,6 +159,7 @@ export async function loadTestAction(
       shuffle_questions: test.shuffle_questions ?? false,
       shuffle_options: test.shuffle_options ?? false,
       strict_mode: test.strict_mode ?? false,
+      pass_percentage: test.pass_percentage != null ? String(test.pass_percentage) : "",
     },
     status: test.status as "draft" | "published",
     questions: (test.test_questions ?? [])
@@ -201,6 +203,15 @@ export async function publishTestAction(
   const userSub = await requireAuth()
   if (!settings.title.trim()) throw new Error("Title is required.")
   if (questions.length === 0) throw new Error("Add at least one question.")
+
+  // Group G Correctness check: Ensure each question has at least one correct option
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i]
+    const hasCorrect = q.options.some((o) => o.is_correct)
+    if (!hasCorrect) {
+      throw new Error(`Question ${i + 1} ("${q.question_text.slice(0, 40)}...") has no correct options defined. Please mark at least one option as correct.`)
+    }
+  }
 
   await saveTestToDb(testId, userSub, settings, questions, "published")
   revalidatePath("/tests")

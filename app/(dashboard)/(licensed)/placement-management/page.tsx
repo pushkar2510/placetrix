@@ -49,8 +49,8 @@ export default async function PlacementManagementPage(props: {
 
   // ── Fetch available filter options (years + courses + drives for this institute) ──
   const { data: filterOptions } = await (supabase as any)
-    .from("candidate_profiles")
-    .select("passout_year, course_name, profiles!inner(institute_id)")
+    .from("candidate_academic_details")
+    .select("passout_year, course:institute_courses(course_name), profiles!inner(institute_id)")
     .eq("profiles.institute_id", instituteId)
     .not("passout_year", "is", null)
 
@@ -60,18 +60,22 @@ export default async function PlacementManagementPage(props: {
 
   const availableCourses: string[] = Array.from(
     new Set<string>(
-      (filterOptions || []).map((r: any) => r.course_name).filter(Boolean)
+      (filterOptions || []).map((r: any) => {
+        const c = Array.isArray(r.course) ? r.course[0] : r.course;
+        return c?.course_name;
+      }).filter(Boolean)
     )
   ).sort()
 
   // ── Fetch available drive tags for this institute's students ──
   // We get all candidate UUIDs for this institute first
   const { data: candidateIds } = await (supabase as any)
-    .from("candidate_profiles")
-    .select("profile_id, profiles!inner(institute_id)")
-    .eq("profiles.institute_id", instituteId)
+    .from("profiles")
+    .select("id")
+    .eq("account_type", "institute_candidate")
+    .eq("institute_id", instituteId)
 
-  const allCandidateUuids: string[] = (candidateIds || []).map((r: any) => r.profile_id)
+  const allCandidateUuids: string[] = (candidateIds || []).map((r: any) => r.id)
 
   let availableDrives: string[] = []
   if (allCandidateUuids.length > 0) {
@@ -86,25 +90,27 @@ export default async function PlacementManagementPage(props: {
     ).sort()
   }
 
-  // ── Build query against candidate_profiles ────────────────────────────
+  // ── Build query against profiles ────────────────────────────
   let query = (supabase as any)
-    .from("candidate_profiles")
+    .from("profiles")
     .select(
       `
-      profile_id,
-      course_name,
-      passout_year,
+      id,
+      full_name,
+      email,
       phone_number,
-      profiles!inner (
-        full_name,
-        email,
-        institute_id,
-        avatar_path
+      avatar_path,
+      candidate_academic_details (
+        passout_year,
+        course:institute_courses (
+          course_name
+        )
       )
     `,
       { count: "exact" }
     )
-    .eq("profiles.institute_id", instituteId)
+    .eq("account_type", "institute_candidate")
+    .eq("institute_id", instituteId)
 
   // ── Placed filter ──────────────────────────────────────────────────────
   if (placedFilter === "placed") {
@@ -115,9 +121,9 @@ export default async function PlacementManagementPage(props: {
 
     const ids = (placedIds || []).map((r: any) => r.candidate_id)
     if (ids.length === 0) {
-      query = query.eq("profile_id", "00000000-0000-0000-0000-000000000000")
+      query = query.eq("id", "00000000-0000-0000-0000-000000000000")
     } else {
-      query = query.in("profile_id", ids)
+      query = query.in("id", ids)
     }
   } else if (placedFilter === "not_placed") {
     const { data: placedIds } = await (supabase as any)
@@ -127,7 +133,7 @@ export default async function PlacementManagementPage(props: {
 
     const ids = (placedIds || []).map((r: any) => r.candidate_id)
     if (ids.length > 0) {
-      query = query.not("profile_id", "in", `(${ids.join(",")})`)
+      query = query.not("id", "in", `(${ids.join(",")})`)
     }
   }
 
@@ -140,53 +146,54 @@ export default async function PlacementManagementPage(props: {
 
     const ids = (driveIds || []).map((r: any) => r.candidate_id)
     if (ids.length === 0) {
-      query = query.eq("profile_id", "00000000-0000-0000-0000-000000000000")
+      query = query.eq("id", "00000000-0000-0000-0000-000000000000")
     } else {
-      query = query.in("profile_id", ids)
+      query = query.in("id", ids)
     }
   }
 
   // ── Passout year filter ────────────────────────────────────────────────
   if (passoutYear) {
-    query = query.eq("passout_year", parseInt(passoutYear, 10))
+    query = query.eq("candidate_academic_details.passout_year", parseInt(passoutYear, 10))
   }
 
   // ── Course filter ──────────────────────────────────────────────────────
   if (courseFilter) {
-    query = query.eq("course_name", courseFilter)
+    const { data: courseObj } = await (supabase as any)
+      .from("institute_courses")
+      .select("id")
+      .eq("institute_id", instituteId)
+      .eq("course_name", courseFilter)
+      .maybeSingle()
+
+    if (courseObj) {
+      query = query.eq("candidate_academic_details.course_id", courseObj.id)
+    } else {
+      query = query.eq("id", "00000000-0000-0000-0000-000000000000")
+    }
   }
 
   // ── Search ─────────────────────────────────────────────────────────────
   if (search.trim()) {
     const s = search.trim()
-    const { data: matchedProfiles } = await (supabase as any)
-      .from("profiles")
-      .select("id")
-      .ilike("full_name", `%${s}%`)
-
-    const matchedIds = (matchedProfiles || []).map((p: any) => p.id)
-    if (matchedIds.length === 0) {
-      query = query.eq("profile_id", "00000000-0000-0000-0000-000000000000")
-    } else {
-      query = query.in("profile_id", matchedIds)
-    }
+    query = query.ilike("full_name", `%${s}%`)
   }
 
   // ── Sorting ────────────────────────────────────────────────────────────
   const ascending = sortOrder === "asc"
   switch (sortBy) {
     case "name":
-      query = query.order("profiles(full_name)", { ascending })
+      query = query.order("full_name", { ascending })
       break
     case "course":
-      query = query.order("course_name", { ascending })
+      query = query.order("candidate_academic_details(course_id)", { ascending })
       break
     case "passout":
-      query = query.order("passout_year", { ascending })
+      query = query.order("candidate_academic_details(passout_year)", { ascending })
       break
     // company / ctc: sorted in code after merge
     default:
-      query = query.order("profiles(full_name)", { ascending: true })
+      query = query.order("full_name", { ascending: true })
       break
   }
 
@@ -201,7 +208,7 @@ export default async function PlacementManagementPage(props: {
   }
 
   // ── Fetch placement_records separately for the returned profile IDs ───────────
-  const profileIds: string[] = (rawData || []).map((r: any) => r.profile_id)
+  const profileIds: string[] = (rawData || []).map((r: any) => r.id)
 
   const ptMap = new Map<string, {
     company_name: string | null
@@ -238,14 +245,21 @@ export default async function PlacementManagementPage(props: {
 
   // ── Merge ──────────────────────────────────────────────────────────────
   let records: PlacementRecord[] = (rawData || []).map((r: any) => {
-    const pt = ptMap.get(r.profile_id)
+    const pt = ptMap.get(r.id)
+    const cad = Array.isArray(r.candidate_academic_details)
+      ? r.candidate_academic_details[0]
+      : r.candidate_academic_details;
+    const courseName = Array.isArray(cad?.course)
+      ? cad?.course[0]?.course_name
+      : cad?.course?.course_name;
+
     return {
-      profile_id: r.profile_id,
-      full_name: r.profiles?.full_name ?? "Unknown",
-      email: r.profiles?.email ?? null,
+      profile_id: r.id,
+      full_name: r.full_name ?? "Unknown",
+      email: r.email ?? null,
       phone_number: r.phone_number ?? null,
-      course_name: r.course_name,
-      passout_year: r.passout_year,
+      course_name: courseName || null,
+      passout_year: cad?.passout_year || null,
       company_name: pt?.company_name ?? null,
       ctc: pt?.ctc ?? null,
       offer_letter_date: pt?.offer_letter_date ?? null,
@@ -253,8 +267,8 @@ export default async function PlacementManagementPage(props: {
       offer_type: pt?.offer_type ?? null,
       location: pt?.location ?? null,
       drive_tag: pt?.drive_tag ?? null,
-      profile_image_path: r.profiles?.avatar_path
-        ? supabase.storage.from("avatars").getPublicUrl(r.profiles.avatar_path).data.publicUrl
+      profile_image_path: r.avatar_path
+        ? supabase.storage.from("avatars").getPublicUrl(r.avatar_path).data.publicUrl
         : null,
     }
   })

@@ -246,8 +246,8 @@ interface Props {
 }
 
 export function CandidateTestDetailClient({ test, attempt, serverNow }: Props) {
-  const isSubmitted = attempt?.status === "submitted"
   const isInProgress = attempt?.status === "in_progress"
+  const showIntro = !attempt || attempt.status === "in_progress" || ((test.completed_count ?? 0) < (test.max_attempts ?? 1))
 
   // ── Server Time Sync ───────────────────────────────────────────────────────
   const serverTimeOffset = useMemo(() => {
@@ -285,7 +285,7 @@ export function CandidateTestDetailClient({ test, attempt, serverNow }: Props) {
 
   // ── Pre-test / Intro view ──────────────────────────────────────────────────
 
-  if (!isSubmitted) {
+  if (showIntro) {
     return (
       <div className="flex flex-col gap-6 px-4 py-8 md:px-8">
 
@@ -293,7 +293,7 @@ export function CandidateTestDetailClient({ test, attempt, serverNow }: Props) {
         <PageHeader test={test} />
 
         {/* ── Meta grid ───────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <MetaItem
             icon={<ListChecks className="h-3.5 w-3.5" />}
             label="Questions"
@@ -304,6 +304,13 @@ export function CandidateTestDetailClient({ test, attempt, serverNow }: Props) {
             label="Duration"
             value={formatDuration(test.time_limit_seconds)}
           />
+          {test.max_attempts != null && test.max_attempts > 0 && (
+            <MetaItem
+              icon={<RotateCcw className="h-3.5 w-3.5" />}
+              label="Attempts Allowed"
+              value={`${test.completed_count} / ${test.max_attempts} used`}
+            />
+          )}
           {test.available_from && (
             <MetaItem
               icon={<CalendarClock className="h-3.5 w-3.5" />}
@@ -333,6 +340,44 @@ export function CandidateTestDetailClient({ test, attempt, serverNow }: Props) {
           </div>
         )}
 
+        {/* ── Past Attempts Summary List ────────────────────────────────── */}
+        {test.pastAttempts && test.pastAttempts.length > 0 && (
+          <div className="rounded-xl border bg-card p-4 space-y-3">
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <RotateCcw className="h-3.5 w-3.5" />
+              Your Previous Attempts
+            </p>
+            <div className="space-y-2">
+              {[...test.pastAttempts].reverse().map((att, idx, arr) => {
+                const attemptNum = arr.length - idx
+                const attemptPct = resolvePct(att.percentage, att.score, att.total_marks)
+                return (
+                  <div key={att.id} className="flex items-center justify-between rounded-lg border bg-muted/20 px-3.5 py-2.5 text-sm">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-semibold text-foreground">Attempt #{attemptNum}</span>
+                      <span className="text-[10px] text-muted-foreground">{formatDateTime(att.submitted_at)}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {att.status === "in_progress" ? (
+                        <Badge variant="secondary" className="h-5 text-[10px]">In Progress</Badge>
+                      ) : (
+                        <span className="font-bold tabular-nums text-foreground">{attemptPct.toFixed(2)}%</span>
+                      )}
+                      {test.results_available && att.status !== "in_progress" && (
+                        <Button asChild variant="outline" size="sm" className="h-7 text-xs font-medium">
+                          <Link href={`/tests/${test.id}/result/${att.id}`}>
+                            View Details
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ── In Progress: resume banner ───────────────────────────────── */}
         {isInProgress && (
           <div className="space-y-2.5 rounded-xl border border-primary/20 bg-primary/5 p-4">
@@ -358,18 +403,18 @@ export function CandidateTestDetailClient({ test, attempt, serverNow }: Props) {
         )}
 
         {/* ── Live: CTA ───────────────────────────────────────────────── */}
-        {!attempt && isLive && (
+        {(!attempt || attempt.status === "submitted") && isLive && (
           <div>
             <Button asChild size="lg" className="w-full sm:w-auto">
               <Link href={`${test.id}/attempt`}>
-                Start Assessment
+                {(test.completed_count ?? 0) > 0 ? "Retake Assessment" : "Start Assessment"}
               </Link>
             </Button>
           </div>
         )}
 
         {/* ── Expired ─────────────────────────────────────────────────── */}
-        {!attempt && isExpired && (
+        {(!attempt || attempt.status === "submitted") && isExpired && (
           <div className="space-y-2.5 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-xs text-destructive">
             <div className="flex items-start gap-2">
               <CalendarX className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -383,7 +428,7 @@ export function CandidateTestDetailClient({ test, attempt, serverNow }: Props) {
         )}
 
         {/* ── Not yet open ────────────────────────────────────────────── */}
-        {!attempt && isNotYetOpen && (
+        {(!attempt || attempt.status === "submitted") && isNotYetOpen && (
           <div className="space-y-2.5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-300">
             <div className="flex items-start gap-2">
               <CalendarClock className="mt-0.5 h-3.5 w-3.5 shrink-0" />

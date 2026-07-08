@@ -72,6 +72,16 @@ export interface CandidateTestDetail
   status: "draft" | "published" | "archived" | null
   institute_name: string | null
   institute_logo_url: string | null
+  max_attempts?: number | null
+  completed_count?: number
+  pastAttempts?: {
+    id: string
+    score: number | null
+    total_marks: number | null
+    percentage: number | null
+    status: string
+    submitted_at: string | null
+  }[]
   /** Lightweight list — only marks needed for the pre-test totals display */
   questions: Pick<QuestionRow, "marks">[]
 }
@@ -147,6 +157,25 @@ export interface InstituteTestDetail
   attempts: InstituteAttemptRow[]
   /** Aggregate counts for ALL attempts — SSR seed for the client. */
   attemptStats: AttemptPageStats
+  questionAnalytics: {
+    question_id: string
+    question_text: string
+    marks: number
+    total_answers: number
+    correct_answers: number
+    success_rate_pct: number | null
+    avg_time_spent: number | null
+  }[]
+  feedbacks: {
+    id: string
+    rating: number
+    overall_comment: string | null
+    bugs_issues: string | null
+    suggestions: string | null
+    difficulty_felt: "too_easy" | "as_expected" | "too_hard" | null
+    created_at: string
+    student_name: string | null
+  }[]
 }
 
 

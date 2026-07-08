@@ -75,6 +75,40 @@ export type Database = {
         }
         Relationships: []
       }
+      candidate_academic_details: {
+        Row: {
+          course_id: string | null
+          passout_year: number | null
+          profile_id: string
+          university_prn: string | null
+        }
+        Insert: {
+          course_id?: string | null
+          passout_year?: number | null
+          profile_id: string
+          university_prn?: string | null
+        }
+        Update: {
+          course_id?: string | null
+          passout_year?: number | null
+          profile_id?: string
+          university_prn?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_academic_details_course_id_fkey"
+            columns: ["course_id"]
+            referencedRelation: "institute_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_academic_details_profile_id_fkey"
+            columns: ["profile_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_certifications: {
         Row: {
           certificate_path: string | null
@@ -213,76 +247,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "candidate_experiences_profile_id_fkey"
-            columns: ["profile_id"]
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      candidate_profiles: {
-        Row: {
-          aadhaar_number: string | null
-          bio: string | null
-          cgpa: number | null
-          course_name: string | null
-          created_at: string
-          current_address: string | null
-          date_of_birth: string | null
-          gender: string | null
-          github_url: string | null
-          linkedin_url: string | null
-          passout_year: number | null
-          permanent_address: string | null
-          phone_number: string | null
-          portfolio_links: string[] | null
-          profile_complete: boolean
-          profile_id: string
-          university_prn: string | null
-          updated_at: string
-        }
-        Insert: {
-          aadhaar_number?: string | null
-          bio?: string | null
-          cgpa?: number | null
-          course_name?: string | null
-          created_at?: string
-          current_address?: string | null
-          date_of_birth?: string | null
-          gender?: string | null
-          github_url?: string | null
-          linkedin_url?: string | null
-          passout_year?: number | null
-          permanent_address?: string | null
-          phone_number?: string | null
-          portfolio_links?: string[] | null
-          profile_complete?: boolean
-          profile_id: string
-          university_prn?: string | null
-          updated_at?: string
-        }
-        Update: {
-          aadhaar_number?: string | null
-          bio?: string | null
-          cgpa?: number | null
-          course_name?: string | null
-          created_at?: string
-          current_address?: string | null
-          date_of_birth?: string | null
-          gender?: string | null
-          github_url?: string | null
-          linkedin_url?: string | null
-          passout_year?: number | null
-          permanent_address?: string | null
-          phone_number?: string | null
-          portfolio_links?: string[] | null
-          profile_complete?: boolean
-          profile_id?: string
-          university_prn?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "candidate_profiles_profile_id_fkey"
             columns: ["profile_id"]
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1250,54 +1214,87 @@ export type Database = {
       }
       profiles: {
         Row: {
-          account_type: string
+          aadhaar_number: string | null
+          account_type: Database["public"]["Enums"]["account_role"]
           avatar_path: string | null
+          bio: string | null
           created_at: string
+          current_address: string | null
+          date_of_birth: string | null
           email: string
           first_name: string | null
           full_name: string | null
+          gender: string | null
+          github_url: string | null
           id: string
           institute_id: string | null
           institute_verified: boolean | null
           is_active: boolean
           last_name: string | null
+          linkedin_url: string | null
           middle_name: string | null
+          permanent_address: string | null
+          phone_number: string | null
+          portfolio_links: string[] | null
+          profile_complete: boolean | null
           profile_updated: boolean | null
           signature_path: string | null
           updated_at: string
           username: string | null
         }
         Insert: {
-          account_type?: string
+          aadhaar_number?: string | null
+          account_type?: Database["public"]["Enums"]["account_role"]
           avatar_path?: string | null
+          bio?: string | null
           created_at?: string
+          current_address?: string | null
+          date_of_birth?: string | null
           email: string
           first_name?: string | null
           full_name?: string | null
+          gender?: string | null
+          github_url?: string | null
           id: string
           institute_id?: string | null
           institute_verified?: boolean | null
           is_active?: boolean
           last_name?: string | null
+          linkedin_url?: string | null
           middle_name?: string | null
+          permanent_address?: string | null
+          phone_number?: string | null
+          portfolio_links?: string[] | null
+          profile_complete?: boolean | null
           profile_updated?: boolean | null
           signature_path?: string | null
           updated_at?: string
           username?: string | null
         }
         Update: {
-          account_type?: string
+          aadhaar_number?: string | null
+          account_type?: Database["public"]["Enums"]["account_role"]
           avatar_path?: string | null
+          bio?: string | null
           created_at?: string
+          current_address?: string | null
+          date_of_birth?: string | null
           email?: string
           first_name?: string | null
           full_name?: string | null
+          gender?: string | null
+          github_url?: string | null
           id?: string
           institute_id?: string | null
           institute_verified?: boolean | null
           is_active?: boolean
           last_name?: string | null
+          linkedin_url?: string | null
           middle_name?: string | null
+          permanent_address?: string | null
+          phone_number?: string | null
+          portfolio_links?: string[] | null
+          profile_complete?: boolean | null
           profile_updated?: boolean | null
           signature_path?: string | null
           updated_at?: string
@@ -1543,6 +1540,12 @@ export type Database = {
             foreignKeyName: "test_attempt_feedback_test_id_fkey"
             columns: ["test_id"]
             referencedRelation: "view_test_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_attempt_feedbacks_candidate_id_profiles_fkey"
+            columns: ["candidate_id"]
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2272,6 +2275,12 @@ export type Database = {
       }
     }
     Enums: {
+      account_role:
+        | "admin"
+        | "institute_primary"
+        | "institute_staff"
+        | "institute_placement_officer"
+        | "institute_candidate"
       account_type_enum: "candidate" | "institute" | "admin"
       attempt_status:
         | "in_progress"
@@ -2964,6 +2973,13 @@ export const Constants = {
   },
   public: {
     Enums: {
+      account_role: [
+        "admin",
+        "institute_primary",
+        "institute_staff",
+        "institute_placement_officer",
+        "institute_candidate",
+      ],
       account_type_enum: ["candidate", "institute", "admin"],
       attempt_status: [
         "in_progress",

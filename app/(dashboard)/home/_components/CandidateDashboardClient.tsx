@@ -618,32 +618,6 @@ export function CandidateDashboardClient({
                   </div>
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" strokeWidth={1.5} />
                 </Link>
-
-                <Link href="/tools/resume" className="group flex items-center justify-between p-2 rounded-xl border border-border/30 hover:border-rose-500/30 hover:bg-rose-500/[0.02] transition-all duration-200">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-600 dark:text-rose-400 group-hover:scale-105 transition-transform">
-                      <FileText className="h-3.5 w-3.5 text-rose-500" strokeWidth={1.5} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-foreground">Resume Generator</p>
-                      <p className="text-[10px] text-muted-foreground">Create ATS-friendly resumes</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" strokeWidth={1.5} />
-                </Link>
-
-                <Link href="/tools/resume-analyzer" className="group flex items-center justify-between p-2 rounded-xl border border-border/30 hover:border-violet-500/30 hover:bg-violet-500/[0.02] transition-all duration-200">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-600 dark:text-violet-400 group-hover:scale-105 transition-transform">
-                      <Search className="h-3.5 w-3.5 text-violet-500" strokeWidth={1.5} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-foreground">Resume Analyzer</p>
-                      <p className="text-[10px] text-muted-foreground">Analyze match scores with AI</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" strokeWidth={1.5} />
-                </Link>
               </div>
             </CardContent>
           </Card>

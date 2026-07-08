@@ -6,24 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { FileText, Search, Wrench, ChevronRight } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-const toolsList = [
-  {
-    title: "Resume Generator",
-    description: "Create a professional, ATS-friendly resume in minutes. Choose from templates tailored for the tech industry.",
-    icon: <FileText className="h-5 w-5 text-rose-500" />,
-    iconBg: "bg-rose-500/10",
-    href: "/tools/resume",
-    badge: "Popular",
-  },
-  {
-    title: "Resume Analyzer",
-    description: "Upload your existing resume and get AI-powered feedback on how to improve it for better match rates.",
-    icon: <Search className="h-5 w-5 text-indigo-500" />,
-    iconBg: "bg-indigo-500/10",
-    href: "/tools/resume-analyzer",
-    badge: "New",
-  }
-]
+const toolsList: any[] = []
 
 export function ToolsClient() {
   const router = useRouter()
@@ -40,41 +23,51 @@ export function ToolsClient() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-300 mt-4">
-        {toolsList.map((tool, idx) => (
-          <Card
-            key={idx}
-            className="group flex cursor-pointer flex-col justify-between transition-colors hover:bg-muted/50"
-            onClick={() => router.push(tool.href)}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${tool.iconBg}`}>
-                  {tool.icon}
+      {toolsList.length === 0 ? (
+        <div className="flex flex-col items-center justify-center border border-dashed border-border/40 rounded-2xl p-12 bg-card text-center mt-6 shadow-sm">
+          <Wrench className="h-10 w-10 text-muted-foreground/50 mb-3" />
+          <h2 className="text-base font-semibold text-foreground">No Tools Available</h2>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+            We are working on bringing you new and improved career preparation utilities. Check back soon!
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-300 mt-4">
+          {toolsList.map((tool, idx) => (
+            <Card
+              key={idx}
+              className="group flex cursor-pointer flex-col justify-between transition-colors hover:bg-muted/50"
+              onClick={() => router.push(tool.href)}
+            >
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${tool.iconBg}`}>
+                    {tool.icon}
+                  </div>
+                  {tool.badge && (
+                    <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary">
+                      {tool.badge}
+                    </Badge>
+                  )}
                 </div>
-                {tool.badge && (
-                  <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary">
-                    {tool.badge}
-                  </Badge>
-                )}
-              </div>
-              <CardTitle className="group-hover:text-primary transition-colors">
-                {tool.title}
-              </CardTitle>
-              <CardDescription>
-                {tool.description}
-              </CardDescription>
-            </CardHeader>
-            <div className="flex-1" />
-            <CardContent>
-              <div className="flex items-center text-sm font-medium text-muted-foreground transition-colors group-hover:text-primary">
-                Open Tool
-                <ChevronRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                <CardTitle className="group-hover:text-primary transition-colors">
+                  {tool.title}
+                </CardTitle>
+                <CardDescription>
+                  {tool.description}
+                </CardDescription>
+              </CardHeader>
+              <div className="flex-1" />
+              <CardContent>
+                <div className="flex items-center text-sm font-medium text-muted-foreground transition-colors group-hover:text-primary">
+                  Open Tool
+                  <ChevronRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

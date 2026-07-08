@@ -1814,6 +1814,8 @@ export function InstituteTestDetailClient({
                 { value: "overview", label: "Overview", icon: <Info className="h-3.5 w-3.5" />, count: null },
                 { value: "questions", label: "Questions", icon: <ListChecks className="h-3.5 w-3.5" />, count: test.questions.length },
                 { value: "attempts", label: "Attempts", icon: <Users className="h-3.5 w-3.5" />, count: liveStats.total },
+                { value: "analytics", label: "Analytics", icon: <BarChart2 className="h-3.5 w-3.5" />, count: null },
+                { value: "feedback", label: "Feedback", icon: <RotateCw className="h-3.5 w-3.5" />, count: test.feedbacks?.length || null },
               ].map(({ value, label, icon, count }) => (
                 <TabsTrigger
                   key={value}
@@ -1883,7 +1885,273 @@ export function InstituteTestDetailClient({
               onFetchAllForExport={handleFetchAllForExport}
             />
           </TabsContent>
+
+          <TabsContent value="analytics" className="m-0">
+            <AnalyticsTab test={test} />
+          </TabsContent>
+
+          <TabsContent value="feedback" className="m-0">
+            <FeedbackTab test={test} />
+          </TabsContent>
         </Tabs>
       </div>
+  )
+}
+
+function AnalyticsTab({ test }: { test: InstituteTestDetail }) {
+  const [bracketCounts, setBracketCounts] = useState<number[]>(new Array(10).fill(0))
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const supabase = createClient()
+        const { data } = await supabase
+          .from("test_attempts")
+          .select("percentage")
+          .eq("test_id", test.id)
+          .in("status", ["submitted", "auto_submitted"])
+        
+        if (data) {
+          const counts = new Array(10).fill(0)
+          data.forEach((att: any) => {
+            const pct = Number(att.percentage || 0)
+            const idx = Math.min(9, Math.floor(pct / 10))
+            counts[idx]++
+          })
+          setBracketCounts(counts)
+        }
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadStats()
+  }, [test.id])
+
+  const maxCount = Math.max(...bracketCounts, 1)
+
+  return (
+    <div className="space-y-6">
+      {/* Score distribution bar chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold">Score Distribution</CardTitle>
+          <CardDescription>Number of candidates grouped by percentage scored.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex h-40 items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-2 pt-2">
+              {bracketCounts.map((count, idx) => {
+                const label = `${idx * 10}% - ${(idx + 1) * 10}%`
+                const pctOfMax = (count / maxCount) * 100
+                return (
+                  <div key={idx} className="flex items-center gap-4 text-xs">
+                    <span className="w-20 shrink-0 text-muted-foreground">{label}</span>
+                    <div className="h-5 flex-1 rounded bg-muted overflow-hidden">
+                      {count > 0 && (
+                        <div
+                          className="h-full bg-primary transition-all duration-500"
+                          style={{ width: `${pctOfMax}%` }}
+                        />
+                      )}
+                    </div>
+                    <span className="w-8 shrink-0 font-semibold text-right tabular-nums">{count}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Question Performance Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold">Question Performance</CardTitle>
+          <CardDescription>Success rate and average time spent on each question.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Question</TableHead>
+                <TableHead className="text-right">Marks</TableHead>
+                <TableHead className="text-right">Total Answers</TableHead>
+                <TableHead className="text-right">Success Rate</TableHead>
+                <TableHead className="text-right">Avg Time</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {test.questionAnalytics.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground text-sm">
+                    No analytics data available
+                  </TableCell>
+                </TableRow>
+              ) : (
+                [...test.questionAnalytics]
+                  .sort((a, b) => (a.success_rate_pct ?? 101) - (b.success_rate_pct ?? 101))
+                  .map((qa) => {
+                    const pct = qa.success_rate_pct
+                    const color = pct == null
+                      ? "text-muted-foreground"
+                      : pct >= 70
+                        ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                        : pct >= 40
+                          ? "text-amber-600 dark:text-amber-400 font-semibold"
+                          : "text-destructive font-semibold"
+
+                    return (
+                      <TableRow key={qa.question_id}>
+                        <TableCell className="max-w-md truncate text-sm">
+                          <MathText>{qa.question_text}</MathText>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{qa.marks}</TableCell>
+                        <TableCell className="text-right tabular-nums">{qa.total_answers}</TableCell>
+                        <TableCell className={cn("text-right tabular-nums", color)}>
+                          {pct != null ? `${pct}%` : "—"}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                          {qa.avg_time_spent != null ? `${qa.avg_time_spent}s` : "—"}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function FeedbackTab({ test }: { test: InstituteTestDetail }) {
+  const feedbacks = test.feedbacks ?? []
+
+  const stats = useMemo(() => {
+    if (feedbacks.length === 0) return null
+    const sum = feedbacks.reduce((acc, f) => acc + f.rating, 0)
+    const avg = sum / feedbacks.length
+
+    const difficulties = { too_easy: 0, as_expected: 0, too_hard: 0 }
+    feedbacks.forEach((f) => {
+      if (f.difficulty_felt) {
+        difficulties[f.difficulty_felt]++
+      }
+    })
+
+    return { avg, difficulties }
+  }, [feedbacks])
+
+  if (feedbacks.length === 0) {
+    return (
+      <Card className="rounded-xl border-dashed">
+        <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+            <RotateCw className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">No feedback yet</p>
+            <p className="text-xs text-muted-foreground">
+              Candidate feedback will appear here once submitted.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Feedback Summary Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Card>
+          <CardContent className="p-4 space-y-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Average Rating</p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-bold">{stats?.avg.toFixed(1)}</span>
+              <span className="text-sm text-muted-foreground">/ 5 stars</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Based on {feedbacks.length} response{feedbacks.length !== 1 ? "s" : ""}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 space-y-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Difficulty Felt</p>
+            <div className="flex items-center gap-3 pt-1.5 text-xs">
+              <div className="flex flex-col flex-1 items-center bg-muted/40 rounded py-1">
+                <span className="font-semibold text-emerald-600">{stats?.difficulties.too_easy}</span>
+                <span className="text-[10px] text-muted-foreground">Too Easy</span>
+              </div>
+              <div className="flex flex-col flex-1 items-center bg-muted/40 rounded py-1">
+                <span className="font-semibold text-blue-600">{stats?.difficulties.as_expected}</span>
+                <span className="text-[10px] text-muted-foreground">As Expected</span>
+              </div>
+              <div className="flex flex-col flex-1 items-center bg-muted/40 rounded py-1">
+                <span className="font-semibold text-amber-600">{stats?.difficulties.too_hard}</span>
+                <span className="text-[10px] text-muted-foreground">Too Hard</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Feedback Cards List */}
+      <div className="space-y-3">
+        {feedbacks.map((fb) => (
+          <Card key={fb.id}>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5">
+                  <p className="font-semibold text-sm">{fb.student_name}</p>
+                  <p className="text-[10px] text-muted-foreground">{formatDateTime(fb.created_at)}</p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {fb.difficulty_felt && (
+                    <Badge variant="outline" className="text-[10px] capitalize">
+                      {fb.difficulty_felt.replace("_", " ")}
+                    </Badge>
+                  )}
+                  <Badge className="bg-primary text-primary-foreground font-semibold text-xs">
+                    {fb.rating} ★
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-xs">
+                {fb.overall_comment && (
+                  <div>
+                    <span className="font-bold text-muted-foreground">Comment:</span>
+                    <p className="mt-0.5 text-foreground leading-relaxed">{fb.overall_comment}</p>
+                  </div>
+                )}
+                {fb.suggestions && (
+                  <div>
+                    <span className="font-bold text-muted-foreground">Suggestions:</span>
+                    <p className="mt-0.5 text-foreground leading-relaxed">{fb.suggestions}</p>
+                  </div>
+                )}
+                {fb.bugs_issues && (
+                  <div className="rounded bg-destructive/5 border border-destructive/10 p-2">
+                    <span className="font-bold text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3 shrink-0" /> Reported Bugs/Issues:
+                    </span>
+                    <p className="mt-1 text-destructive leading-relaxed">{fb.bugs_issues}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
   )
 }

@@ -143,21 +143,23 @@ export async function exportPlacementData(filters: ExportFilters): Promise<Recor
 
   // ── Base query ──
   let query = (supabase as any)
-    .from("candidate_profiles")
+    .from("profiles")
     .select(
       `
-      profile_id,
-      course_name,
-      passout_year,
+      id,
+      full_name,
+      email,
       phone_number,
-      profiles!inner (
-        full_name,
-        email,
-        institute_id
+      candidate_academic_details (
+        passout_year,
+        course:institute_courses (
+          course_name
+        )
       )
     `
     )
-    .eq("profiles.institute_id", instituteId)
+    .eq("account_type", "institute_candidate")
+    .eq("institute_id", instituteId)
 
   // ── Placed filter ──
   if (filters.placedFilter === "placed") {
@@ -167,7 +169,7 @@ export async function exportPlacementData(filters: ExportFilters): Promise<Recor
       .not("company_name", "is", null)
     const ids = (placedIds || []).map((r: any) => r.candidate_id)
     if (ids.length === 0) return []
-    query = query.in("profile_id", ids)
+    query = query.in("id", ids)
   } else if (filters.placedFilter === "not_placed") {
     const { data: placedIds } = await (supabase as any)
       .from("placement_records")
@@ -175,33 +177,38 @@ export async function exportPlacementData(filters: ExportFilters): Promise<Recor
       .not("company_name", "is", null)
     const ids = (placedIds || []).map((r: any) => r.candidate_id)
     if (ids.length > 0) {
-      query = query.not("profile_id", "in", `(${ids.join(",")})`)
+      query = query.not("id", "in", `(${ids.join(",")})`)
     }
   }
 
   // ── Year / course filters ──
   if (filters.passoutYear) {
-    query = query.eq("passout_year", parseInt(filters.passoutYear, 10))
+    query = query.eq("candidate_academic_details.passout_year", parseInt(filters.passoutYear, 10))
   }
   if (filters.courseFilter) {
-    query = query.eq("course_name", filters.courseFilter)
+    const { data: courseObj } = await (supabase as any)
+      .from("institute_courses")
+      .select("id")
+      .eq("institute_id", instituteId)
+      .eq("course_name", filters.courseFilter)
+      .maybeSingle()
+
+    if (courseObj) {
+      query = query.eq("candidate_academic_details.course_id", courseObj.id)
+    } else {
+      return []
+    }
   }
 
   // ── Search ──
   if (filters.search.trim()) {
-    const { data: matchedProfiles } = await (supabase as any)
-      .from("profiles")
-      .select("id")
-      .ilike("full_name", `%${filters.search.trim()}%`)
-    const matchedIds = (matchedProfiles || []).map((p: any) => p.id)
-    if (matchedIds.length === 0) return []
-    query = query.in("profile_id", matchedIds)
+    query = query.ilike("full_name", `%${filters.search.trim()}%`)
   }
 
   const { data: rawData, error } = await query
   if (error) throw new Error(error.message)
 
-  const profileIds: string[] = (rawData || []).map((r: any) => r.profile_id)
+  const profileIds: string[] = (rawData || []).map((r: any) => r.id)
   if (profileIds.length === 0) return []
 
   // ── Fetch placement_records ──
@@ -223,7 +230,13 @@ export async function exportPlacementData(filters: ExportFilters): Promise<Recor
   const rows: Record<string, any>[] = []
 
   for (const r of rawData || []) {
-    const pt = ptMap.get(r.profile_id)
+    const pt = ptMap.get(r.id)
+    const cad = Array.isArray(r.candidate_academic_details)
+      ? r.candidate_academic_details[0]
+      : r.candidate_academic_details;
+    const courseName = Array.isArray(cad?.course)
+      ? cad?.course[0]?.course_name
+      : cad?.course?.course_name;
 
     const ctcVal: number | null = pt?.ctc ?? null
 
@@ -237,11 +250,11 @@ export async function exportPlacementData(filters: ExportFilters): Promise<Recor
     const status = pt?.company_name ? "Placed" : "Not Placed"
 
     const row: Record<string, any> = {}
-    if (cols.includes("full_name")) row["Student Name"] = r.profiles?.full_name ?? ""
-    if (cols.includes("email")) row["Email"] = r.profiles?.email ?? ""
+    if (cols.includes("full_name")) row["Student Name"] = r.full_name ?? ""
+    if (cols.includes("email")) row["Email"] = r.email ?? ""
     if (cols.includes("phone_number")) row["Phone"] = r.phone_number ?? ""
-    if (cols.includes("course_name")) row["Course"] = r.course_name ?? ""
-    if (cols.includes("passout_year")) row["Passout Year"] = r.passout_year ?? ""
+    if (cols.includes("course_name")) row["Course"] = courseName ?? ""
+    if (cols.includes("passout_year")) row["Passout Year"] = cad?.passout_year ?? ""
     if (cols.includes("company_name")) row["Company Name"] = pt?.company_name ?? ""
     if (cols.includes("ctc")) row["CTC (LPA)"] = ctcVal ?? ""
     if (cols.includes("job_role")) row["Job Role"] = pt?.job_role ?? ""

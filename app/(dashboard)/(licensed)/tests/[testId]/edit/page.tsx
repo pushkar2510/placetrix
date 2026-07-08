@@ -35,7 +35,7 @@ export default async function TestEditorPage({ params }: Props) {
 
   const [{ data: tags }, initialData] = await Promise.all([
     (supabase as any).from("test_question_tags").select("id, name").order("name"),
-    isNew ? Promise.resolve(null) : loadTestAction(testId, user.sub as string),
+    isNew ? Promise.resolve(null) : loadTestAction(testId),
   ])
 
   // Bounce if editing a test that doesn't exist or belongs to someone else

@@ -48,24 +48,39 @@ export default async function EventDetailPage({ params }: { params: Promise<Para
       .from("event_tickets")
       .select(`
         id, status, attendance_status, candidate_id, created_at,
-        profile:profiles!candidate_id(full_name, email),
-        candidate:candidate_profiles!candidate_id(course_name, passout_year)
+        profile:profiles!candidate_id(
+          full_name,
+          email,
+          candidate_academic_details(
+            passout_year,
+            course:institute_courses(course_name)
+          )
+        )
       `)
       .eq("event_id", eventId)
       .order("created_at", { ascending: true })
 
-    const formattedTickets = (tickets ?? []).map((t: any) => ({
-      id: t.id,
-      event_id: eventId,
-      candidate_id: t.candidate_id,
-      status: t.status,
-      attendance_status: t.attendance_status,
-      created_at: t.created_at,
-      candidate_name: t.profile?.full_name ?? "Unknown",
-      candidate_email: t.profile?.email ?? "",
-      candidate_course: t.candidate?.course_name ?? null,
-      candidate_passout_year: t.candidate?.passout_year ?? null,
-    }))
+    const formattedTickets = (tickets ?? []).map((t: any) => {
+      const cad = Array.isArray(t.profile?.candidate_academic_details)
+        ? t.profile?.candidate_academic_details[0]
+        : t.profile?.candidate_academic_details;
+      const courseName = Array.isArray(cad?.course)
+        ? cad?.course[0]?.course_name
+        : cad?.course?.course_name;
+
+      return {
+        id: t.id,
+        event_id: eventId,
+        candidate_id: t.candidate_id,
+        status: t.status,
+        attendance_status: t.attendance_status,
+        created_at: t.created_at,
+        candidate_name: t.profile?.full_name ?? "Unknown",
+        candidate_email: t.profile?.email ?? "",
+        candidate_course: courseName ?? null,
+        candidate_passout_year: cad?.passout_year ?? null,
+      }
+    })
 
     return (
       <EventDetailStaffClient

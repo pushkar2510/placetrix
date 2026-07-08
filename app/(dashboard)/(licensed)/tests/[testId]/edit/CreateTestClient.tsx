@@ -57,6 +57,7 @@ const EMPTY_SETTINGS: SettingsForm = {
   shuffle_questions: true,
   shuffle_options: true,
   strict_mode: true,
+  pass_percentage: "",
 }
 
 // ── Timezone helpers ──────────────────────────────────────────────────────────
@@ -312,6 +313,21 @@ function SettingsFormComponent({ values, onChange }: SettingsFormProps) {
               value={values.time_limit_minutes}
               onChange={set("time_limit_minutes")}
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="pass_percentage">Pass Percentage (%)</Label>
+            <Input
+              id="pass_percentage"
+              type="number"
+              min={0}
+              max={100}
+              className="w-40"
+              placeholder="e.g. 50"
+              value={values.pass_percentage}
+              onChange={set("pass_percentage")}
+            />
+            <p className="text-[10px] text-muted-foreground">Optional. Leave empty for no pass threshold.</p>
           </div>
 
           <div className="space-y-1.5">

@@ -31,6 +31,18 @@ export interface UserProfile {
   profile_updated?: boolean | null;
   institute_verified?: boolean | null;
   profile_complete?: boolean | null;
+
+  // Generic profile columns
+  bio?: string | null;
+  gender?: string | null;
+  phone_number?: string | null;
+  date_of_birth?: string | null;
+  aadhaar_number?: string | null;
+  current_address?: string | null;
+  permanent_address?: string | null;
+  linkedin_url?: string | null;
+  github_url?: string | null;
+  portfolio_links?: string[] | null;
 }
 
 function isDefinitiveRevocation(error: AuthApiError): boolean {
@@ -82,10 +94,8 @@ function profileFromClaims(
   };
 
   // app_metadata is server-only (not user-editable) — always prefer it for account_type.
-  // user_metadata is a fallback for legacy tokens.
   const account_type =
     (appMeta.account_type as AccountType)
-    ?? (meta.account_type as AccountType)
     ?? null;
 
   // If account_type is completely absent from the JWT (e.g. token issued before the
@@ -129,7 +139,6 @@ function profileFromAuthUser(
   // app_metadata is server-only (not user-editable) — authoritative for account_type.
   const account_type =
     (appMeta.account_type as AccountType)
-    ?? (meta.account_type as AccountType)
     ?? null;
 
   return {
@@ -240,8 +249,9 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
       const { data: dbProfile, error: dbError } = await (supabase as any)
         .from("profiles")
         .select(`
-          username, full_name, first_name, middle_name, last_name, avatar_path, account_type, signature_path, profile_updated, institute_id, institute_verified,
-          candidate_profiles!candidate_profiles_profile_id_fkey (profile_complete)
+          username, full_name, first_name, middle_name, last_name, avatar_path, account_type, signature_path, 
+          profile_updated, institute_id, institute_verified, bio, gender, phone_number, date_of_birth, 
+          aadhaar_number, current_address, permanent_address, linkedin_url, github_url, portfolio_links, profile_complete
         `)
         .eq("id", built.id)
         .maybeSingle();
@@ -260,15 +270,25 @@ export const getUserProfile = cache(async (): Promise<UserProfile | null> => {
         if (dbProfile.account_type !== undefined) built.account_type = dbProfile.account_type as AccountType;
         
         built.institute_verified = dbProfile.institute_verified ?? null;
-        
-        const cp = dbProfile.candidate_profiles;
-        const complete = Array.isArray(cp) ? cp[0]?.profile_complete : cp?.profile_complete;
-        built.profile_complete = complete ?? null;
+        built.profile_complete = dbProfile.profile_complete ?? null;
 
         if (dbProfile.profile_updated !== undefined) built.profile_updated = dbProfile.profile_updated;
         if (dbProfile.institute_id !== undefined) built.institute_id = dbProfile.institute_id;
 
         if (dbProfile.signature_path !== undefined) built.signature_path = dbProfile.signature_path;
+
+        // Generic fields mapping
+        if (dbProfile.bio !== undefined) built.bio = dbProfile.bio;
+        if (dbProfile.gender !== undefined) built.gender = dbProfile.gender;
+        if (dbProfile.phone_number !== undefined) built.phone_number = dbProfile.phone_number;
+        if (dbProfile.date_of_birth !== undefined) built.date_of_birth = dbProfile.date_of_birth;
+        if (dbProfile.aadhaar_number !== undefined) built.aadhaar_number = dbProfile.aadhaar_number;
+        if (dbProfile.current_address !== undefined) built.current_address = dbProfile.current_address;
+        if (dbProfile.permanent_address !== undefined) built.permanent_address = dbProfile.permanent_address;
+        if (dbProfile.linkedin_url !== undefined) built.linkedin_url = dbProfile.linkedin_url;
+        if (dbProfile.github_url !== undefined) built.github_url = dbProfile.github_url;
+        if (dbProfile.portfolio_links !== undefined) built.portfolio_links = dbProfile.portfolio_links;
+
         built._account_type_missing = false;
       }
     } catch (e) {

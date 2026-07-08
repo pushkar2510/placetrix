@@ -48,7 +48,7 @@ export async function startAttemptAction(testId: string): Promise<AttemptInfo> {
       .select(`
         institute_id,
         profile_updated,
-        candidate_profiles!inner ( profile_complete )
+        profile_complete
       `)
       .eq("id", userId)
       .maybeSingle(),
@@ -78,9 +78,7 @@ export async function startAttemptAction(testId: string): Promise<AttemptInfo> {
 
   const test = testRes.data
   const existingAttempt = existingRes.data
-  const profileComplete = Array.isArray(profileRes.data?.candidate_profiles) 
-    ? profileRes.data?.candidate_profiles[0]?.profile_complete 
-    : profileRes.data?.candidate_profiles?.profile_complete;
+  const profileComplete = profileRes.data?.profile_complete;
 
   if (
     !profileComplete ||
@@ -344,6 +342,18 @@ export async function submitFeedbackAction(
   }
 ): Promise<void> {
   const { supabase, userId } = await requireAuth()
+
+  // Verify ownership of the attempt
+  const { data: ownerCheck } = await (supabase as any)
+    .from("test_attempts")
+    .select("id")
+    .eq("id", attemptId)
+    .eq("candidate_id", userId)
+    .maybeSingle()
+
+  if (!ownerCheck) {
+    throw new Error("Attempt not found or unauthorized")
+  }
 
   const { error } = await (supabase as any).from("test_attempt_feedbacks").insert({
     attempt_id: attemptId,
