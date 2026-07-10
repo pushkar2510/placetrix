@@ -35,7 +35,8 @@ export default async function EventDetailPage({ params }: { params: Promise<Para
     .from("events")
     .select(`
       *,
-      event_agenda(*)
+      event_agenda(*),
+      institutes(institute_name)
     `)
     .eq("id", eventId)
     .maybeSingle()
@@ -123,6 +124,7 @@ export default async function EventDetailPage({ params }: { params: Promise<Para
         status: event.status,
         duration_minutes: event.duration_minutes ?? 120,
         event_banner: event.event_banner ?? null,
+        institute_name: event.institutes?.institute_name ?? null,
       }}
       agenda={(event.event_agenda ?? [])
         .sort((a: any, b: any) => a.order_index - b.order_index)

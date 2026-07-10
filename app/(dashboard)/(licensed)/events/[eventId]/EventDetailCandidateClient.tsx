@@ -76,6 +76,7 @@ interface EventInfo {
   status: EventStatus
   duration_minutes: number
   event_banner: string | null
+  institute_name?: string | null
 }
 
 export interface TicketInfo {
@@ -167,6 +168,22 @@ interface Props {
 export function EventDetailCandidateClient({ event, agenda, ticket, candidateName }: Props) {
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+  const [isLandscape, setIsLandscape] = useState<boolean>(true)
+
+  useEffect(() => {
+    if (event.event_banner) {
+      const img = new Image()
+      img.src = buildStorageUrl("event-banners", event.event_banner) || ""
+      img.onload = () => {
+        setIsLandscape(img.width >= img.height)
+      }
+      img.onerror = () => {
+        setIsLandscape(true)
+      }
+    } else {
+      setIsLandscape(true)
+    }
+  }, [event.event_banner])
 
   const handleRSVP = () => {
     startTransition(async () => {
@@ -196,33 +213,8 @@ export function EventDetailCandidateClient({ event, agenda, ticket, candidateNam
     })
   }
 
-  return (
-    <div className="flex flex-col gap-6 p-4 md:p-6 max-w-3xl mx-auto w-full">
-      {/* Back */}
-      <Link
-        href="/events"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back to Events
-      </Link>
-
-      {/* 4:5 Aspect Ratio Banner */}
-      <div className="w-full max-w-md mx-auto aspect-[4/5] relative rounded-2xl overflow-hidden border shadow-xs bg-muted shrink-0">
-        {event.event_banner ? (
-          <img
-            src={buildStorageUrl("event-banners", event.event_banner) || ""}
-            alt={event.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-pink-500/20 flex flex-col items-center justify-center p-6 text-center gap-2">
-            <Ticket className="h-12 w-12 text-primary/40 animate-pulse" />
-            <span className="text-xs text-muted-foreground font-medium">PlaceTrix Campus Event</span>
-          </div>
-        )}
-      </div>
-
-      {/* Event Info */}
+  const renderEventInfo = () => {
+    return (
       <div className="space-y-4">
         <div>
           <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -234,7 +226,7 @@ export function EventDetailCandidateClient({ event, agenda, ticket, candidateNam
               {event.status}
             </Badge>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">{event.title}</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground font-cirka">{event.title}</h1>
         </div>
 
         {event.description && (
@@ -252,37 +244,42 @@ export function EventDetailCandidateClient({ event, agenda, ticket, candidateNam
           </div>
         </div>
       </div>
+    )
+  }
 
-      {/* Chronological Agenda */}
-      {agenda && agenda.length > 0 && (
-        <Card className="border">
-          <CardContent className="p-5 space-y-4">
-            <h3 className="font-semibold text-base text-foreground">Agenda</h3>
-            <div className="relative pl-6 border-l border-border/80 space-y-6">
-              {agenda.map((item, idx) => (
-                <div key={item.id || idx} className="relative space-y-1">
-                  {/* Dot on Timeline */}
-                  <div className="absolute -left-[31px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <span className="text-[10px] font-bold text-primary font-mono bg-primary/5 border border-primary/10 px-1.5 py-0.5 rounded">
-                      {formatTimeOnly(item.start_time)}
-                    </span>
-                    <h4 className="text-sm font-semibold text-foreground">{item.title}</h4>
-                  </div>
-                  {item.description && (
-                    <p className="text-xs text-muted-foreground leading-relaxed pl-0.5">
-                      {item.description}
-                    </p>
-                  )}
+  const renderAgenda = () => {
+    if (!agenda || agenda.length === 0) return null
+    return (
+      <Card className="border">
+        <CardContent className="p-5 space-y-4">
+          <h3 className="font-semibold text-base text-foreground">Agenda</h3>
+          <div className="relative pl-6 border-l border-border/80 space-y-6">
+            {agenda.map((item, idx) => (
+              <div key={item.id || idx} className="relative space-y-1">
+                {/* Dot on Timeline */}
+                <div className="absolute -left-[31px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className="text-[10px] font-bold text-primary font-mono bg-primary/5 border border-primary/10 px-1.5 py-0.5 rounded">
+                    {formatTimeOnly(item.start_time)}
+                  </span>
+                  <h4 className="text-sm font-semibold text-foreground">{item.title}</h4>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                {item.description && (
+                  <p className="text-xs text-muted-foreground leading-relaxed pl-0.5">
+                    {item.description}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
-      {/* View Ticket / RSVP Action Button */}
-      <div className="pt-4 border-t mt-2 flex flex-col gap-2">
+  const renderRSVPButtons = () => {
+    return (
+      <div className="pt-4 border-t mt-2 flex flex-col gap-2 w-full">
         {ticket ? (
           <>
             <Dialog>
@@ -353,6 +350,95 @@ export function EventDetailCandidateClient({ event, agenda, ticket, candidateNam
             {event.status === "Concluded" ? "Event Ended" : "RSVP to Event"}
           </Button>
         )}
+      </div>
+    )
+  }
+
+  if (isLandscape) {
+    // Landscape Layout (same for mobile & desktop)
+    return (
+      <div className="flex flex-col gap-6 p-4 md:p-6 max-w-4xl mx-auto w-full">
+        {/* Back */}
+        <Link
+          href="/events"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to Events
+        </Link>
+
+        {/* Banner */}
+        {event.event_banner ? (
+          <img
+            src={buildStorageUrl("event-banners", event.event_banner) || ""}
+            alt={event.title}
+            className="w-full h-auto max-h-[450px] rounded-2xl border object-contain"
+          />
+        ) : (
+          <div className="w-full h-48 md:h-64 bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-pink-500/20 flex flex-col items-center justify-center p-6 text-center gap-2 rounded-2xl border">
+            <Ticket className="h-12 w-12 text-primary/40 animate-pulse" />
+            <span className="text-xs text-muted-foreground font-medium">
+              {event.institute_name ? `${event.institute_name} Campus Event` : "PlaceTrix Campus Event"}
+            </span>
+          </div>
+        )}
+
+        {/* Details and Agenda */}
+        <div className="space-y-6">
+          {renderEventInfo()}
+          {renderAgenda()}
+          {renderRSVPButtons()}
+        </div>
+      </div>
+    )
+  }
+
+  // Portrait/Square Layout
+  return (
+    <div className="flex flex-col gap-6 p-4 md:p-6 max-w-5xl mx-auto w-full">
+      {/* Back */}
+      <Link
+        href="/events"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to Events
+      </Link>
+
+      {/* Desktop view: 2 Columns */}
+      <div className="hidden md:grid grid-cols-5 gap-8 items-start w-full">
+        {/* Left Column (60% width) */}
+        <div className="col-span-3 space-y-6">
+          {renderEventInfo()}
+          {renderAgenda()}
+        </div>
+
+        {/* Right Column (40% width) */}
+        <div className="col-span-2 space-y-6 flex flex-col">
+          {event.event_banner && (
+            <img
+              src={buildStorageUrl("event-banners", event.event_banner) || ""}
+              alt={event.title}
+              className="w-full h-auto max-h-[450px] rounded-2xl border object-contain"
+            />
+          )}
+          {renderRSVPButtons()}
+        </div>
+      </div>
+
+      {/* Mobile view: Stacked */}
+      <div className="flex flex-col gap-6 md:hidden w-full">
+        {/* Banner on top */}
+        {event.event_banner && (
+          <img
+            src={buildStorageUrl("event-banners", event.event_banner) || ""}
+            alt={event.title}
+            className="w-full h-auto max-h-[350px] rounded-2xl border object-contain mx-auto max-w-sm"
+          />
+        )}
+        
+        {/* Info & Details */}
+        {renderEventInfo()}
+        {renderAgenda()}
+        {renderRSVPButtons()}
       </div>
     </div>
   )

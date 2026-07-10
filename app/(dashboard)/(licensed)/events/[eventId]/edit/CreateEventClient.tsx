@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -90,6 +91,17 @@ export function CreateEventClient({ eventId, initialData }: Props) {
       ? buildStorageUrl("event-banners", (initialData as any).event_banner)
       : null
   )
+  const [imageOrientation, setImageOrientation] = useState<"landscape" | "portrait" | null>(null)
+
+  useEffect(() => {
+    if ((initialData as any)?.event_banner) {
+      const img = new Image()
+      img.src = buildStorageUrl("event-banners", (initialData as any).event_banner) || ""
+      img.onload = () => {
+        setImageOrientation(img.width >= img.height ? "landscape" : "portrait")
+      }
+    }
+  }, [initialData])
 
   // Agenda State
   const [agenda, setAgenda] = useState<Array<{ title: string; description: string | null; start_time: string; order_index: number }>>(
@@ -387,33 +399,51 @@ export function CreateEventClient({ eventId, initialData }: Props) {
         <Card>
           <CardContent className="p-5 space-y-4">
             <h3 className="font-semibold text-sm border-b pb-2 mb-2 text-foreground/90 flex items-center gap-2">
-              <ImageIcon className="h-4 w-4" /> Event Banner (4:5 Aspect Ratio recommended)
+              <ImageIcon className="h-4 w-4" /> Event Banner
             </h3>
             <div className="flex flex-col gap-4">
               {bannerPreviewUrl ? (
-                <div className="relative max-w-[200px] aspect-[4/5] rounded-lg overflow-hidden border bg-muted">
-                  <img
-                    src={bannerPreviewUrl}
-                    alt="Banner Preview"
-                    className="w-full h-full object-cover"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => {
-                      setBannerFile(null)
-                      setBannerPreviewUrl(null)
-                    }}
-                    className="absolute top-2 right-2 h-7 w-7 rounded-full shadow-md"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                <div className="space-y-2 max-w-xl">
+                  <div className={cn(
+                    "relative rounded-lg overflow-hidden border bg-muted flex items-center justify-center",
+                    imageOrientation === "landscape" ? "aspect-video w-full" : "aspect-[3/4] w-64"
+                  )}>
+                    <img
+                      src={bannerPreviewUrl}
+                      alt="Banner Preview"
+                      className="w-full h-full object-contain"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => {
+                        setBannerFile(null)
+                        setBannerPreviewUrl(null)
+                        setImageOrientation(null)
+                      }}
+                      className="absolute top-2 right-2 h-7 w-7 rounded-full shadow-md cursor-pointer"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {imageOrientation && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Detected Orientation:</span>
+                      <Badge variant="outline" className={cn(
+                        imageOrientation === "landscape"
+                          ? "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30"
+                          : "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/30"
+                      )}>
+                        {imageOrientation === "landscape" ? "Landscape (Horizontal)" : "Portrait / Square (Vertical)"}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 flex flex-col items-center justify-center text-center gap-2 max-w-[200px] aspect-[4/5] bg-muted/10 hover:bg-muted/20 transition-all">
+                <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-6 flex flex-col items-center justify-center text-center gap-2 max-w-xl bg-muted/10 hover:bg-muted/20 transition-all">
                   <Upload className="h-8 w-8 text-muted-foreground/60" />
-                  <p className="text-xs text-muted-foreground">Upload Banner (4:5)</p>
+                  <p className="text-xs text-muted-foreground">Upload Event Banner (Landscape, Portrait, or Square)</p>
                   <input
                     type="file"
                     accept="image/*"
@@ -421,7 +451,13 @@ export function CreateEventClient({ eventId, initialData }: Props) {
                       const file = e.target.files?.[0]
                       if (file) {
                         setBannerFile(file)
-                        setBannerPreviewUrl(URL.createObjectURL(file))
+                        const previewUrl = URL.createObjectURL(file)
+                        setBannerPreviewUrl(previewUrl)
+                        const img = new Image()
+                        img.src = previewUrl
+                        img.onload = () => {
+                          setImageOrientation(img.width >= img.height ? "landscape" : "portrait")
+                        }
                       }
                     }}
                     className="hidden"
@@ -429,7 +465,7 @@ export function CreateEventClient({ eventId, initialData }: Props) {
                   />
                   <label
                     htmlFor="banner-upload"
-                    className="mt-2 text-xs font-semibold text-primary hover:underline cursor-pointer"
+                    className="mt-1 text-xs font-semibold text-primary hover:underline cursor-pointer"
                   >
                     Select File
                   </label>
