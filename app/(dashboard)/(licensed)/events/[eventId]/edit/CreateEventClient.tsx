@@ -14,11 +14,18 @@ import {
   Loader2,
   Save,
   CheckCircle2,
+  Image as ImageIcon,
+  Upload,
+  X,
+  Plus,
+  Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { createEventAction, updateEventAction } from "../../actions"
 import type { EventFormData, EventStatus, EventTargetingRules } from "../../types"
+import { createClient } from "@/lib/supabase/client"
+import { buildStorageUrl } from "@/lib/storage"
 
 const BRANCHES = [
   "Computer Science",
@@ -76,6 +83,85 @@ export function CreateEventClient({ eventId, initialData }: Props) {
         }
   )
 
+  // Banner State
+  const [bannerFile, setBannerFile] = useState<File | null>(null)
+  const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(
+    (initialData as any)?.event_banner
+      ? buildStorageUrl("event-banners", (initialData as any).event_banner)
+      : null
+  )
+
+  // Agenda State
+  const [agenda, setAgenda] = useState<Array<{ title: string; description: string | null; start_time: string; order_index: number }>>(
+    (initialData as any)?.agenda ?? []
+  )
+
+  // Agenda Form State
+  const [newAgendaTitle, setNewAgendaTitle] = useState("")
+  const [newAgendaTime, setNewAgendaTime] = useState("")
+  const [newAgendaDesc, setNewAgendaDesc] = useState("")
+
+  // Date/Time combination helpers
+  const combineDateAndTime = (dateStr: string, timeStr: string): string => {
+    const dateOnly = dateStr.split("T")[0]
+    return new Date(`${dateOnly}T${timeStr}`).toISOString()
+  }
+
+  const formatTimeOnly = (isoStr: string): string => {
+    if (!isoStr) return ""
+    try {
+      const d = new Date(isoStr)
+      return d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })
+    } catch {
+      return ""
+    }
+  }
+
+  const getHHMM = (isoStr: string): string => {
+    if (!isoStr) return ""
+    try {
+      const d = new Date(isoStr)
+      const hh = String(d.getHours()).padStart(2, "0")
+      const mm = String(d.getMinutes()).padStart(2, "0")
+      return `${hh}:${mm}`
+    } catch {
+      return ""
+    }
+  }
+
+  const handleAddAgendaItem = () => {
+    if (!formData.date) {
+      toast.error("Please set the Event Start Date & Time first.")
+      return
+    }
+    if (!newAgendaTitle.trim()) {
+      toast.error("Please enter a title for the agenda item.")
+      return
+    }
+    if (!newAgendaTime) {
+      toast.error("Please select a start time.")
+      return
+    }
+
+    try {
+      const combinedTime = combineDateAndTime(formData.date, newAgendaTime)
+      setAgenda((prev) => [
+        ...prev,
+        {
+          title: newAgendaTitle.trim(),
+          description: newAgendaDesc.trim() || null,
+          start_time: combinedTime,
+          order_index: prev.length,
+        },
+      ])
+      setNewAgendaTitle("")
+      setNewAgendaTime("")
+      setNewAgendaDesc("")
+    } catch {
+      toast.error("Failed to add agenda item.")
+    }
+  }
+
   const handleSave = (status: EventStatus) => {
     if (!formData.title.trim()) {
       toast.error("Please enter a Title.")
@@ -99,10 +185,63 @@ export function CreateEventClient({ eventId, initialData }: Props) {
       return
     }
 
-    const payload = { ...formData, date: utcIsoDate, status }
-
     startTransition(async () => {
       try {
+        let finalBannerPath = (initialData as any)?.event_banner || null
+
+        // 1. Upload Banner Image if selected
+        if (bannerFile) {
+          const supabaseClient = createClient()
+          const fileExt = bannerFile.name.split(".").pop()
+          const fileName = `${crypto.randomUUID()}.${fileExt}`
+          const filePath = `banners/${fileName}`
+
+          const { error: uploadError } = await supabaseClient.storage
+            .from("event-banners")
+            .upload(filePath, bannerFile)
+
+          if (uploadError) throw uploadError
+          finalBannerPath = filePath
+
+          // Delete old banner if it existed
+          if ((initialData as any)?.event_banner) {
+            await supabaseClient.storage
+              .from("event-banners")
+              .remove([(initialData as any).event_banner])
+          }
+        } else if (!bannerPreviewUrl && (initialData as any)?.event_banner) {
+          // Banner was removed
+          const supabaseClient = createClient()
+          await supabaseClient.storage
+            .from("event-banners")
+            .remove([(initialData as any).event_banner])
+          finalBannerPath = null
+        }
+
+        // 2. Prepare agenda items: sort chronologically on save and shift to event date
+        const eventDatePart = formData.date.split("T")[0]
+        const sortedAgenda = [...agenda].sort(
+          (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+        )
+        const agendaPayload = sortedAgenda.map((item, idx) => {
+          const timePart = getHHMM(item.start_time)
+          const combinedTime = new Date(`${eventDatePart}T${timePart}`).toISOString()
+          return {
+            title: item.title,
+            description: item.description || null,
+            start_time: combinedTime,
+            order_index: idx,
+          }
+        })
+
+        const payload: EventFormData = {
+          ...formData,
+          date: utcIsoDate,
+          status,
+          event_banner: finalBannerPath,
+          agenda: agendaPayload,
+        }
+
         if (eventId) {
           await updateEventAction(eventId, payload)
           toast.success("Event updated successfully!")
@@ -243,6 +382,62 @@ export function CreateEventClient({ eventId, initialData }: Props) {
           </CardContent>
         </Card>
 
+        {/* Event Banner */}
+        <Card>
+          <CardContent className="p-5 space-y-4">
+            <h3 className="font-semibold text-sm border-b pb-2 mb-2 text-foreground/90 flex items-center gap-2">
+              <ImageIcon className="h-4 w-4" /> Event Banner (4:5 Aspect Ratio recommended)
+            </h3>
+            <div className="flex flex-col gap-4">
+              {bannerPreviewUrl ? (
+                <div className="relative max-w-[200px] aspect-[4/5] rounded-lg overflow-hidden border bg-muted">
+                  <img
+                    src={bannerPreviewUrl}
+                    alt="Banner Preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => {
+                      setBannerFile(null)
+                      setBannerPreviewUrl(null)
+                    }}
+                    className="absolute top-2 right-2 h-7 w-7 rounded-full shadow-md"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 flex flex-col items-center justify-center text-center gap-2 max-w-[200px] aspect-[4/5] bg-muted/10 hover:bg-muted/20 transition-all">
+                  <Upload className="h-8 w-8 text-muted-foreground/60" />
+                  <p className="text-xs text-muted-foreground">Upload Banner (4:5)</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        setBannerFile(file)
+                        setBannerPreviewUrl(URL.createObjectURL(file))
+                      }
+                    }}
+                    className="hidden"
+                    id="banner-upload"
+                  />
+                  <label
+                    htmlFor="banner-upload"
+                    className="mt-2 text-xs font-semibold text-primary hover:underline cursor-pointer"
+                  >
+                    Select File
+                  </label>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Schedule & Venue */}
         <Card>
           <CardContent className="p-5 space-y-4">
@@ -284,6 +479,106 @@ export function CreateEventClient({ eventId, initialData }: Props) {
                 value={formData.venue}
                 onChange={(e) => setFormData((p) => ({ ...p, venue: e.target.value }))}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Event Agenda */}
+        <Card>
+          <CardContent className="p-5 space-y-4">
+            <h3 className="font-semibold text-sm border-b pb-2 mb-2 text-foreground/90 flex items-center gap-2">
+              <Clock className="h-4 w-4" /> Event Agenda
+            </h3>
+
+            {/* Existing Agenda Items */}
+            {agenda.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No agenda items added yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {[...agenda]
+                  .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+                  .map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-start justify-between p-3 rounded-lg border bg-muted/10 gap-3 text-xs"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                            {formatTimeOnly(item.start_time)}
+                          </span>
+                          <span className="font-semibold text-foreground">{item.title}</span>
+                        </div>
+                        {item.description && (
+                          <p className="text-muted-foreground whitespace-pre-line pl-1.5 mt-1">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-destructive hover:text-destructive/80 hover:bg-destructive/10 shrink-0"
+                        onClick={() => {
+                          setAgenda((prev) => prev.filter((_, i) => i !== idx))
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            {/* Add Agenda Item Form */}
+            <div className="border rounded-lg p-4 bg-muted/20 space-y-3">
+              <h4 className="font-semibold text-xs text-foreground/80">Add Agenda Item</h4>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="sm:col-span-2 space-y-1.5">
+                  <Label htmlFor="agenda-title" className="text-xs">
+                    Title *
+                  </Label>
+                  <Input
+                    id="agenda-title"
+                    placeholder="e.g. Keynote Speech / Networking Session"
+                    value={newAgendaTitle}
+                    onChange={(e) => setNewAgendaTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="agenda-time" className="text-xs">
+                    Start Time *
+                  </Label>
+                  <Input
+                    id="agenda-time"
+                    type="time"
+                    value={newAgendaTime}
+                    onChange={(e) => setNewAgendaTime(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="agenda-desc" className="text-xs">
+                  Description
+                </Label>
+                <Textarea
+                  id="agenda-desc"
+                  placeholder="Provide details about the session..."
+                  value={newAgendaDesc}
+                  onChange={(e) => setNewAgendaDesc(e.target.value)}
+                  rows={2}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddAgendaItem}
+                className="gap-1 text-xs"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add to Agenda
+              </Button>
             </div>
           </CardContent>
         </Card>

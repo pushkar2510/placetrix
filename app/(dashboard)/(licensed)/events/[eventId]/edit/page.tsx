@@ -25,7 +25,10 @@ export default async function EventEditorPage({ params }: Props) {
     const supabase = await createClient()
     const { data: eventData, error } = await (supabase as any)
       .from("events")
-      .select("*")
+      .select(`
+        *,
+        event_agenda(*)
+      `)
       .eq("id", eventId)
       .maybeSingle()
 
@@ -43,6 +46,15 @@ export default async function EventEditorPage({ params }: Props) {
       status: eventData.status,
       targeting_rules: eventData.targeting_rules ?? { years: [], branches: [] },
       duration_minutes: eventData.duration_minutes ?? 120,
+      event_banner: eventData.event_banner ?? null,
+      agenda: (eventData.event_agenda ?? [])
+        .sort((a: any, b: any) => a.order_index - b.order_index)
+        .map((item: any) => ({
+          title: item.title,
+          description: item.description ?? "",
+          start_time: item.start_time,
+          order_index: item.order_index,
+        })),
     }
   }
 

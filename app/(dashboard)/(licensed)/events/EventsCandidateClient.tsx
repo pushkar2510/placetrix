@@ -48,6 +48,7 @@ import {
   CalendarClock,
   PlayCircle,
   FileText,
+  Info,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -301,20 +302,30 @@ function CandidateEventCard({
           </div>
 
           <div className="flex items-center gap-1.5 w-full md:w-auto md:justify-end">
-            {!hasTicket && !isPast ? (
-              <Button
-                size="sm"
-                onClick={handleRSVP}
-                disabled={isPending}
-                className="w-full md:w-auto gap-1 text-xs cursor-pointer"
-              >
-                {isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Ticket className="h-3.5 w-3.5" />
+            {!hasTicket ? (
+              <>
+                <Link href={`/events/${event.id}`} className="w-full md:w-auto">
+                  <Button size="sm" variant="outline" className="w-full md:w-auto gap-1.5 text-xs cursor-pointer">
+                    <Info className="h-3.5 w-3.5" />
+                    View Details
+                  </Button>
+                </Link>
+                {!isPast && (
+                  <Button
+                    size="sm"
+                    onClick={handleRSVP}
+                    disabled={isPending}
+                    className="w-full md:w-auto gap-1 text-xs cursor-pointer"
+                  >
+                    {isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Ticket className="h-3.5 w-3.5" />
+                    )}
+                    RSVP
+                  </Button>
                 )}
-                RSVP
-              </Button>
+              </>
             ) : (
               hasTicket && (
                 <>

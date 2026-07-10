@@ -11,6 +11,15 @@ export interface EventTargetingRules {
   branches: string[]
 }
 
+export interface EventAgendaItem {
+  id: string
+  event_id: string
+  title: string
+  description: string | null
+  start_time: string
+  order_index: number
+}
+
 export interface EventListItem {
   id: string
   title: string
@@ -21,6 +30,7 @@ export interface EventListItem {
   status: EventStatus
   targeting_rules: EventTargetingRules
   duration_minutes: number
+  event_banner: string | null
   created_at: string
   updated_at: string
   // Computed
@@ -52,6 +62,7 @@ export interface CandidateEventListItem {
   capacity: number
   status: EventStatus
   duration_minutes: number
+  event_banner: string | null
   created_at: string
   tickets_confirmed: number
   // Candidate's own ticket info
@@ -69,4 +80,7 @@ export interface EventFormData {
   status: EventStatus
   targeting_rules: EventTargetingRules
   duration_minutes: number
+  event_banner?: string | null
+  agenda?: Omit<EventAgendaItem, "id" | "event_id">[]
 }
+

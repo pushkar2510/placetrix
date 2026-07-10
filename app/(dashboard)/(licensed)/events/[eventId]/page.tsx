@@ -33,7 +33,10 @@ export default async function EventDetailPage({ params }: { params: Promise<Para
   // Fetch event
   const { data: event, error: eventError } = await (supabase as any)
     .from("events")
-    .select("*")
+    .select(`
+      *,
+      event_agenda(*)
+    `)
     .eq("id", eventId)
     .maybeSingle()
 
@@ -119,7 +122,18 @@ export default async function EventDetailPage({ params }: { params: Promise<Para
         capacity: event.capacity,
         status: event.status,
         duration_minutes: event.duration_minutes ?? 120,
+        event_banner: event.event_banner ?? null,
       }}
+      agenda={(event.event_agenda ?? [])
+        .sort((a: any, b: any) => a.order_index - b.order_index)
+        .map((item: any) => ({
+          id: item.id,
+          event_id: item.event_id,
+          title: item.title,
+          description: item.description,
+          start_time: item.start_time,
+          order_index: item.order_index,
+        }))}
       ticket={myTicket ? {
         id: myTicket.id,
         status: myTicket.status,

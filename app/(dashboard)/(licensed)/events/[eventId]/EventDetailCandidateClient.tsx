@@ -5,23 +5,35 @@
 // Candidate view: QR ticket, event info, live Q&A
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useTransition } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import QRCode from "qrcode"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import {
   ArrowLeft,
   Clock,
   MapPin,
   CheckCircle2,
   Hourglass,
-  QrCode,
   Ticket,
   UserCheck,
+  Loader2,
 } from "lucide-react"
-import type { EventStatus, TicketStatus, AttendanceStatus } from "../types"
-
+import { cn } from "@/lib/utils"
+import { toast } from "sonner"
+import { buildStorageUrl } from "@/lib/storage"
+import { rsvpEventAction } from "../actions"
+import type { EventStatus, TicketStatus, AttendanceStatus, EventAgendaItem } from "../types"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -29,6 +41,17 @@ function formatDateTime(dt: string): string {
   return new Date(dt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })
 }
 
+function formatTimeOnly(dtStr: string): string {
+  try {
+    return new Date(dtStr).toLocaleTimeString("en-IN", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+  } catch {
+    return ""
+  }
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,6 +64,7 @@ interface EventInfo {
   capacity: number
   status: EventStatus
   duration_minutes: number
+  event_banner: string | null
 }
 
 interface TicketInfo {
@@ -48,16 +72,6 @@ interface TicketInfo {
   status: TicketStatus
   attendance_status: AttendanceStatus
 }
-
-interface Question {
-  id: string
-  candidate_id: string
-  question: string
-  upvotes_count: number
-  is_answered: boolean
-  created_at: string
-}
-
 
 // ─── QR Ticket Card ──────────────────────────────────────────────────────────
 
@@ -81,7 +95,7 @@ function QRTicketCard({
   }, [ticket.id])
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden border-none shadow-none bg-transparent">
       <CardContent className="p-5">
         <div className="flex flex-col items-center text-center">
           {/* Status */}
@@ -103,19 +117,19 @@ function QRTicketCard({
           </div>
 
           {/* QR Code */}
-          {ticket.status === "Confirmed" && qrDataUrl && (
+          {ticket.status === "Confirmed" && qrDataUrl ? (
             <div className="bg-white p-3 rounded-xl shadow-sm mb-3">
               <img src={qrDataUrl} alt="QR Ticket" className="w-48 h-48" />
             </div>
-          )}
-
-          {ticket.status === "Waitlisted" && (
-            <div className="bg-muted rounded-xl p-8 mb-3 flex flex-col items-center gap-2">
-              <Hourglass className="h-10 w-10 text-amber-500" />
-              <p className="text-sm text-muted-foreground">
-                Your QR ticket will appear here once you're confirmed.
-              </p>
-            </div>
+          ) : (
+            ticket.status === "Waitlisted" && (
+              <div className="bg-muted rounded-xl p-8 mb-3 flex flex-col items-center gap-2">
+                <Hourglass className="h-10 w-10 text-amber-500" />
+                <p className="text-xs text-muted-foreground">
+                  Your QR ticket will appear here once you're confirmed.
+                </p>
+              </div>
+            )
           )}
 
           {/* Details */}
@@ -130,18 +144,37 @@ function QRTicketCard({
   )
 }
 
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 interface Props {
   event: EventInfo
+  agenda: EventAgendaItem[]
   ticket: TicketInfo | null
   candidateName: string
 }
 
-export function EventDetailCandidateClient({ event, ticket, candidateName }: Props) {
+export function EventDetailCandidateClient({ event, agenda, ticket, candidateName }: Props) {
+  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
+
+  const handleRSVP = () => {
+    startTransition(async () => {
+      try {
+        const result = await rsvpEventAction(event.id)
+        if (result.status === "Waitlisted") {
+          toast.info("Event is at capacity. You've been added to the waitlist.")
+        } else {
+          toast.success("RSVP confirmed! Check your ticket below.")
+        }
+        router.refresh()
+      } catch (err: any) {
+        toast.error(err.message || "Failed to RSVP.")
+      }
+    })
+  }
+
   return (
-    <div className="flex flex-col gap-5 p-4 md:p-6 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-6 p-4 md:p-6 max-w-3xl mx-auto w-full">
       {/* Back */}
       <Link
         href="/events"
@@ -150,40 +183,119 @@ export function EventDetailCandidateClient({ event, ticket, candidateName }: Pro
         <ArrowLeft className="h-4 w-4" /> Back to Events
       </Link>
 
-      {/* Event Info */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{event.title}</h1>
-        {event.description && (
-          <p className="text-sm text-muted-foreground mt-1">{event.description}</p>
+      {/* 4:5 Aspect Ratio Banner */}
+      <div className="w-full max-w-md mx-auto aspect-[4/5] relative rounded-2xl overflow-hidden border shadow-xs bg-muted shrink-0">
+        {event.event_banner ? (
+          <img
+            src={buildStorageUrl("event-banners", event.event_banner) || ""}
+            alt={event.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-pink-500/20 flex flex-col items-center justify-center p-6 text-center gap-2">
+            <Ticket className="h-12 w-12 text-primary/40 animate-pulse" />
+            <span className="text-xs text-muted-foreground font-medium">PlaceTrix Campus Event</span>
+          </div>
         )}
-        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground mt-3">
-          <span className="flex items-center gap-1.5">
-            <Clock className="h-4 w-4" /> {formatDateTime(event.date)}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <MapPin className="h-4 w-4" /> {event.venue}
-          </span>
+      </div>
+
+      {/* Event Info */}
+      <div className="space-y-4">
+        <div>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <Badge variant="outline" className={cn(
+              event.status === "Published" 
+                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" 
+                : "bg-muted text-muted-foreground"
+            )}>
+              {event.status}
+            </Badge>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{event.title}</h1>
+        </div>
+
+        {event.description && (
+          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{event.description}</p>
+        )}
+
+        <div className="grid gap-3 text-sm text-muted-foreground border-y py-4">
+          <div className="flex items-center gap-2.5">
+            <Clock className="h-4 w-4 text-primary" />
+            <span>{formatDateTime(event.date)} ({event.duration_minutes} Minutes)</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <MapPin className="h-4 w-4 text-primary" />
+            <span>{event.venue}</span>
+          </div>
         </div>
       </div>
 
-      {/* Ticket */}
-      {ticket ? (
-        <QRTicketCard
-          ticket={ticket}
-          candidateName={candidateName}
-          eventTitle={event.title}
-        />
-      ) : (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <Ticket className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="font-medium text-muted-foreground">No ticket yet</p>
-            <p className="text-sm text-muted-foreground/80 mt-1">
-              RSVP from the Events page to get your QR ticket.
-            </p>
+      {/* Chronological Agenda */}
+      {agenda && agenda.length > 0 && (
+        <Card className="border">
+          <CardContent className="p-5 space-y-4">
+            <h3 className="font-semibold text-base text-foreground">Agenda</h3>
+            <div className="relative pl-6 border-l border-border/80 space-y-6">
+              {agenda.map((item, idx) => (
+                <div key={item.id || idx} className="relative space-y-1">
+                  {/* Dot on Timeline */}
+                  <div className="absolute -left-[31px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span className="text-[10px] font-bold text-primary font-mono bg-primary/5 border border-primary/10 px-1.5 py-0.5 rounded">
+                      {formatTimeOnly(item.start_time)}
+                    </span>
+                    <h4 className="text-sm font-semibold text-foreground">{item.title}</h4>
+                  </div>
+                  {item.description && (
+                    <p className="text-xs text-muted-foreground leading-relaxed pl-0.5">
+                      {item.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
+
+      {/* View Ticket / RSVP Action Button */}
+      <div className="pt-4 border-t mt-2">
+        {ticket ? (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="w-full gap-2 cursor-pointer" size="lg">
+                <Ticket className="h-5 w-5" /> View Ticket
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md p-0 border bg-card">
+              <DialogHeader className="p-4 border-b">
+                <DialogTitle className="text-center font-bold">Your Entry Ticket</DialogTitle>
+              </DialogHeader>
+              <div className="p-4 bg-muted/10">
+                <QRTicketCard
+                  ticket={ticket}
+                  candidateName={candidateName}
+                  eventTitle={event.title}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <Button
+            className="w-full gap-2 cursor-pointer"
+            size="lg"
+            onClick={handleRSVP}
+            disabled={isPending || event.status === "Concluded"}
+          >
+            {isPending ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Ticket className="h-5 w-5" />
+            )}
+            {event.status === "Concluded" ? "Event Ended" : "RSVP to Event"}
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

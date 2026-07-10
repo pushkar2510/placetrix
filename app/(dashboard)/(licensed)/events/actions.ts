@@ -43,6 +43,7 @@ export async function createEventAction(data: EventFormData) {
       status: data.status,
       targeting_rules: data.targeting_rules,
       duration_minutes: data.duration_minutes,
+      event_banner: data.event_banner || null,
     })
     .select("id")
     .maybeSingle()
@@ -50,6 +51,23 @@ export async function createEventAction(data: EventFormData) {
   if (error || !event) {
     console.error("Error creating event:", error)
     throw new Error(error?.message || "Failed to create event.")
+  }
+
+  if (data.agenda && data.agenda.length > 0) {
+    const agendaRows = data.agenda.map((item) => ({
+      event_id: event.id,
+      title: item.title,
+      description: item.description || null,
+      start_time: item.start_time,
+      order_index: item.order_index,
+    }))
+    const { error: agendaError } = await (supabase as any)
+      .from("event_agenda")
+      .insert(agendaRows)
+    if (agendaError) {
+      console.error("Error creating event agenda:", agendaError)
+      throw new Error("Failed to save event agenda.")
+    }
   }
 
   revalidatePath("/events")
@@ -71,12 +89,40 @@ export async function updateEventAction(eventId: string, data: EventFormData) {
       status: data.status,
       targeting_rules: data.targeting_rules,
       duration_minutes: data.duration_minutes,
+      event_banner: data.event_banner || null,
     })
     .eq("id", eventId)
 
   if (error) {
     console.error("Error updating event:", error)
     throw new Error(error.message || "Failed to update event.")
+  }
+
+  const { error: deleteError } = await (supabase as any)
+    .from("event_agenda")
+    .delete()
+    .eq("event_id", eventId)
+
+  if (deleteError) {
+    console.error("Error deleting old agenda:", deleteError)
+    throw new Error("Failed to update event agenda.")
+  }
+
+  if (data.agenda && data.agenda.length > 0) {
+    const agendaRows = data.agenda.map((item) => ({
+      event_id: eventId,
+      title: item.title,
+      description: item.description || null,
+      start_time: item.start_time,
+      order_index: item.order_index,
+    }))
+    const { error: agendaError } = await (supabase as any)
+      .from("event_agenda")
+      .insert(agendaRows)
+    if (agendaError) {
+      console.error("Error updating event agenda:", agendaError)
+      throw new Error("Failed to save event agenda.")
+    }
   }
 
   revalidatePath("/events")
