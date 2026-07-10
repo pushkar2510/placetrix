@@ -38,6 +38,7 @@ import {
   X,
   Loader2,
   SlidersHorizontal,
+  ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { CandidateTest, DerivedCandidateStatus } from "./_types"
@@ -139,161 +140,189 @@ function StatChip({
   )
 }
 
-function CandidateStatus({
-  test,
-  isSubmitted,
-  isInProgress,
-}: {
-  test: CandidateTest
-  isSubmitted: boolean
-  isInProgress: boolean
-}) {
+function AttemptStatusChip({ test }: { test: CandidateTest }) {
+  const isSubmitted = test.attempt?.status === "submitted"
+  const isInProgress = test.attempt?.status === "in_progress"
+
   if (test.derived_status === "past" && !test.attempt) {
     return (
-      <div className="flex flex-wrap items-center gap-2 text-xs md:justify-end">
-        <span className="inline-flex items-center gap-1.5 font-medium text-muted-foreground">
-          <AlertCircle className="h-3.5 w-3.5" />
-          Not attempted
-        </span>
-      </div>
+      <StatChip icon={<AlertCircle className="h-3.5 w-3.5" />} tone="neutral">
+        Not attempted
+      </StatChip>
     )
   }
 
   if (isInProgress) {
     return (
-      <div className="flex flex-wrap items-center gap-2 text-xs md:justify-end">
-        <span className="inline-flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-300">
-          <Clock className="h-3.5 w-3.5" />
-          In progress
-        </span>
-      </div>
+      <StatChip icon={<Clock className="h-3.5 w-3.5" />} tone="amber">
+        In progress
+      </StatChip>
     )
   }
 
-  if (isSubmitted) {
+  if (isSubmitted && test.attempt) {
+    const hasScore = test.results_available && test.attempt.percentage != null
+    const label = hasScore
+      ? `Submitted: ${test.attempt.score}/${test.attempt.total_marks} (${(test.attempt.percentage ?? 0).toFixed(1)}%)`
+      : "Submitted"
     return (
-      <div className="flex flex-col gap-1 md:items-end">
-        <span className="text-xs font-medium text-foreground">
-          {test.attempt?.submitted_at ? (
-            <>Submitted {formatDateTime(test.attempt.submitted_at)}</>
-          ) : (
-            "Submitted"
-          )}
-        </span>
-
-        {test.results_available && (
-          test.attempt?.percentage != null ? (
-            <span className="inline-flex w-fit items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300">
-              {test.attempt.score}/{test.attempt.total_marks}
-              <span className="ml-1 font-normal text-violet-600/80 dark:text-violet-300/80">
-                ({test.attempt.percentage.toFixed(1)}%)
-              </span>
-            </span>
-          ) : (
-            <span className="text-[11px] text-muted-foreground italic">Score hidden</span>
-          )
-        )}
-      </div>
-    )
-  }
-
-  if (test.derived_status === "upcoming") {
-    return (
-      <span className="text-xs font-medium text-sky-700 dark:text-sky-300">
-        {test.available_from ? (
-          <>Opens {formatDateTime(test.available_from)}</>
-        ) : (
-          <span className="italic text-muted-foreground">Schedule not set</span>
-        )}
-      </span>
+      <StatChip icon={<CheckCircle2 className="h-3.5 w-3.5" />} tone="neutral">
+        {label}
+      </StatChip>
     )
   }
 
   if (test.derived_status === "live") {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 md:justify-end">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-        Available now
-      </span>
+      <StatChip icon={<PlayCircle className="h-3.5 w-3.5" />} tone="emerald">
+        Available
+      </StatChip>
     )
   }
 
   return null
 }
 
-function TestCard({ test }: { test: CandidateTest }) {
+function renderMobileAttemptStatus(test: CandidateTest) {
   const isSubmitted = test.attempt?.status === "submitted"
   const isInProgress = test.attempt?.status === "in_progress"
 
+  if (test.derived_status === "past" && !test.attempt) {
+    return <span className="text-muted-foreground font-medium">Not attempted</span>
+  }
+
+  if (isInProgress) {
+    return <span className="text-amber-600 dark:text-amber-400 font-medium">In progress</span>
+  }
+
+  if (isSubmitted && test.attempt) {
+    const hasScore = test.results_available && test.attempt.percentage != null
+    const label = hasScore
+      ? `Submitted: ${test.attempt.score}/${test.attempt.total_marks}`
+      : "Submitted"
+    return <span className="text-muted-foreground font-medium">{label}</span>
+  }
+
+  if (test.derived_status === "live") {
+    return <span className="text-emerald-600 dark:text-emerald-400 font-medium">Available</span>
+  }
+
+  return null
+}
+
+function TestCard({ test }: { test: CandidateTest }) {
   return (
-    <Card className="overflow-hidden border-border/70 bg-card p-0">
-      <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:gap-4 md:p-5">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="min-w-0 text-sm md:text-base font-semibold leading-tight text-foreground">
-              {test.title}
-            </h3>
-            <StatusBadge status={test.derived_status} />
-          </div>
+    <Card className="overflow-hidden border-border/70 bg-card p-0 shadow-xs">
+      <Link 
+        href={`tests/${test.id}`}
+        className="block hover:bg-muted/30 transition-colors"
+      >
+        {/* Mobile Compact View */}
+        <div className="block md:hidden p-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-2 w-full min-w-0">
+                <h4 className="font-semibold text-sm text-foreground truncate leading-snug min-w-0 flex-1">
+                  {test.title}
+                </h4>
+                <div className="shrink-0">
+                  <StatusBadge status={test.derived_status} />
+                </div>
+              </div>
+              
+              <p className={cn(
+                "text-xs line-clamp-1",
+                test.description ? "text-muted-foreground" : "italic text-muted-foreground/60"
+              )}>
+                {test.description ?? "No description provided"}
+              </p>
 
-          {test.description && (
-            <p className="mt-1 line-clamp-1 text-xs leading-5 text-muted-foreground">
-              {test.description}
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 shrink-0" />
+                  {test.time_limit_seconds ? formatDuration(test.time_limit_seconds) : "Untimed"}
+                </span>
+                <span>•</span>
+                {test.derived_status === "upcoming" && test.available_from && (
+                  <>
+                    <span>Opens: {formatDateTime(test.available_from)}</span>
+                    <span>•</span>
+                  </>
+                )}
+                {test.derived_status === "live" && (
+                  <>
+                    <span>Ends: {test.available_until ? formatDateTime(test.available_until) : "No deadline"}</span>
+                    <span>•</span>
+                  </>
+                )}
+                {test.derived_status === "past" && test.available_until && (
+                  <>
+                    <span>Ended: {formatDateTime(test.available_until)}</span>
+                    <span>•</span>
+                  </>
+                )}
+                {renderMobileAttemptStatus(test)}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Card View */}
+        <div className="hidden md:flex flex-row items-center justify-between gap-4 p-5">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 w-full min-w-0">
+              <h3 className="min-w-0 flex-1 text-base font-semibold leading-tight text-foreground truncate">
+                {test.title}
+              </h3>
+              <div className="shrink-0">
+                <StatusBadge status={test.derived_status} />
+              </div>
+            </div>
+
+            <p className={cn(
+              "mt-1 line-clamp-1 text-xs leading-5",
+              test.description ? "text-muted-foreground" : "italic text-muted-foreground/60"
+            )}>
+              {test.description ?? "No description provided"}
             </p>
-          )}
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            <StatChip
-              icon={<Clock className="h-3.5 w-3.5" />}
-              tone="neutral"
-            >
-              {test.time_limit_seconds ? formatDuration(test.time_limit_seconds) : "Untimed"}
-            </StatChip>
-
-            {test.derived_status === "upcoming" && test.available_from && (
-              <StatChip icon={<CalendarClock className="h-3.5 w-3.5" />} tone="neutral">
-                Starts: {formatDateTime(test.available_from)}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <StatChip
+                icon={<Clock className="h-3.5 w-3.5" />}
+                tone="neutral"
+              >
+                {test.time_limit_seconds ? formatDuration(test.time_limit_seconds) : "Untimed"}
               </StatChip>
-            )}
 
-            {test.derived_status === "live" && (
-              test.available_until ? (
+              {test.derived_status === "upcoming" && test.available_from && (
                 <StatChip icon={<CalendarClock className="h-3.5 w-3.5" />} tone="neutral">
-                  Ends: {formatDateTime(test.available_until)}
+                  Starts: {formatDateTime(test.available_from)}
                 </StatChip>
-              ) : (
-                <StatChip icon={<CalendarClock className="h-3.5 w-3.5" />} tone="neutral">
-                  No deadline
-                </StatChip>
-              )
-            )}
+              )}
 
-            {test.derived_status === "past" && test.available_until && (
-              <StatChip icon={<CalendarClock className="h-3.5 w-3.5" />} tone="neutral">
-                Ended: {formatDateTime(test.available_until)}
-              </StatChip>
-            )}
+              {test.derived_status === "live" && (
+                test.available_until ? (
+                  <StatChip icon={<CalendarClock className="h-3.5 w-3.5" />} tone="neutral">
+                    Ends: {formatDateTime(test.available_until)}
+                  </StatChip>
+                ) : (
+                  <StatChip icon={<CalendarClock className="h-3.5 w-3.5" />} tone="neutral">
+                    No deadline
+                  </StatChip>
+                )
+              )}
+
+              {test.derived_status === "past" && test.available_until && (
+                <StatChip icon={<CalendarClock className="h-3.5 w-3.5" />} tone="neutral">
+                  Ended: {formatDateTime(test.available_until)}
+                </StatChip>
+              )}
+
+              <AttemptStatusChip test={test} />
+            </div>
           </div>
         </div>
-        <div className="flex flex-col gap-3 border-t border-border/60 pt-3 md:min-w-[220px] md:items-end md:pt-0 md:border-t-0 md:text-right">
-          <div className="md:items-end">
-            <CandidateStatus
-              test={test}
-              isSubmitted={isSubmitted}
-              isInProgress={isInProgress}
-            />
-          </div>
-
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="w-full md:w-auto md:self-end"
-          >
-            <Link href={`tests/${test.id}`}>View Details</Link>
-          </Button>
-        </div>
-      </div>
+      </Link>
     </Card>
   )
 }
@@ -322,7 +351,6 @@ function EmptyState({ label }: { label: string }) {
 interface Props {
   tests: CandidateTest[]
   serverNow: string
-  initialPage: number
   initialPageSize: number
   initialSearch: string
   initialTab: string
@@ -333,7 +361,6 @@ interface Props {
 export function CandidateTestsClient({
   tests,
   serverNow,
-  initialPage,
   initialPageSize,
   initialSearch,
   initialTab,
@@ -384,7 +411,7 @@ export function CandidateTestsClient({
 
     const timer = setTimeout(() => {
       isOwnUpdateRef.current = true
-      updateParams({ search: searchInput, page: 1 })
+      updateParams({ search: searchInput })
     }, 400)
     return () => clearTimeout(timer)
   }, [searchInput, initialSearch, updateParams])
@@ -409,7 +436,7 @@ export function CandidateTestsClient({
 
   // Infinite scroll states
   const [items, setItems] = useState<CandidateTest[]>(tests)
-  const [page, setPage] = useState(initialPage)
+  const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(tests.length < totalCount)
   const [loadingMore, setLoadingMore] = useState(false)
 
@@ -499,7 +526,7 @@ export function CandidateTestsClient({
       <div className="flex flex-col gap-1.5">
         <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Tests</h1>
         <p className="text-sm text-muted-foreground">
-          {totalCount} test{totalCount !== 1 ? "s" : ""} assigned to you
+          Browse and attempt your mock tests
         </p>
       </div>
 
@@ -525,7 +552,7 @@ export function CandidateTestsClient({
                   onClick={() => {
                     isOwnUpdateRef.current = true
                     setSearchInput("")
-                    updateParams({ search: "", page: 1 })
+                    updateParams({ search: "" })
                   }}
                   className="absolute right-2.5 top-2.5 h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -561,7 +588,7 @@ export function CandidateTestsClient({
                       {tabConfig.map(({ value, label, icon, count }) => (
                         <button
                           key={value}
-                          onClick={() => updateParams({ tab: value, page: 1 })}
+                          onClick={() => updateParams({ tab: value })}
                           className={cn(
                             "flex items-center justify-between w-full px-3 py-2 text-sm rounded-lg border text-left transition-colors",
                             activeTab === value
@@ -596,7 +623,7 @@ export function CandidateTestsClient({
             >
               Status: <span className="capitalize font-semibold">{activeTab}</span>
               <button
-                onClick={() => updateParams({ tab: "all", page: 1 })}
+                onClick={() => updateParams({ tab: "all" })}
                 className="rounded-full p-0.5 hover:bg-muted-foreground/20 text-muted-foreground transition-colors"
               >
                 <X className="h-3 w-3" />
@@ -605,7 +632,7 @@ export function CandidateTestsClient({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => updateParams({ tab: "all", page: 1 })}
+              onClick={() => updateParams({ tab: "all" })}
               className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
             >
               Clear all

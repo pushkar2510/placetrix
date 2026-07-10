@@ -25,7 +25,6 @@ export default async function TestsPage(props: {
   if (!profile) return null
 
   const params = await props.searchParams
-  const page = Math.max(1, parseInt(params.page || "1", 10))
   const size = Math.max(1, parseInt(params.size || "10", 10))
   const search = params.search || ""
   const tab = params.tab || ""
@@ -34,7 +33,7 @@ export default async function TestsPage(props: {
 
   if (profile.account_type === "institute_candidate") {
     const { tests, count, tabCounts } = await getCandidateTestsAction({
-      page,
+      page: 1,
       size,
       search,
       tab,
@@ -44,7 +43,6 @@ export default async function TestsPage(props: {
       <CandidateTestsClient
         tests={tests}
         serverNow={nowStr}
-        initialPage={page}
         initialPageSize={size}
         initialSearch={search}
         initialTab={tab || "all"}
@@ -56,7 +54,7 @@ export default async function TestsPage(props: {
 
   if (profile.account_type === "institute_staff" || profile.account_type === "institute_placement_officer" || profile.account_type === "institute_primary") {
     const { tests, count, tabCounts } = await getInstituteTestsAction({
-      page,
+      page: 1,
       size,
       search,
       tab,
@@ -66,7 +64,6 @@ export default async function TestsPage(props: {
       <InstituteTestsClient
         tests={tests}
         serverNow={nowStr}
-        initialPage={page}
         initialPageSize={size}
         initialSearch={search}
         initialTab={tab || "all"}

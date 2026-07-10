@@ -116,8 +116,6 @@ export default async function OpportunitiesPage() {
     return (
       <OpportunitiesStaffClient
         opportunities={oppListWithCount}
-        applications={applicationsMap}
-        companies={companies || []}
       />
     )
   }
