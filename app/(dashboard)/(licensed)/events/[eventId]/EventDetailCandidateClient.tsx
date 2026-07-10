@@ -20,6 +20,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
   ArrowLeft,
   Clock,
   MapPin,
@@ -32,7 +43,7 @@ import {
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { buildStorageUrl } from "@/lib/storage"
-import { rsvpEventAction } from "../actions"
+import { rsvpEventAction, cancelRsvpAction } from "../actions"
 import type { EventStatus, TicketStatus, AttendanceStatus, EventAgendaItem } from "../types"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -67,7 +78,7 @@ interface EventInfo {
   event_banner: string | null
 }
 
-interface TicketInfo {
+export interface TicketInfo {
   id: string
   status: TicketStatus
   attendance_status: AttendanceStatus
@@ -75,7 +86,7 @@ interface TicketInfo {
 
 // ─── QR Ticket Card ──────────────────────────────────────────────────────────
 
-function QRTicketCard({
+export function QRTicketCard({
   ticket,
   candidateName,
   eventTitle,
@@ -173,6 +184,18 @@ export function EventDetailCandidateClient({ event, agenda, ticket, candidateNam
     })
   }
 
+  const handleCancel = () => {
+    startTransition(async () => {
+      try {
+        await cancelRsvpAction(event.id)
+        toast.success("RSVP cancelled.")
+        router.refresh()
+      } catch (err: any) {
+        toast.error(err.message || "Failed to cancel RSVP.")
+      }
+    })
+  }
+
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6 max-w-3xl mx-auto w-full">
       {/* Back */}
@@ -259,27 +282,62 @@ export function EventDetailCandidateClient({ event, agenda, ticket, candidateNam
       )}
 
       {/* View Ticket / RSVP Action Button */}
-      <div className="pt-4 border-t mt-2">
+      <div className="pt-4 border-t mt-2 flex flex-col gap-2">
         {ticket ? (
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="w-full gap-2 cursor-pointer" size="lg">
-                <Ticket className="h-5 w-5" /> View Ticket
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md p-0 border bg-card">
-              <DialogHeader className="p-4 border-b">
-                <DialogTitle className="text-center font-bold">Your Entry Ticket</DialogTitle>
-              </DialogHeader>
-              <div className="p-4 bg-muted/10">
-                <QRTicketCard
-                  ticket={ticket}
-                  candidateName={candidateName}
-                  eventTitle={event.title}
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
+          <>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="w-full gap-2 cursor-pointer" size="lg">
+                  <Ticket className="h-5 w-5" /> View Ticket
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md p-0 border bg-card">
+                <DialogHeader className="p-4 border-b">
+                  <DialogTitle className="text-center font-bold">Your Entry Ticket</DialogTitle>
+                </DialogHeader>
+                <div className="p-4 bg-muted/10">
+                  <QRTicketCard
+                    ticket={ticket}
+                    candidateName={candidateName}
+                    eventTitle={event.title}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {event.status !== "Concluded" && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full text-destructive hover:bg-destructive/5 hover:text-destructive border-destructive/20 cursor-pointer animate-in fade-in duration-300"
+                    size="lg"
+                  >
+                    Cancel RSVP
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel your RSVP?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      You will lose your spot. If the event is full, you'll need to rejoin the waitlist.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep My Spot</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleCancel}
+                      disabled={isPending}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+                    >
+                      {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Cancel RSVP
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </>
         ) : (
           <Button
             className="w-full gap-2 cursor-pointer"

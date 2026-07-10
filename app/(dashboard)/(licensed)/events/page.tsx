@@ -310,6 +310,7 @@ export default async function EventsPage(props: {
       initialTab={tab || "upcoming"}
       totalCount={count}
       tabCounts={tabCounts}
+      candidateName={profile.full_name}
     />
   )
 }

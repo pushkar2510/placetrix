@@ -16,16 +16,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { QRTicketCard } from "./[eventId]/EventDetailCandidateClient"
 import {
   Calendar,
   Search,
@@ -39,7 +36,6 @@ import {
   Hourglass,
   Loader2,
   QrCode,
-  CalendarPlus,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -52,7 +48,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { rsvpEventAction, cancelRsvpAction } from "./actions"
+import { rsvpEventAction } from "./actions"
 import type { CandidateEventListItem, TicketStatus } from "./types"
 
 type Tab = "upcoming" | "my" | "past"
@@ -71,25 +67,7 @@ function formatDateTime(dt: string): string {
   })
 }
 
-function addToGoogleCalendar(event: CandidateEventListItem) {
-  const startDate = new Date(event.date)
-  const duration = event.duration_minutes ?? 120
-  const endDate = new Date(startDate.getTime() + duration * 60 * 1000)
 
-  const toGCalDate = (d: Date) =>
-    d
-      .toISOString()
-      .replace(/[-:]/g, "")
-      .replace(/\.\d{3}/, "")
-
-  const title = encodeURIComponent(event.title)
-  const dates = encodeURIComponent(`${toGCalDate(startDate)}/${toGCalDate(endDate)}`)
-  const details = encodeURIComponent(event.description || "Campus event on PlaceTrix")
-  const location = encodeURIComponent(event.venue)
-
-  const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${details}&location=${location}`
-  window.open(url, "_blank")
-}
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function StatusBadge({
@@ -212,9 +190,11 @@ function TicketStatusDisplay({
 // ─── Event Card ───────────────────────────────────────────────────────────────
 function CandidateEventCard({
   event,
+  candidateName,
   onRefresh,
 }: {
   event: CandidateEventListItem
+  candidateName: string
   onRefresh: () => void
 }) {
   const [isPending, startTransition] = useTransition()
@@ -231,18 +211,6 @@ function CandidateEventCard({
         } else {
           toast.success("RSVP confirmed! Check your ticket below.")
         }
-        onRefresh()
-      } catch (err: any) {
-        toast.error(err.message)
-      }
-    })
-  }
-
-  const handleCancel = () => {
-    startTransition(async () => {
-      try {
-        await cancelRsvpAction(event.id)
-        toast.success("RSVP cancelled.")
         onRefresh()
       } catch (err: any) {
         toast.error(err.message)
@@ -302,15 +270,16 @@ function CandidateEventCard({
           </div>
 
           <div className="flex items-center gap-1.5 w-full md:w-auto md:justify-end">
+            <Link href={`/events/${event.id}`} className="w-full md:w-auto">
+              <Button size="sm" variant="outline" className="w-full md:w-auto gap-1.5 text-xs cursor-pointer">
+                <Info className="h-3.5 w-3.5" />
+                View Details
+              </Button>
+            </Link>
+
             {!hasTicket ? (
-              <>
-                <Link href={`/events/${event.id}`} className="w-full md:w-auto">
-                  <Button size="sm" variant="outline" className="w-full md:w-auto gap-1.5 text-xs cursor-pointer">
-                    <Info className="h-3.5 w-3.5" />
-                    View Details
-                  </Button>
-                </Link>
-                {!isPast && (
+              !isPast && (
+                <div className="w-full md:w-auto">
                   <Button
                     size="sm"
                     onClick={handleRSVP}
@@ -324,63 +293,35 @@ function CandidateEventCard({
                     )}
                     RSVP
                   </Button>
-                )}
-              </>
+                </div>
+              )
             ) : (
-              hasTicket && (
-                <>
-                  <Link href={`/events/${event.id}`} className="w-full md:w-auto">
-                    <Button size="sm" variant="outline" className="w-full md:w-auto gap-1.5 text-xs cursor-pointer">
+              <div className="w-full md:w-auto">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="w-full md:w-auto gap-1.5 text-xs cursor-pointer">
                       <QrCode className="h-3.5 w-3.5" />
                       View Ticket
                     </Button>
-                  </Link>
-
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    size-icon="true"
-                    onClick={() => addToGoogleCalendar(event)}
-                    title="Add to Google Calendar"
-                    className="h-8 w-8 p-0 cursor-pointer hidden md:flex items-center justify-center border border-border"
-                  >
-                    <CalendarPlus className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                  </Button>
-
-                  {!isPast && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-xs text-destructive hover:bg-destructive/5 font-medium cursor-pointer"
-                        >
-                          Cancel
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Cancel your RSVP?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            You will lose your spot. If the event is full, you'll need to rejoin the waitlist.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Keep My Spot</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={handleCancel}
-                            disabled={isPending}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
-                          >
-                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Cancel RSVP
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                </>
-              )
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md p-0 border bg-card">
+                    <DialogHeader className="p-4 border-b">
+                      <DialogTitle className="text-center font-bold">Your Entry Ticket</DialogTitle>
+                    </DialogHeader>
+                    <div className="p-4 bg-muted/10">
+                      <QRTicketCard
+                        ticket={{
+                          id: event.my_ticket_id!,
+                          status: event.my_ticket_status!,
+                          attendance_status: event.my_attendance_status!,
+                        }}
+                        candidateName={candidateName}
+                        eventTitle={event.title}
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
             )}
           </div>
         </div>
@@ -398,6 +339,7 @@ interface Props {
   initialTab: string
   totalCount: number
   tabCounts: { upcoming: number; my: number; past: number }
+  candidateName: string
 }
 
 export function EventsCandidateClient({
@@ -408,6 +350,7 @@ export function EventsCandidateClient({
   initialTab,
   totalCount,
   tabCounts,
+  candidateName,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -562,7 +505,7 @@ export function EventsCandidateClient({
                       <>
                         <div className="flex flex-col gap-3 w-full">
                           {events.map((event) => (
-                            <CandidateEventCard key={event.id} event={event} onRefresh={onRefresh} />
+                            <CandidateEventCard key={event.id} event={event} candidateName={candidateName} onRefresh={onRefresh} />
                           ))}
                         </div>
 
