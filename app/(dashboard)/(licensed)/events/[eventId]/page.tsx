@@ -92,6 +92,7 @@ export default async function EventDetailPage({ params }: { params: Promise<Para
           venue: event.venue,
           capacity: event.capacity,
           status: event.status,
+          duration_minutes: event.duration_minutes ?? 120,
         }}
         tickets={formattedTickets}
       />
@@ -117,6 +118,7 @@ export default async function EventDetailPage({ params }: { params: Promise<Para
         venue: event.venue,
         capacity: event.capacity,
         status: event.status,
+        duration_minutes: event.duration_minutes ?? 120,
       }}
       ticket={myTicket ? {
         id: myTicket.id,

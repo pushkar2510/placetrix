@@ -1,0 +1,55 @@
+import { redirect } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
+import { getUserProfile } from "@/lib/supabase/profile"
+import { CreateEventClient } from "./CreateEventClient"
+
+interface Props {
+  params: Promise<{ eventId: string }>
+}
+
+export default async function EventEditorPage({ params }: Props) {
+  const { eventId } = await params
+  const profile = await getUserProfile()
+  if (!profile) redirect("/auth/login")
+
+  // Guard: Only institute staff, placement officers, primary users, or admins can edit events
+  const allowedRoles = ["institute_primary", "institute_staff", "institute_placement_officer", "admin"]
+  if (!allowedRoles.includes(profile.account_type)) {
+    redirect("/events")
+  }
+
+  const isNew = eventId === "new"
+  let initialData = null
+
+  if (!isNew) {
+    const supabase = await createClient()
+    const { data: eventData, error } = await (supabase as any)
+      .from("events")
+      .select("*")
+      .eq("id", eventId)
+      .maybeSingle()
+
+    if (error || !eventData) {
+      console.error("Error loading event for editing:", error)
+      redirect("/events")
+    }
+
+    initialData = {
+      title: eventData.title,
+      description: eventData.description ?? "",
+      date: eventData.date ?? "",
+      venue: eventData.venue,
+      capacity: eventData.capacity,
+      status: eventData.status,
+      targeting_rules: eventData.targeting_rules ?? { years: [], branches: [] },
+      duration_minutes: eventData.duration_minutes ?? 120,
+    }
+  }
+
+  return (
+    <CreateEventClient
+      eventId={isNew ? undefined : eventId}
+      initialData={initialData ?? undefined}
+    />
+  )
+}

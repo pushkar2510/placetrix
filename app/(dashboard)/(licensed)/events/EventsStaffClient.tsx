@@ -1,18 +1,13 @@
 "use client"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// app/(dashboard)/(licensed)/events/EventsStaffClient.tsx
-// ─────────────────────────────────────────────────────────────────────────────
-
-import { useState, useMemo, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useState, useMemo, useTransition, useEffect, useRef, useCallback } from "react"
+import { useRouter, usePathname } from "next/navigation"
+import Link from "next/link"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -20,16 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,38 +38,32 @@ import {
   CheckCircle2,
   PenLine,
   Trash2,
-  BarChart2,
   FileText,
   Loader2,
   QrCode,
   UserCheck,
   CalendarCheck,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  BookOpen,
+  CalendarClock,
+  PlayCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { createEventAction, updateEventAction, deleteEventAction, concludeEventAction } from "./actions"
-import type { EventListItem, EventFormData, EventStatus, EventTargetingRules } from "./types"
-
-
-// ─── Constants ────────────────────────────────────────────────────────────────
+import { deleteEventAction, concludeEventAction } from "./actions"
+import type { EventListItem, EventStatus } from "./types"
 
 type Tab = "all" | "published" | "draft" | "concluded"
 
-const BRANCHES = [
-  "Computer Science",
-  "Information Technology",
-  "Electronics & Telecom",
-  "Mechanical",
-  "Civil",
-  "Electrical",
-  "Chemical",
-  "Other",
-]
-
-const YEARS = [2024, 2025, 2026, 2027, 2028, 2029, 2030]
-
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+interface TabConfig {
+  value: Tab
+  label: string
+  icon: React.ReactNode
+  count: number
+}
 
 function formatDateTime(dt: string): string {
   return new Date(dt).toLocaleString("en-IN", {
@@ -93,53 +72,51 @@ function formatDateTime(dt: string): string {
   })
 }
 
-
 // ─── Stats Bar ────────────────────────────────────────────────────────────────
-
-function StatsBar({ events }: { events: EventListItem[] }) {
-  const stats = useMemo(() => {
-    const total = events.length
-    const published = events.filter((e) => e.status === "Published").length
-    const totalAttendees = events.reduce((sum, e) => sum + e.tickets_confirmed, 0)
-    const totalPresent = events.reduce((sum, e) => sum + e.tickets_present, 0)
-    return { total, published, totalAttendees, totalPresent }
-  }, [events])
-
+function StatsBar({
+  tabCounts,
+  totalAttendeesCount,
+  totalCheckedInCount,
+}: {
+  tabCounts: { all: number; published: number; draft: number; concluded: number }
+  totalAttendeesCount: number
+  totalCheckedInCount: number
+}) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-in fade-in duration-300">
       {[
         {
           icon: <Calendar className="h-3.5 w-3.5 text-primary" />,
-          value: stats.total,
+          value: tabCounts.all,
           label: "Total Events",
           accent: "border-primary/15",
         },
         {
           icon: <Eye className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />,
-          value: stats.published,
+          value: tabCounts.published,
           label: "Published",
           accent: "border-emerald-500/15",
         },
         {
           icon: <Users className="h-3.5 w-3.5 text-indigo-500" />,
-          value: stats.totalAttendees,
+          value: totalAttendeesCount,
           label: "Total RSVPs",
           accent: "border-indigo-500/15",
         },
         {
           icon: <UserCheck className="h-3.5 w-3.5 text-amber-500" />,
-          value: stats.totalPresent,
+          value: totalCheckedInCount,
           label: "Checked In",
           accent: "border-amber-500/15",
         },
       ].map((stat) => (
-        <Card key={stat.label} className={cn("border", stat.accent)}>
+        <Card key={stat.label} className={cn("border shadow-xs", stat.accent)}>
           <CardContent className="p-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
               {stat.icon}
               {stat.label}
             </div>
-            <p className="text-lg font-semibold tabular-nums">{stat.value}</p>
+            <p className="text-lg font-semibold tabular-nums text-foreground">{stat.value}</p>
           </CardContent>
         </Card>
       ))}
@@ -147,265 +124,97 @@ function StatsBar({ events }: { events: EventListItem[] }) {
   )
 }
 
-
 // ─── Status Badge ─────────────────────────────────────────────────────────────
-
 function StatusBadge({ status }: { status: EventStatus }) {
   switch (status) {
     case "Published":
       return (
-        <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[11px]">
-          <Eye className="mr-1 h-3 w-3" /> Published
+        <Badge className="gap-1 border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 text-[11px] px-2 py-0.5">
+          <Eye className="h-3 w-3" /> Published
         </Badge>
       )
     case "Draft":
       return (
-        <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[11px]">
-          <FileText className="mr-1 h-3 w-3" /> Draft
+        <Badge className="gap-1 border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 text-[11px] px-2 py-0.5 border-dashed">
+          <FileText className="h-3 w-3" /> Draft
         </Badge>
       )
     case "Concluded":
       return (
-        <Badge variant="outline" className="border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-400 text-[11px]">
-          <CheckCircle2 className="mr-1 h-3 w-3" /> Concluded
+        <Badge className="gap-1 border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-50 dark:border-slate-500/20 dark:bg-slate-500/10 dark:text-slate-300 text-[11px] px-2 py-0.5">
+          <CheckCircle2 className="h-3 w-3" /> Concluded
         </Badge>
       )
   }
 }
 
-
-// ─── Event Form Dialog ────────────────────────────────────────────────────────
-
-function EventFormDialog({
-  mode,
-  event,
-  trigger,
-  onSuccess,
+// ─── Stat Chip ────────────────────────────────────────────────────────────────
+function StatChip({
+  icon,
+  children,
+  tone = "neutral",
 }: {
-  mode: "create" | "edit"
-  event?: EventListItem
-  trigger: React.ReactNode
-  onSuccess?: () => void
+  icon: React.ReactNode
+  children: React.ReactNode
+  tone?: "neutral" | "sky" | "emerald" | "amber" | "violet" | "rose"
 }) {
-  const [open, setOpen] = useState(false)
-  const [isPending, startTransition] = useTransition()
-  const [formData, setFormData] = useState<EventFormData>({
-    title: event?.title ?? "",
-    description: event?.description ?? "",
-    date: event?.date ? new Date(event.date).toISOString().slice(0, 16) : "",
-    venue: event?.venue ?? "",
-    capacity: event?.capacity ?? 100,
-    status: event?.status ?? "Draft",
-    targeting_rules: event?.targeting_rules ?? { years: [], branches: [] },
-  })
-
-  const handleSubmit = () => {
-    if (!formData.title.trim() || !formData.date || !formData.venue.trim()) {
-      toast.error("Please fill in Title, Date, and Venue.")
-      return
-    }
-
-    startTransition(async () => {
-      try {
-        if (mode === "create") {
-          await createEventAction(formData)
-          toast.success("Event created successfully!")
-        } else if (event) {
-          await updateEventAction(event.id, formData)
-          toast.success("Event updated successfully!")
-        }
-        setOpen(false)
-        onSuccess?.()
-      } catch (err: any) {
-        toast.error(err.message || "Something went wrong.")
-      }
-    })
-  }
-
-  const toggleYear = (year: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      targeting_rules: {
-        ...prev.targeting_rules,
-        years: prev.targeting_rules.years.includes(year)
-          ? prev.targeting_rules.years.filter((y) => y !== year)
-          : [...prev.targeting_rules.years, year],
-      },
-    }))
-  }
-
-  const toggleBranch = (branch: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      targeting_rules: {
-        ...prev.targeting_rules,
-        branches: prev.targeting_rules.branches.includes(branch)
-          ? prev.targeting_rules.branches.filter((b) => b !== branch)
-          : [...prev.targeting_rules.branches, branch],
-      },
-    }))
-  }
+  const tones = {
+    neutral: "border-border/60 bg-muted/50 text-muted-foreground",
+    sky: "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300",
+    emerald:
+      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300",
+    amber:
+      "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300",
+    violet:
+      "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300",
+    rose:
+      "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300",
+  } as const
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{mode === "create" ? "Create New Event" : "Edit Event"}</DialogTitle>
-          <DialogDescription>
-            {mode === "create"
-              ? "Fill in the details to create a new campus event."
-              : "Update the event details below."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-4 py-4">
-          {/* Title */}
-          <div className="grid gap-2">
-            <Label htmlFor="event-title">Title *</Label>
-            <Input
-              id="event-title"
-              placeholder="e.g. Campus Placement Drive 2026"
-              value={formData.title}
-              onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
-            />
-          </div>
-
-          {/* Description */}
-          <div className="grid gap-2">
-            <Label htmlFor="event-description">Description</Label>
-            <Textarea
-              id="event-description"
-              placeholder="Brief description of the event..."
-              value={formData.description}
-              onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
-              rows={3}
-            />
-          </div>
-
-          {/* Date & Venue */}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="event-date">Date & Time *</Label>
-              <Input
-                id="event-date"
-                type="datetime-local"
-                value={formData.date}
-                onChange={(e) => setFormData((p) => ({ ...p, date: e.target.value }))}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="event-venue">Venue *</Label>
-              <Input
-                id="event-venue"
-                placeholder="e.g. Auditorium Hall A"
-                value={formData.venue}
-                onChange={(e) => setFormData((p) => ({ ...p, venue: e.target.value }))}
-              />
-            </div>
-          </div>
-
-          {/* Capacity & Status */}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="event-capacity">Capacity</Label>
-              <Input
-                id="event-capacity"
-                type="number"
-                min={1}
-                value={formData.capacity}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, capacity: parseInt(e.target.value) || 1 }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(v) => setFormData((p) => ({ ...p, status: v as EventStatus }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Draft">Draft</SelectItem>
-                  <SelectItem value="Published">Published</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Targeting Rules */}
-          <div className="grid gap-3 border rounded-lg p-4 bg-muted/30">
-            <div>
-              <Label className="text-sm font-medium">Targeted Visibility</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Leave empty to show to all candidates. Select specific years/branches to restrict visibility.
-              </p>
-            </div>
-
-            <div className="grid gap-2">
-              <Label className="text-xs text-muted-foreground">Passout Years</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {YEARS.map((year) => (
-                  <button
-                    key={year}
-                    type="button"
-                    onClick={() => toggleYear(year)}
-                    className={cn(
-                      "px-2.5 py-1 text-xs rounded-md border transition-colors",
-                      formData.targeting_rules.years.includes(year)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background hover:bg-accent"
-                    )}
-                  >
-                    {year}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label className="text-xs text-muted-foreground">Branches</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {BRANCHES.map((branch) => (
-                  <button
-                    key={branch}
-                    type="button"
-                    onClick={() => toggleBranch(branch)}
-                    className={cn(
-                      "px-2.5 py-1 text-xs rounded-md border transition-colors",
-                      formData.targeting_rules.branches.includes(branch)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background hover:bg-accent"
-                    )}
-                  >
-                    {branch}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DialogClose>
-          <Button onClick={handleSubmit} disabled={isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {mode === "create" ? "Create Event" : "Save Changes"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium",
+        tones[tone]
+      )}
+    >
+      {icon}
+      <span className="truncate">{children}</span>
+    </span>
   )
 }
 
+// ─── Staff Access Status Display ──────────────────────────────────────────────
+function StaffAccessStatus({
+  status,
+  isPast,
+}: {
+  status: EventStatus
+  isPast: boolean
+}) {
+  if (status === "Concluded" || (status === "Published" && isPast)) {
+    return (
+      <span className="font-medium text-muted-foreground text-xs italic">
+        Event Concluded
+      </span>
+    )
+  }
+  if (status === "Draft") {
+    return (
+      <span className="font-medium text-amber-600 dark:text-amber-400 text-xs italic">
+        Draft — not published
+      </span>
+    )
+  }
+  return (
+    <span className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400 text-xs">
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+      Registration Open
+    </span>
+  )
+}
 
 // ─── Event Card ───────────────────────────────────────────────────────────────
-
 function EventCard({
   event,
   onRefresh,
@@ -443,267 +252,415 @@ function EventCard({
   }
 
   return (
-    <Card className="group relative overflow-hidden transition-all hover:shadow-md hover:border-primary/20 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <CardContent className="p-4 sm:p-5">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <StatusBadge status={event.status} />
-              {event.tickets_waitlisted > 0 && (
-                <Badge variant="outline" className="border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-400 text-[11px]">
-                  {event.tickets_waitlisted} waitlisted
-                </Badge>
-              )}
-            </div>
-            <h3 className="font-semibold text-base leading-tight truncate">{event.title}</h3>
-            {event.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{event.description}</p>
+    <Card className="overflow-hidden border-border/70 bg-card p-0">
+      <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:gap-4 md:p-5">
+        {/* Left Info Panel */}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="min-w-0 text-sm md:text-base font-semibold leading-tight text-foreground">
+              {event.title}
+            </h3>
+            <StatusBadge status={event.status} />
+            {event.tickets_waitlisted > 0 && (
+              <Badge variant="outline" className="border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-400 text-[10px] px-1.5 py-0">
+                {event.tickets_waitlisted} waitlisted
+              </Badge>
             )}
           </div>
-        </div>
 
-        {/* Meta */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground mb-3">
-          <span className="flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5" />
-            {formatDateTime(event.date)}
-          </span>
-          <span className="flex items-center gap-1">
-            <MapPin className="h-3.5 w-3.5" />
-            {event.venue}
-          </span>
-          <span className="flex items-center gap-1">
-            <Users className="h-3.5 w-3.5" />
-            {event.tickets_confirmed}/{event.capacity} confirmed
-          </span>
-          <span className="flex items-center gap-1">
-            <UserCheck className="h-3.5 w-3.5" />
-            {event.tickets_present} present
-          </span>
-        </div>
+          <p
+            className={cn(
+              "mt-1 line-clamp-1 text-xs leading-5 text-muted-foreground",
+              event.description ? "" : "italic text-muted-foreground/60"
+            )}
+          >
+            {event.description ?? "No description provided"}
+          </p>
 
-        {/* Capacity Bar */}
-        <div className="mb-4">
-          <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
-            <span>{spotsLeft} spots left</span>
-            <span>{Math.round((event.tickets_confirmed / event.capacity) * 100)}% filled</span>
-          </div>
-          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all",
-                spotsLeft === 0
-                  ? "bg-red-500"
-                  : event.tickets_confirmed / event.capacity > 0.7
-                    ? "bg-amber-500"
-                    : "bg-emerald-500"
+          <div className="mt-3 flex flex-wrap gap-2">
+            <StatChip icon={<Clock className="h-3.5 w-3.5" />} tone="neutral">
+              {formatDateTime(event.date)}
+              {event.duration_minutes && (
+                <span className="text-[10px] text-muted-foreground/60 ml-1">
+                  ({event.duration_minutes}m)
+                </span>
               )}
-              style={{ width: `${Math.min(100, (event.tickets_confirmed / event.capacity) * 100)}%` }}
-            />
+            </StatChip>
+
+            <StatChip icon={<MapPin className="h-3.5 w-3.5" />} tone="neutral">
+              {event.venue}
+            </StatChip>
+
+            <StatChip icon={<Users className="h-3.5 w-3.5" />} tone="neutral">
+              {event.tickets_confirmed}/{event.capacity} Confirmed
+            </StatChip>
+
+            <StatChip icon={<UserCheck className="h-3.5 w-3.5" />} tone="neutral">
+              {event.tickets_present} Checked In
+            </StatChip>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {event.status === "Published" && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => router.push(`/events/${event.id}`)}
-              className="text-xs"
-            >
-              <QrCode className="mr-1.5 h-3.5 w-3.5" />
-              Manage & Scan
-            </Button>
-          )}
+        {/* Right Action Column */}
+        <div className="flex flex-col gap-3 border-t border-border/60 pt-3 md:min-w-[220px] md:items-end md:pt-0 md:border-t-0 md:text-right">
+          <div className="md:items-end">
+            <StaffAccessStatus status={event.status} isPast={isPast} />
+          </div>
 
-          <EventFormDialog
-            mode="edit"
-            event={event}
-            trigger={
-              <Button size="sm" variant="ghost" className="text-xs">
-                <PenLine className="mr-1.5 h-3.5 w-3.5" /> Edit
-              </Button>
-            }
-            onSuccess={onRefresh}
-          />
+          <div className="flex items-center gap-1.5 w-full md:w-auto md:justify-end">
+            {event.status === "Published" ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => router.push(`/events/${event.id}`)}
+                  className="w-full md:w-auto gap-1 text-xs cursor-pointer"
+                >
+                  <QrCode className="h-3.5 w-3.5" />
+                  Manage & Scan
+                </Button>
 
-          {event.status === "Published" && !isPast && (
+                <Link href={`/events/${event.id}/edit`} className="h-8 w-8 p-0 cursor-pointer hidden md:flex items-center justify-center border border-border rounded-md hover:bg-accent">
+                  <PenLine className="h-4 w-4 text-muted-foreground" />
+                </Link>
+
+                {/* Conclude Action */}
+                {!isPast && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="ghost" className="text-xs text-amber-600 cursor-pointer">
+                        Conclude
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Conclude this event?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will mark the event as concluded. No new RSVPs will be accepted.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConclude} disabled={isPending} className="cursor-pointer">
+                          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Conclude
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </>
+            ) : (
+              // Draft edit link
+              <Link href={`/events/${event.id}/edit`} className="w-full md:w-auto">
+                <Button size="sm" variant="outline" className="w-full md:w-auto gap-1.5 text-xs cursor-pointer">
+                  <PenLine className="h-3.5 w-3.5" />
+                  Edit Draft
+                </Button>
+              </Link>
+            )}
+
+            {/* Delete Alert */}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button size="sm" variant="ghost" className="text-xs text-amber-600">
-                  <CalendarCheck className="mr-1.5 h-3.5 w-3.5" /> Conclude
+                <Button size="sm" variant="ghost" className="text-xs text-destructive hover:bg-destructive/5 font-medium cursor-pointer">
+                  Delete
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Conclude this event?</AlertDialogTitle>
+                  <AlertDialogTitle>Delete this event?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will mark the event as concluded. No new RSVPs will be accepted.
+                    This action cannot be undone. All candidate tickets will also be deleted.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleConclude} disabled={isPending}>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    disabled={isPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+                  >
                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Conclude
+                    Delete
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          )}
-
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button size="sm" variant="ghost" className="text-xs text-destructive ml-auto">
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete this event?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. All tickets and Q&A data will also be deleted.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  disabled={isPending}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          </div>
         </div>
-      </CardContent>
+      </div>
     </Card>
   )
 }
 
-
 // ─── Main Component ───────────────────────────────────────────────────────────
+interface Props {
+  events: EventListItem[]
+  initialPage: number
+  initialPageSize: number
+  initialSearch: string
+  initialTab: string
+  totalCount: number
+  tabCounts: { all: number; published: number; draft: number; concluded: number }
+  totalAttendeesCount: number
+  totalCheckedInCount: number
+}
 
-export function EventsStaffClient({ events: initialEvents }: { events: EventListItem[] }) {
+export function EventsStaffClient({
+  events,
+  initialPage,
+  initialPageSize,
+  initialSearch,
+  initialTab,
+  totalCount,
+  tabCounts,
+  totalAttendeesCount,
+  totalCheckedInCount,
+}: Props) {
   const router = useRouter()
-  const [search, setSearch] = useState("")
-  const [activeTab, setActiveTab] = useState<Tab>("all")
+  const pathname = usePathname()
+  const [isPending, startTransition] = useTransition()
+
+  // Local search text input
+  const [searchInput, setSearchInput] = useState(initialSearch)
+  const isOwnUpdateRef = useRef(false)
+
+  // Sync search input with URL params on back/forward
+  useEffect(() => {
+    if (isOwnUpdateRef.current) {
+      isOwnUpdateRef.current = false
+      return
+    }
+    setSearchInput(initialSearch)
+  }, [initialSearch])
+
+  // Helper to push updated params to URL
+  const updateParams = useCallback(
+    (newParams: Partial<Record<string, string | number>>) => {
+      const params = new URLSearchParams(window.location.search)
+      Object.entries(newParams).forEach(([key, val]) => {
+        if (val === undefined || val === "" || val === null) {
+          params.delete(key)
+        } else {
+          params.set(key, String(val))
+        }
+      })
+      startTransition(() => {
+        router.push(`${pathname}?${params.toString()}`)
+      })
+    },
+    [pathname, router]
+  )
+
+  // Debounced search logic
+  useEffect(() => {
+    if (searchInput === initialSearch) return
+
+    const timer = setTimeout(() => {
+      isOwnUpdateRef.current = true
+      updateParams({ search: searchInput, page: 1 })
+    }, 450)
+    return () => clearTimeout(timer)
+  }, [searchInput, initialSearch, updateParams])
+
+  const activeTab = (initialTab || "all") as Tab
+
+  const tabConfig: TabConfig[] = [
+    { value: "all", label: "All", icon: <BookOpen className="h-3.5 w-3.5" />, count: tabCounts.all },
+    { value: "published", label: "Published", icon: <PlayCircle className="h-3.5 w-3.5" />, count: tabCounts.published },
+    { value: "draft", label: "Drafts", icon: <FileText className="h-3.5 w-3.5" />, count: tabCounts.draft },
+    { value: "concluded", label: "Concluded", icon: <CheckCircle2 className="h-3.5 w-3.5" />, count: tabCounts.concluded },
+  ]
+
+  const totalPages = Math.ceil(totalCount / initialPageSize)
+  const activePage = Math.min(initialPage, Math.max(1, totalPages))
 
   const onRefresh = () => router.refresh()
 
-  const filtered = useMemo(() => {
-    let items = initialEvents
-
-    // Tab filter
-    if (activeTab === "published") items = items.filter((e) => e.status === "Published")
-    else if (activeTab === "draft") items = items.filter((e) => e.status === "Draft")
-    else if (activeTab === "concluded") items = items.filter((e) => e.status === "Concluded")
-
-    // Search filter
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      items = items.filter(
-        (e) =>
-          e.title.toLowerCase().includes(q) ||
-          e.venue.toLowerCase().includes(q) ||
-          (e.description?.toLowerCase().includes(q) ?? false)
-      )
-    }
-
-    return items
-  }, [initialEvents, activeTab, search])
-
-  const tabCounts = useMemo(() => ({
-    all: initialEvents.length,
-    published: initialEvents.filter((e) => e.status === "Published").length,
-    draft: initialEvents.filter((e) => e.status === "Draft").length,
-    concluded: initialEvents.filter((e) => e.status === "Concluded").length,
-  }), [initialEvents])
-
   return (
-    <div className="flex flex-col gap-5 p-4 md:p-6 max-w-6xl mx-auto w-full">
+    <div className="flex flex-col gap-6 px-4 py-8 md:px-8">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Events</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Events</h1>
           <p className="text-sm text-muted-foreground">
-            Create, manage, and track campus events.
+            {totalCount} event{totalCount !== 1 ? "s" : ""} created
           </p>
         </div>
-        <EventFormDialog
-          mode="create"
-          trigger={
-            <Button className="gap-1.5">
-              <Plus className="h-4 w-4" />
-              Create Event
-            </Button>
-          }
-          onSuccess={onRefresh}
-        />
+        <Link href="/events/new/edit">
+          <Button className="gap-1.5 cursor-pointer">
+            <Plus className="h-4 w-4" />
+            Create Event
+          </Button>
+        </Link>
       </div>
 
       {/* Stats */}
-      <StatsBar events={initialEvents} />
+      <StatsBar
+        tabCounts={tabCounts}
+        totalAttendeesCount={totalAttendeesCount}
+        totalCheckedInCount={totalCheckedInCount}
+      />
 
-      {/* Tabs + Search */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)}>
-          <TabsList>
-            <TabsTrigger value="all" className="text-xs">
-              All ({tabCounts.all})
-            </TabsTrigger>
-            <TabsTrigger value="published" className="text-xs">
-              Published ({tabCounts.published})
-            </TabsTrigger>
-            <TabsTrigger value="draft" className="text-xs">
-              Drafts ({tabCounts.draft})
-            </TabsTrigger>
-            <TabsTrigger value="concluded" className="text-xs">
-              Concluded ({tabCounts.concluded})
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <Tabs value={activeTab} onValueChange={(v) => updateParams({ tab: v, page: 1 })}>
+        <div className="space-y-4">
+          {/* Search (left) + Tabs (right) */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="relative w-full sm:max-w-xs">
+              {isPending ? (
+                <Loader2 className="absolute left-2.5 top-2.5 h-4 w-4 text-primary animate-spin" />
+              ) : (
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              )}
+              <Input
+                placeholder="Search events..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="pl-9 pr-9"
+              />
+              {searchInput && (
+                <button
+                  onClick={() => {
+                    isOwnUpdateRef.current = true
+                    setSearchInput("")
+                    updateParams({ search: "", page: 1 })
+                  }}
+                  className="absolute right-2.5 top-2.5 h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <div className="overflow-x-auto shrink-0">
+              <TabsList className="inline-flex h-9 gap-0.5 rounded-lg bg-muted p-1">
+                {tabConfig.map(({ value, label, count }) => (
+                  <TabsTrigger
+                    key={value}
+                    value={value}
+                    className="gap-1.5 rounded-md px-3 text-xs font-medium cursor-pointer data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  >
+                    {label}
+                    {count > 0 && (
+                      <span className={cn(
+                        "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums",
+                        activeTab === value
+                          ? "bg-foreground text-background"
+                          : "bg-muted-foreground/20 text-muted-foreground"
+                      )}>
+                        {count}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+          </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search events..."
-            className="pl-9 h-9 text-sm"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
+          <div className="relative">
+            {isPending && (
+              <div className="absolute inset-0 z-50 bg-background/40 backdrop-blur-[1px] rounded-lg">
+                <div className="sticky top-[40vh] mx-auto flex w-fit flex-col items-center gap-2 rounded-lg border bg-popover px-4 py-3 shadow-md">
+                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                  <span className="text-xs font-medium text-muted-foreground animate-pulse">Loading...</span>
+                </div>
+              </div>
+            )}
+            <div className={cn("space-y-4 transition-opacity duration-200", isPending && "opacity-50 pointer-events-none")}>
+              {tabConfig.map(({ value, label }) => {
+                if (value !== activeTab) {
+                  return <TabsContent key={value} value={value} className="mt-0 outline-none" />
+                }
+                return (
+                  <TabsContent key={value} value={value} className="mt-0 outline-none space-y-4">
+                    {totalCount === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+                        <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
+                          <BookOpen className="h-5 w-5 text-muted-foreground/60" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-sm font-medium">No {label.toLowerCase()}</p>
+                          <p className="text-xs text-muted-foreground">Create your first event to get started</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex flex-col gap-3 w-full">
+                          {events.map((event) => (
+                            <EventCard key={event.id} event={event} onRefresh={onRefresh} />
+                          ))}
+                        </div>
 
-      {/* Event Cards */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <Calendar className="h-12 w-12 text-muted-foreground/40 mb-3" />
-          <p className="font-medium text-muted-foreground">No events found</p>
-          <p className="text-sm text-muted-foreground/80 mt-1">
-            {search ? "Try a different search term." : "Create your first event to get started."}
-          </p>
+                        {/* Pagination Footer */}
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-1 px-1">
+                          <div className="text-xs text-muted-foreground">
+                            Showing{" "}
+                            <span className="font-medium">
+                              {totalCount === 0 ? 0 : Math.min(totalCount, (activePage - 1) * initialPageSize + 1)}
+                            </span>
+                            {" "}to{" "}
+                            <span className="font-medium">{Math.min(totalCount, activePage * initialPageSize)}</span>
+                            {" "}of{" "}
+                            <span className="font-medium">{totalCount}</span> events
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">Rows per page</span>
+                              <Select
+                                value={initialPageSize.toString()}
+                                onValueChange={(val) => updateParams({ size: val, page: 1 })}
+                              >
+                                <SelectTrigger className="h-8 w-[70px] text-xs">
+                                  <SelectValue placeholder={initialPageSize.toString()} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[5, 10, 20, 50].map((s) => (
+                                    <SelectItem key={s} value={s.toString()} className="text-xs">{s}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <Button variant="outline" size="icon" className="h-8 w-8 cursor-pointer"
+                                onClick={() => updateParams({ page: 1 })} disabled={activePage === 1}>
+                                <ChevronsLeft className="h-4 w-4" />
+                                <span className="sr-only">First page</span>
+                              </Button>
+                              <Button variant="outline" size="icon" className="h-8 w-8 cursor-pointer"
+                                onClick={() => updateParams({ page: Math.max(1, activePage - 1) })} disabled={activePage === 1}>
+                                <ChevronLeft className="h-4 w-4" />
+                                <span className="sr-only">Previous page</span>
+                              </Button>
+                              <div className="flex items-center justify-center text-xs font-medium min-w-[80px] tabular-nums">
+                                Page {activePage} of {totalPages || 1}
+                              </div>
+                              <Button variant="outline" size="icon" className="h-8 w-8 cursor-pointer"
+                                onClick={() => updateParams({ page: Math.min(totalPages, activePage + 1) })}
+                                disabled={activePage === totalPages || totalPages === 0}>
+                                <ChevronRight className="h-4 w-4" />
+                                <span className="sr-only">Next page</span>
+                              </Button>
+                              <Button variant="outline" size="icon" className="h-8 w-8 cursor-pointer"
+                                onClick={() => updateParams({ page: totalPages })}
+                                disabled={activePage === totalPages || totalPages === 0}>
+                                <ChevronsRight className="h-4 w-4" />
+                                <span className="sr-only">Last page</span>
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </TabsContent>
+                )
+              })}
+            </div>
+          </div>
+
         </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
-          {filtered.map((event) => (
-            <EventCard key={event.id} event={event} onRefresh={onRefresh} />
-          ))}
-        </div>
-      )}
+      </Tabs>
     </div>
   )
 }

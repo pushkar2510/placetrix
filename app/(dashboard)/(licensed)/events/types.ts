@@ -20,6 +20,7 @@ export interface EventListItem {
   capacity: number
   status: EventStatus
   targeting_rules: EventTargetingRules
+  duration_minutes: number
   created_at: string
   updated_at: string
   // Computed
@@ -50,6 +51,7 @@ export interface CandidateEventListItem {
   venue: string
   capacity: number
   status: EventStatus
+  duration_minutes: number
   created_at: string
   tickets_confirmed: number
   // Candidate's own ticket info
@@ -66,4 +68,5 @@ export interface EventFormData {
   capacity: number
   status: EventStatus
   targeting_rules: EventTargetingRules
+  duration_minutes: number
 }

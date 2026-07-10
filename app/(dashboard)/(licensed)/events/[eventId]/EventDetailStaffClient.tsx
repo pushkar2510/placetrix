@@ -43,9 +43,11 @@ import {
   XCircle,
   Loader2,
   ScanLine,
+  FileSpreadsheet,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import * as XLSX from "xlsx"
 import { markAttendanceAction } from "../actions"
 import type { EventTicket, EventStatus, TicketStatus, AttendanceStatus } from "../types"
 
@@ -167,6 +169,7 @@ interface Props {
     venue: string
     capacity: number
     status: EventStatus
+    duration_minutes: number
   }
   tickets: EventTicket[]
 }
@@ -205,6 +208,38 @@ export function EventDetailStaffClient({ event, tickets: initialTickets }: Props
 
     return items
   }, [initialTickets, filter, search])
+
+  const handleExport = () => {
+    try {
+      const exportData = filtered.map((t) => ({
+        "Attendee Name": t.candidate_name ?? "Unknown",
+        "Email": t.candidate_email ?? "",
+        "Branch / Course": t.candidate_course ?? "—",
+        "Passout Year": t.candidate_passout_year ?? "—",
+        "RSVP Status": t.status,
+        "Attendance": t.attendance_status === "Present" ? "Present" : "Pending",
+        "Registration Date": new Date(t.created_at).toLocaleDateString("en-IN"),
+      }))
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Attendees")
+
+      // Auto-fit columns
+      const maxLens = Object.keys(exportData[0] || {}).map((key) => {
+        const lengths = exportData.map((row: any) => String(row[key] ?? "").length)
+        lengths.push(key.length)
+        return { wch: Math.max(...lengths) + 3 }
+      })
+      worksheet["!cols"] = maxLens
+
+      const fileName = `${event.title.replace(/[^a-zA-Z0-9]/g, "_")}_attendees.xlsx`
+      XLSX.writeFile(workbook, fileName)
+      toast.success("Excel sheet exported successfully!")
+    } catch (err: any) {
+      toast.error("Failed to export Excel sheet: " + err.message)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5 p-4 md:p-6 max-w-6xl mx-auto w-full">
@@ -261,7 +296,15 @@ export function EventDetailStaffClient({ event, tickets: initialTickets }: Props
 
       {/* Scanner + Search */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <ManualCheckInDialog onCheckIn={onCheckIn} />
+        <div className="flex items-center gap-2">
+          <ManualCheckInDialog onCheckIn={onCheckIn} />
+          {filtered.length > 0 && (
+            <Button variant="outline" onClick={handleExport} className="gap-1.5 h-9 text-xs cursor-pointer">
+              <FileSpreadsheet className="h-4 w-4" />
+              Export to Excel
+            </Button>
+          )}
+        </div>
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input

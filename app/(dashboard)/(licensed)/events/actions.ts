@@ -42,6 +42,7 @@ export async function createEventAction(data: EventFormData) {
       capacity: data.capacity,
       status: data.status,
       targeting_rules: data.targeting_rules,
+      duration_minutes: data.duration_minutes,
     })
     .select("id")
     .maybeSingle()
@@ -69,6 +70,7 @@ export async function updateEventAction(eventId: string, data: EventFormData) {
       capacity: data.capacity,
       status: data.status,
       targeting_rules: data.targeting_rules,
+      duration_minutes: data.duration_minutes,
     })
     .eq("id", eventId)
 
@@ -162,40 +164,83 @@ export async function rsvpEventAction(eventId: string) {
   const profile = await requireCandidate()
   const supabase = await createClient()
 
-  // Check current capacity
+  // 1. Fetch event capacity and targeting rules
+  const { data: event } = await (supabase as any)
+    .from("events")
+    .select("capacity, targeting_rules")
+    .eq("id", eventId)
+    .maybeSingle()
+
+  if (!event) throw new Error("Event not found.")
+
+  // 2. Enforce targeting rules
+  const { data: academic } = await (supabase as any)
+    .from("candidate_academic_details")
+    .select("passout_year, course:institute_courses(course_name)")
+    .eq("profile_id", profile.id)
+    .maybeSingle()
+
+  const candidateBranch = academic?.course?.course_name
+  const candidateYear = academic?.passout_year
+  const rules = event.targeting_rules ?? { years: [], branches: [] }
+
+  if (rules.years && rules.years.length > 0 && (!candidateYear || !rules.years.includes(candidateYear))) {
+    throw new Error("You are not eligible for this event (targeting restrictions).")
+  }
+  if (rules.branches && rules.branches.length > 0 && (!candidateBranch || !rules.branches.includes(candidateBranch))) {
+    throw new Error("You are not eligible for this event (targeting restrictions).")
+  }
+
+  // 3. Check if candidate already has a ticket
+  const { data: existingTicket } = await (supabase as any)
+    .from("event_tickets")
+    .select("id, status")
+    .eq("event_id", eventId)
+    .eq("candidate_id", profile.id)
+    .maybeSingle()
+
+  if (existingTicket && existingTicket.status !== "Cancelled") {
+    throw new Error("You have already RSVP'd for this event.")
+  }
+
+  // 4. Check current capacity
   const { count: confirmedCount } = await (supabase as any)
     .from("event_tickets")
     .select("id", { count: "exact", head: true })
     .eq("event_id", eventId)
     .eq("status", "Confirmed")
 
-  const { data: event } = await (supabase as any)
-    .from("events")
-    .select("capacity")
-    .eq("id", eventId)
-    .maybeSingle()
-
-  if (!event) throw new Error("Event not found.")
-
   const ticketStatus: TicketStatus = (confirmedCount ?? 0) >= event.capacity ? "Waitlisted" : "Confirmed"
 
-  const { error } = await (supabase as any)
-    .from("event_tickets")
-    .insert({
-      event_id: eventId,
-      candidate_id: profile.id,
-      status: ticketStatus,
-    })
+  if (existingTicket && existingTicket.status === "Cancelled") {
+    // Reactivate existing ticket
+    const { error: updateError } = await (supabase as any)
+      .from("event_tickets")
+      .update({ status: ticketStatus })
+      .eq("id", existingTicket.id)
 
-  if (error) {
-    if (error.code === "23505") {
-      throw new Error("You have already RSVP'd for this event.")
+    if (updateError) {
+      console.error("Error reactivating RSVP:", updateError)
+      throw new Error(updateError.message || "Failed to RSVP.")
     }
-    console.error("Error creating RSVP:", error)
-    throw new Error(error.message || "Failed to RSVP.")
+  } else {
+    // Insert new ticket
+    const { error: insertError } = await (supabase as any)
+      .from("event_tickets")
+      .insert({
+        event_id: eventId,
+        candidate_id: profile.id,
+        status: ticketStatus,
+      })
+
+    if (insertError) {
+      console.error("Error creating RSVP:", insertError)
+      throw new Error(insertError.message || "Failed to RSVP.")
+    }
   }
 
   revalidatePath("/events")
+  revalidatePath(`/events/${eventId}`)
   return { success: true, status: ticketStatus }
 }
 
@@ -203,17 +248,55 @@ export async function cancelRsvpAction(eventId: string) {
   const profile = await requireCandidate()
   const supabase = await createClient()
 
-  const { error } = await (supabase as any)
+  // 1. Get the ticket to check if it was Confirmed
+  const { data: ticket, error: fetchError } = await (supabase as any)
     .from("event_tickets")
-    .update({ status: "Cancelled" })
+    .select("id, status")
     .eq("event_id", eventId)
     .eq("candidate_id", profile.id)
+    .maybeSingle()
 
-  if (error) {
-    console.error("Error cancelling RSVP:", error)
-    throw new Error(error.message || "Failed to cancel RSVP.")
+  if (fetchError || !ticket) {
+    throw new Error("RSVP not found.")
+  }
+
+  const wasConfirmed = ticket.status === "Confirmed"
+
+  // 2. Set it to Cancelled
+  const { error: cancelError } = await (supabase as any)
+    .from("event_tickets")
+    .update({ status: "Cancelled" })
+    .eq("id", ticket.id)
+
+  if (cancelError) {
+    console.error("Error cancelling RSVP:", cancelError)
+    throw new Error(cancelError.message || "Failed to cancel RSVP.")
+  }
+
+  // 3. Promote oldest waitlisted candidate if a confirmed spot opened up
+  if (wasConfirmed) {
+    const { data: oldestWaitlist } = await (supabase as any)
+      .from("event_tickets")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("status", "Waitlisted")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (oldestWaitlist) {
+      const { error: promoteError } = await (supabase as any)
+        .from("event_tickets")
+        .update({ status: "Confirmed" })
+        .eq("id", oldestWaitlist.id)
+
+      if (promoteError) {
+        console.error("Error promoting waitlisted candidate:", promoteError)
+      }
+    }
   }
 
   revalidatePath("/events")
+  revalidatePath(`/events/${eventId}`)
   return { success: true }
 }
