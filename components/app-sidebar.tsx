@@ -99,11 +99,13 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
     { title: "Courses", url: "/courses", icon: BookOpen },
     { title: "Tests", url: "/tests", icon: BarChart3 },
     { title: "Events", url: "/events", icon: Calendar },
+    { title: "Opportunities", url: "/opportunities", icon: Briefcase },
     { title: "Tools", url: "/tools", icon: Wrench },
   ],
   institute_primary: [
     { title: "Home", url: "/home", icon: Home },
     { title: "Users", url: "/users", icon: Users },
+    { title: "Opportunities", url: "/opportunities", icon: Briefcase },
   ],
   institute_staff: [
     { title: "Home", url: "/home", icon: Home },
@@ -113,7 +115,7 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
   ],
   institute_placement_officer: [
     { title: "Home", url: "/home", icon: Home },
-    { title: "Placement", url: "/placement-management", icon: Trophy },
+    { title: "Opportunities", url: "/opportunities", icon: Briefcase },
   ],
   admin: [
     { title: "Home", url: "/home", icon: Home },
