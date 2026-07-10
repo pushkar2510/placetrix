@@ -3,10 +3,21 @@
 import * as React from "react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Search, Wrench, ChevronRight } from "lucide-react"
+import { Wrench, ChevronRight } from "lucide-react"
+import { IconBrain } from "@tabler/icons-react"
 import { useRouter } from "next/navigation"
 
-const toolsList: any[] = []
+const toolsList = [
+  {
+    title: "Resume Analyzer",
+    description:
+      "Upload your resume for an AI-powered ATS score, section breakdown, skills gap analysis, and personalized improvement tips.",
+    href: "/tools/resume_analyzer",
+    badge: "AI",
+    icon: <IconBrain className="size-5 text-violet-500" />,
+    iconBg: "bg-violet-500/10",
+  },
+]
 
 export function ToolsClient() {
   const router = useRouter()
