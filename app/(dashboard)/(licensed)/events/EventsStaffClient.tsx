@@ -1,20 +1,12 @@
 "use client"
 
-import { useState, useMemo, useTransition, useEffect, useRef, useCallback } from "react"
-import { useRouter, usePathname } from "next/navigation"
+import { useState, useMemo, useEffect, useRef } from "react"
 import Link from "next/link"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet"
 import {
   Calendar,
   Plus,
@@ -27,20 +19,12 @@ import {
   CheckCircle2,
   FileText,
   Loader2,
-  QrCode,
   UserCheck,
-  CalendarCheck,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
+  SlidersHorizontal,
   BookOpen,
-  CalendarClock,
   PlayCircle,
-  Settings,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { toast } from "sonner"
 import type { EventListItem, EventStatus } from "./types"
 
 type Tab = "all" | "published" | "draft" | "concluded"
@@ -116,19 +100,19 @@ function StatusBadge({ status }: { status: EventStatus }) {
   switch (status) {
     case "Published":
       return (
-        <Badge className="gap-1 border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 text-[11px] px-2 py-0.5">
+        <Badge className="gap-1 border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 text-[11px] px-2 py-0.5 shrink-0">
           <Eye className="h-3 w-3" /> Published
         </Badge>
       )
     case "Draft":
       return (
-        <Badge className="gap-1 border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 text-[11px] px-2 py-0.5 border-dashed">
+        <Badge className="gap-1 border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 text-[11px] px-2 py-0.5 border-dashed shrink-0">
           <FileText className="h-3 w-3" /> Draft
         </Badge>
       )
     case "Concluded":
       return (
-        <Badge className="gap-1 border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-50 dark:border-slate-500/20 dark:bg-slate-500/10 dark:text-slate-300 text-[11px] px-2 py-0.5">
+        <Badge className="gap-1 border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-50 dark:border-slate-500/20 dark:bg-slate-500/10 dark:text-slate-300 text-[11px] px-2 py-0.5 shrink-0">
           <CheckCircle2 className="h-3 w-3" /> Concluded
         </Badge>
       )
@@ -171,210 +155,181 @@ function StatChip({
   )
 }
 
-// ─── Staff Access Status Display ──────────────────────────────────────────────
-function StaffAccessStatus({
-  status,
-  isPast,
-}: {
-  status: EventStatus
-  isPast: boolean
-}) {
-  if (status === "Concluded" || (status === "Published" && isPast)) {
-    return (
-      <span className="font-medium text-muted-foreground text-xs italic">
-        Event Concluded
-      </span>
-    )
-  }
-  if (status === "Draft") {
-    return (
-      <span className="font-medium text-amber-600 dark:text-amber-400 text-xs italic">
-        Draft — not published
-      </span>
-    )
-  }
-  return (
-    <span className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400 text-xs">
-      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-      Registration Open
-    </span>
-  )
-}
-
 // ─── Event Card ───────────────────────────────────────────────────────────────
 function EventCard({
   event,
 }: {
   event: EventListItem
 }) {
-  const router = useRouter()
   const isPast = new Date(event.date) < new Date()
 
   return (
-    <Card className="overflow-hidden border-border/70 bg-card p-0">
-      <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:gap-4 md:p-5">
-        {/* Left Info Panel */}
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="min-w-0 text-sm md:text-base font-semibold leading-tight text-foreground">
-              {event.title}
-            </h3>
-            <StatusBadge status={event.status} />
-            {event.tickets_waitlisted > 0 && (
-              <Badge variant="outline" className="border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-400 text-[10px] px-1.5 py-0">
-                {event.tickets_waitlisted} waitlisted
-              </Badge>
-            )}
+    <Card className="overflow-hidden border-border/70 bg-card p-0 shadow-xs">
+      <Link href={`/events/${event.id}`} className="block hover:bg-muted/30 transition-colors">
+        {/* Mobile Compact View */}
+        <div className="block md:hidden p-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-2 w-full min-w-0">
+                <h4 className="font-semibold text-sm text-foreground truncate leading-snug min-w-0 flex-1">
+                  {event.title}
+                </h4>
+                <div className="shrink-0">
+                  <StatusBadge status={event.status} />
+                </div>
+              </div>
+
+              <p className={cn(
+                "text-xs line-clamp-1",
+                event.description ? "text-muted-foreground" : "italic text-muted-foreground/60"
+              )}>
+                {event.description ?? "No description provided"}
+              </p>
+
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
+                <span>{event.venue}</span>
+                <span>•</span>
+                <span>{formatDateTime(event.date)}</span>
+              </div>
+            </div>
           </div>
+        </div>
 
-          <p
-            className={cn(
-              "mt-1 line-clamp-1 text-xs leading-5 text-muted-foreground",
-              event.description ? "" : "italic text-muted-foreground/60"
-            )}
-          >
-            {event.description ?? "No description provided"}
-          </p>
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            <StatChip icon={<Clock className="h-3.5 w-3.5" />} tone="neutral">
-              {formatDateTime(event.date)}
-              {event.duration_minutes && (
-                <span className="text-[10px] text-muted-foreground/60 ml-1">
-                  ({event.duration_minutes}m)
-                </span>
+        {/* Desktop Card View */}
+        <div className="hidden md:flex flex-row items-center justify-between gap-4 p-5">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 w-full min-w-0">
+              <h3 className="min-w-0 flex-1 text-base font-semibold leading-tight text-foreground truncate">
+                {event.title}
+              </h3>
+              <StatusBadge status={event.status} />
+              {event.tickets_waitlisted > 0 && (
+                <Badge variant="outline" className="border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-400 text-[10px] px-1.5 py-0 shrink-0">
+                  {event.tickets_waitlisted} waitlisted
+                </Badge>
               )}
-            </StatChip>
+            </div>
 
-            <StatChip icon={<MapPin className="h-3.5 w-3.5" />} tone="neutral">
-              {event.venue}
-            </StatChip>
+            <p className={cn(
+              "mt-1 text-xs leading-5 line-clamp-1",
+              event.description ? "text-muted-foreground" : "italic text-muted-foreground/60"
+            )}>
+              {event.description ?? "No description provided"}
+            </p>
 
-            <StatChip icon={<Users className="h-3.5 w-3.5" />} tone="neutral">
-              {event.tickets_confirmed}/{event.capacity} Confirmed
-            </StatChip>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <StatChip icon={<Clock className="h-3.5 w-3.5" />} tone="neutral">
+                {formatDateTime(event.date)}
+                {event.duration_minutes && (
+                  <span className="text-[10px] text-muted-foreground/60 ml-1">
+                    ({event.duration_minutes}m)
+                  </span>
+                )}
+              </StatChip>
 
-            <StatChip icon={<UserCheck className="h-3.5 w-3.5" />} tone="neutral">
-              {event.tickets_present} Checked In
-            </StatChip>
+              <StatChip icon={<MapPin className="h-3.5 w-3.5" />} tone="neutral">
+                {event.venue}
+              </StatChip>
+
+              <StatChip icon={<Users className="h-3.5 w-3.5" />} tone="neutral">
+                {event.tickets_confirmed}/{event.capacity} Confirmed
+              </StatChip>
+
+              <StatChip icon={<UserCheck className="h-3.5 w-3.5" />} tone="neutral">
+                {event.tickets_present} Checked In
+              </StatChip>
+            </div>
           </div>
         </div>
-
-        {/* Right Action Column */}
-        <div className="flex flex-col gap-3 border-t border-border/60 pt-3 md:min-w-[120px] md:items-end md:pt-0 md:border-t-0 md:text-right">
-          <div className="md:items-end">
-            <StaffAccessStatus status={event.status} isPast={isPast} />
-          </div>
-
-          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-1.5 w-full md:w-auto md:justify-end">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => router.push(`/events/${event.id}`)}
-              className="w-full md:w-auto gap-1 text-xs cursor-pointer"
-            >
-              <Settings className="h-3.5 w-3.5" />
-              Manage
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => toast.info("Scan feature is coming soon!")}
-              className="w-full md:w-auto gap-1 text-xs cursor-pointer"
-            >
-              <QrCode className="h-3.5 w-3.5" />
-              Scan
-            </Button>
-          </div>
-        </div>
-      </div>
+      </Link>
     </Card>
   )
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 interface Props {
   events: EventListItem[]
-  initialPage: number
-  initialPageSize: number
-  initialSearch: string
-  initialTab: string
-  totalCount: number
-  tabCounts: { all: number; published: number; draft: number; concluded: number }
   totalAttendeesCount: number
   totalCheckedInCount: number
 }
 
 export function EventsStaffClient({
   events,
-  initialPage,
-  initialPageSize,
-  initialSearch,
-  initialTab,
-  totalCount,
-  tabCounts,
   totalAttendeesCount,
   totalCheckedInCount,
 }: Props) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const [isPending, startTransition] = useTransition()
+  // Search & tab filters state
+  const [searchInput, setSearchInput] = useState("")
+  const [activeTab, setActiveTab] = useState<Tab>("all")
 
-  // Local search text input
-  const [searchInput, setSearchInput] = useState(initialSearch)
-  const isOwnUpdateRef = useRef(false)
-
-  // Sync search input with URL params on back/forward
-  useEffect(() => {
-    if (isOwnUpdateRef.current) {
-      isOwnUpdateRef.current = false
-      return
-    }
-    setSearchInput(initialSearch)
-  }, [initialSearch])
-
-  // Helper to push updated params to URL
-  const updateParams = useCallback(
-    (newParams: Partial<Record<string, string | number>>) => {
-      const params = new URLSearchParams(window.location.search)
-      Object.entries(newParams).forEach(([key, val]) => {
-        if (val === undefined || val === "" || val === null) {
-          params.delete(key)
-        } else {
-          params.set(key, String(val))
-        }
-      })
-      startTransition(() => {
-        router.push(`${pathname}?${params.toString()}`)
-      })
-    },
-    [pathname, router]
-  )
-
-  // Debounced search logic
-  useEffect(() => {
-    if (searchInput === initialSearch) return
-
-    const timer = setTimeout(() => {
-      isOwnUpdateRef.current = true
-      updateParams({ search: searchInput, page: 1 })
-    }, 450)
-    return () => clearTimeout(timer)
-  }, [searchInput, initialSearch, updateParams])
-
-  const activeTab = (initialTab || "all") as Tab
+  // Calculate stats dynamically based on all events
+  const stats = useMemo(() => {
+    const all = events.length
+    const published = events.filter(e => e.status === "Published").length
+    const draft = events.filter(e => e.status === "Draft").length
+    const concluded = events.filter(e => e.status === "Concluded").length
+    return { all, published, draft, concluded }
+  }, [events])
 
   const tabConfig: TabConfig[] = [
-    { value: "all", label: "All", icon: <BookOpen className="h-3.5 w-3.5" />, count: tabCounts.all },
-    { value: "published", label: "Published", icon: <PlayCircle className="h-3.5 w-3.5" />, count: tabCounts.published },
-    { value: "draft", label: "Drafts", icon: <FileText className="h-3.5 w-3.5" />, count: tabCounts.draft },
-    { value: "concluded", label: "Concluded", icon: <CheckCircle2 className="h-3.5 w-3.5" />, count: tabCounts.concluded },
+    { value: "all", label: "All", icon: <BookOpen className="h-3.5 w-3.5" />, count: stats.all },
+    { value: "published", label: "Published", icon: <PlayCircle className="h-3.5 w-3.5" />, count: stats.published },
+    { value: "draft", label: "Drafts", icon: <FileText className="h-3.5 w-3.5" />, count: stats.draft },
+    { value: "concluded", label: "Concluded", icon: <CheckCircle2 className="h-3.5 w-3.5" />, count: stats.concluded },
   ]
 
-  const totalPages = Math.ceil(totalCount / initialPageSize)
-  const activePage = Math.min(initialPage, Math.max(1, totalPages))
+  // Client-side filtering & search
+  const filteredEvents = useMemo(() => {
+    return events.filter(event => {
+      const matchSearch =
+        event.title.toLowerCase().includes(searchInput.toLowerCase()) ||
+        event.venue.toLowerCase().includes(searchInput.toLowerCase()) ||
+        (event.description?.toLowerCase().includes(searchInput.toLowerCase()) ?? false)
 
-  const onRefresh = () => router.refresh()
+      if (!matchSearch) return false
+
+      if (activeTab !== "all") {
+        return event.status.toLowerCase() === activeTab
+      }
+      return true
+    })
+  }, [events, searchInput, activeTab])
+
+  // Client-side infinite scroll pagination
+  const pageSize = 10
+  const [visibleCount, setVisibleCount] = useState(pageSize)
+
+  useEffect(() => {
+    setVisibleCount(pageSize)
+  }, [searchInput, activeTab])
+
+  const paginatedEvents = useMemo(() => {
+    return filteredEvents.slice(0, visibleCount)
+  }, [filteredEvents, visibleCount])
+
+  const hasMore = visibleCount < filteredEvents.length
+  const observerTarget = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setVisibleCount((prev) => prev + pageSize)
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    const target = observerTarget.current
+    if (target) {
+      observer.observe(target)
+    }
+
+    return () => {
+      if (target) {
+        observer.unobserve(target)
+      }
+    }
+  }, [hasMore])
 
   return (
     <div className="flex flex-col gap-6 px-4 py-8 md:px-8">
@@ -383,34 +338,30 @@ export function EventsStaffClient({
         <div className="flex flex-col gap-1.5">
           <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Events</h1>
           <p className="text-sm text-muted-foreground">
-            {totalCount} event{totalCount !== 1 ? "s" : ""} created
+            Post and manage campus placement activities and events
           </p>
         </div>
         <Link href="/events/new/edit">
-          <Button className="gap-1.5 cursor-pointer">
+          <Button className="gap-1.5 cursor-pointer shrink-0">
             <Plus className="h-4 w-4" />
             Create Event
           </Button>
         </Link>
       </div>
 
-      {/* Stats */}
+      {/* Stats Bar */}
       <StatsBar
-        tabCounts={tabCounts}
+        tabCounts={stats}
         totalAttendeesCount={totalAttendeesCount}
         totalCheckedInCount={totalCheckedInCount}
       />
 
-      <Tabs value={activeTab} onValueChange={(v) => updateParams({ tab: v, page: 1 })}>
-        <div className="space-y-4">
-          {/* Search (left) + Tabs (right) */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="relative w-full sm:max-w-xs">
-              {isPending ? (
-                <Loader2 className="absolute left-2.5 top-2.5 h-4 w-4 text-primary animate-spin" />
-              ) : (
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              )}
+      <div className="space-y-4">
+        {/* Search (left) + Filters (right) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+          <div className="flex flex-1 items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search events..."
                 value={searchInput}
@@ -419,146 +370,130 @@ export function EventsStaffClient({
               />
               {searchInput && (
                 <button
-                  onClick={() => {
-                    isOwnUpdateRef.current = true
-                    setSearchInput("")
-                    updateParams({ search: "", page: 1 })
-                  }}
+                  onClick={() => setSearchInput("")}
                   className="absolute right-2.5 top-2.5 h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
-            <div className="overflow-x-auto shrink-0">
-              <TabsList className="inline-flex h-9 gap-0.5 rounded-lg bg-muted p-1">
-                {tabConfig.map(({ value, label, count }) => (
-                  <TabsTrigger
-                    key={value}
-                    value={value}
-                    className="gap-1.5 rounded-md px-3 text-xs font-medium cursor-pointer data-[state=active]:bg-background data-[state=active]:shadow-sm"
-                  >
-                    {label}
-                    {count > 0 && (
-                      <span className={cn(
-                        "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums",
-                        activeTab === value
-                          ? "bg-foreground text-background"
-                          : "bg-muted-foreground/20 text-muted-foreground"
-                      )}>
-                        {count}
-                      </span>
-                    )}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
-          </div>
 
-          <div className="relative">
-            {isPending && (
-              <div className="absolute inset-0 z-50 bg-background/40 backdrop-blur-[1px] rounded-lg">
-                <div className="sticky top-[40vh] mx-auto flex w-fit flex-col items-center gap-2 rounded-lg border bg-popover px-4 py-3 shadow-md">
-                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
-                  <span className="text-xs font-medium text-muted-foreground animate-pulse">Loading...</span>
+            {/* Filter Sheet */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="gap-2 shrink-0 h-9">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  <span>Filters</span>
+                  {activeTab !== "all" && (
+                    <Badge className="ml-1 px-1.5 py-0.5 text-[10px] bg-primary text-primary-foreground font-semibold">
+                      1
+                    </Badge>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                <SheetHeader className="px-6 pt-6 pb-2">
+                  <SheetTitle>Filter Events</SheetTitle>
+                  <SheetDescription>
+                    Filter postings by status.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="px-6 py-4 space-y-6">
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</h3>
+                    <div className="flex flex-col gap-2">
+                      {tabConfig.map(({ value, label, icon, count }) => (
+                        <button
+                          key={value}
+                          onClick={() => setActiveTab(value)}
+                          className={cn(
+                            "flex items-center justify-between w-full px-3 py-2 text-sm rounded-lg border text-left transition-colors",
+                            activeTab === value
+                              ? "border-primary bg-primary/5 text-primary font-medium"
+                              : "border-border/60 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          <span className="flex items-center gap-2">
+                            {icon}
+                            {label}
+                          </span>
+                          <span className="text-xs font-semibold tabular-nums px-2 py-0.5 rounded-full bg-muted">
+                            {count}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
-            <div className={cn("space-y-4 transition-opacity duration-200", isPending && "opacity-50 pointer-events-none")}>
-              {tabConfig.map(({ value, label }) => {
-                if (value !== activeTab) {
-                  return <TabsContent key={value} value={value} className="mt-0 outline-none" />
-                }
-                return (
-                  <TabsContent key={value} value={value} className="mt-0 outline-none space-y-4">
-                    {totalCount === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
-                        <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
-                          <BookOpen className="h-5 w-5 text-muted-foreground/60" />
-                        </div>
-                        <div className="space-y-0.5">
-                          <p className="text-sm font-medium">No {label.toLowerCase()}</p>
-                          <p className="text-xs text-muted-foreground">Create your first event to get started</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex flex-col gap-3 w-full">
-                          {events.map((event) => (
-                            <EventCard key={event.id} event={event} />
-                          ))}
-                        </div>
-
-                        {/* Pagination Footer */}
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-1 px-1">
-                          <div className="text-xs text-muted-foreground">
-                            Showing{" "}
-                            <span className="font-medium">
-                              {totalCount === 0 ? 0 : Math.min(totalCount, (activePage - 1) * initialPageSize + 1)}
-                            </span>
-                            {" "}to{" "}
-                            <span className="font-medium">{Math.min(totalCount, activePage * initialPageSize)}</span>
-                            {" "}of{" "}
-                            <span className="font-medium">{totalCount}</span> events
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground whitespace-nowrap">Rows per page</span>
-                              <Select
-                                value={initialPageSize.toString()}
-                                onValueChange={(val) => updateParams({ size: val, page: 1 })}
-                              >
-                                <SelectTrigger className="h-8 w-[70px] text-xs">
-                                  <SelectValue placeholder={initialPageSize.toString()} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {[5, 10, 20, 50].map((s) => (
-                                    <SelectItem key={s} value={s.toString()} className="text-xs">{s}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="flex items-center gap-1">
-                              <Button variant="outline" size="icon" className="h-8 w-8 cursor-pointer"
-                                onClick={() => updateParams({ page: 1 })} disabled={activePage === 1}>
-                                <ChevronsLeft className="h-4 w-4" />
-                                <span className="sr-only">First page</span>
-                              </Button>
-                              <Button variant="outline" size="icon" className="h-8 w-8 cursor-pointer"
-                                onClick={() => updateParams({ page: Math.max(1, activePage - 1) })} disabled={activePage === 1}>
-                                <ChevronLeft className="h-4 w-4" />
-                                <span className="sr-only">Previous page</span>
-                              </Button>
-                              <div className="flex items-center justify-center text-xs font-medium min-w-[80px] tabular-nums">
-                                Page {activePage} of {totalPages || 1}
-                              </div>
-                              <Button variant="outline" size="icon" className="h-8 w-8 cursor-pointer"
-                                onClick={() => updateParams({ page: Math.min(totalPages, activePage + 1) })}
-                                disabled={activePage === totalPages || totalPages === 0}>
-                                <ChevronRight className="h-4 w-4" />
-                                <span className="sr-only">Next page</span>
-                              </Button>
-                              <Button variant="outline" size="icon" className="h-8 w-8 cursor-pointer"
-                                onClick={() => updateParams({ page: totalPages })}
-                                disabled={activePage === totalPages || totalPages === 0}>
-                                <ChevronsRight className="h-4 w-4" />
-                                <span className="sr-only">Last page</span>
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </TabsContent>
-                )
-              })}
-            </div>
+              </SheetContent>
+            </Sheet>
           </div>
-
         </div>
-      </Tabs>
+
+        {/* Active Filter Chips */}
+        {activeTab !== "all" && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Active filters:</span>
+            <Badge
+              variant="secondary"
+              className="gap-1.5 pl-2 pr-1.5 py-1 text-xs hover:bg-secondary/80 font-medium"
+            >
+              Status: <span className="capitalize font-semibold">{activeTab}</span>
+              <button
+                onClick={() => setActiveTab("all")}
+                className="rounded-full p-0.5 hover:bg-muted-foreground/20 text-muted-foreground transition-colors"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveTab("all")}
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Clear all
+            </Button>
+          </div>
+        )}
+
+        <div className="relative">
+          <div className="space-y-4">
+            {paginatedEvents.length === 0 ? (
+              <Card className="p-12 text-center border-dashed">
+                <Calendar className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                <h3 className="font-semibold text-lg">No events found</h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+                  No matching events were found. Try adjusting your search query or status filter.
+                </p>
+              </Card>
+            ) : (
+              <>
+                <div className="flex flex-col gap-3 w-full">
+                  {paginatedEvents.map((event) => (
+                    <EventCard key={event.id} event={event} />
+                  ))}
+                </div>
+
+                {/* Scroll Loader Target */}
+                <div ref={observerTarget} className="flex justify-center items-center py-6 w-full h-10">
+                  {hasMore && (
+                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground animate-pulse">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      Loading more...
+                    </div>
+                  )}
+                  {!hasMore && filteredEvents.length > 0 && (
+                    <span className="text-xs text-muted-foreground/70">
+                      Showing all {filteredEvents.length} events
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -31,6 +31,7 @@ export interface EventListItem {
   targeting_rules: EventTargetingRules
   duration_minutes: number
   event_banner: string | null
+  speaker_name: string | null
   created_at: string
   updated_at: string
   // Computed
@@ -63,6 +64,7 @@ export interface CandidateEventListItem {
   status: EventStatus
   duration_minutes: number
   event_banner: string | null
+  speaker_name: string | null
   created_at: string
   tickets_confirmed: number
   // Candidate's own ticket info
@@ -81,6 +83,7 @@ export interface EventFormData {
   targeting_rules: EventTargetingRules
   duration_minutes: number
   event_banner?: string | null
+  speaker_name?: string | null
   agenda?: Omit<EventAgendaItem, "id" | "event_id">[]
 }
 

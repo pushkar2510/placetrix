@@ -97,7 +97,19 @@ export default async function EventDetailPage({ params }: { params: Promise<Para
           capacity: event.capacity,
           status: event.status,
           duration_minutes: event.duration_minutes ?? 120,
+          event_banner: event.event_banner ?? null,
+          speaker_name: event.speaker_name ?? null,
         }}
+        agenda={(event.event_agenda ?? [])
+          .sort((a: any, b: any) => a.order_index - b.order_index)
+          .map((item: any) => ({
+            id: item.id,
+            event_id: item.event_id,
+            title: item.title,
+            description: item.description,
+            start_time: item.start_time,
+            order_index: item.order_index,
+          }))}
         tickets={formattedTickets}
       />
     )
@@ -125,6 +137,7 @@ export default async function EventDetailPage({ params }: { params: Promise<Para
         duration_minutes: event.duration_minutes ?? 120,
         event_banner: event.event_banner ?? null,
         institute_name: event.institutes?.institute_name ?? null,
+        speaker_name: event.speaker_name ?? null,
       }}
       agenda={(event.event_agenda ?? [])
         .sort((a: any, b: any) => a.order_index - b.order_index)

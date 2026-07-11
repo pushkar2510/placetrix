@@ -47,6 +47,7 @@ export default async function EventEditorPage({ params }: Props) {
       targeting_rules: eventData.targeting_rules ?? { years: [], branches: [] },
       duration_minutes: eventData.duration_minutes ?? 120,
       event_banner: eventData.event_banner ?? null,
+      speaker_name: eventData.speaker_name ?? null,
       agenda: (eventData.event_agenda ?? [])
         .sort((a: any, b: any) => a.order_index - b.order_index)
         .map((item: any) => ({

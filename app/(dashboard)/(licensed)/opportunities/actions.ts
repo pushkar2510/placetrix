@@ -65,6 +65,11 @@ export async function createOpportunityAction(data: OpportunityFormData) {
       job_role: data.job_role,
       job_description: data.job_description || null,
       location: data.location || null,
+      job_type: data.job_type || null,
+      job_timing: data.job_timing || null,
+      roles_responsibilities: data.roles_responsibilities || null,
+      requirements: data.requirements || null,
+      perks: data.perks || null,
       compensation_type: data.compensation_type,
       ctc_lpa: data.ctc_lpa ?? null,
       stipend_monthly: data.stipend_monthly ?? null,
@@ -73,6 +78,7 @@ export async function createOpportunityAction(data: OpportunityFormData) {
       deadline: data.deadline,
       status: data.status,
       min_cgpa: data.min_cgpa || 0,
+      collect_resume: data.collect_resume,
       created_by: profile.id
     })
     .select("id")
@@ -123,6 +129,11 @@ export async function updateOpportunityAction(oppId: string, data: OpportunityFo
       job_role: data.job_role,
       job_description: data.job_description || null,
       location: data.location || null,
+      job_type: data.job_type || null,
+      job_timing: data.job_timing || null,
+      roles_responsibilities: data.roles_responsibilities || null,
+      requirements: data.requirements || null,
+      perks: data.perks || null,
       compensation_type: data.compensation_type,
       ctc_lpa: data.ctc_lpa ?? null,
       stipend_monthly: data.stipend_monthly ?? null,
@@ -131,6 +142,7 @@ export async function updateOpportunityAction(oppId: string, data: OpportunityFo
       deadline: data.deadline,
       status: data.status,
       min_cgpa: data.min_cgpa || 0,
+      collect_resume: data.collect_resume,
       updated_at: new Date().toISOString()
     })
     .eq("id", oppId)
@@ -185,7 +197,7 @@ export async function updateApplicationStatusAction(applicationId: string, statu
 
 // ─── Candidate Actions ────────────────────────────────────────────────────────
 
-export async function applyToOpportunityAction(oppId: string, resumeUrl: string) {
+export async function applyToOpportunityAction(oppId: string, resumeUrl: string | null, metadata?: any) {
   const profile = await requireCandidate()
   const supabase = await createClient()
 
@@ -222,7 +234,8 @@ export async function applyToOpportunityAction(oppId: string, resumeUrl: string)
     .insert({
       opportunity_id: oppId,
       candidate_id: profile.id,
-      resume_url: resumeUrl,
+      resume_url: resumeUrl || null,
+      metadata: metadata || null,
       status: "Applied"
     })
 

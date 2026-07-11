@@ -71,6 +71,7 @@ export function CreateEventClient({ eventId, initialData }: Props) {
       ? {
           ...initialData,
           date: toLocalDatetimeString(initialData.date),
+          speaker_name: initialData.speaker_name || "",
         }
       : {
           title: "",
@@ -81,6 +82,7 @@ export function CreateEventClient({ eventId, initialData }: Props) {
           status: "Draft",
           duration_minutes: 120,
           targeting_rules: { years: [], branches: [] },
+          speaker_name: "",
         }
   )
 
@@ -252,6 +254,7 @@ export function CreateEventClient({ eventId, initialData }: Props) {
           status,
           event_banner: finalBannerPath,
           agenda: agendaPayload,
+          speaker_name: formData.speaker_name || null,
         }
 
         if (eventId) {
@@ -379,6 +382,16 @@ export function CreateEventClient({ eventId, initialData }: Props) {
                 placeholder="e.g. Campus Placement Drive 2026"
                 value={formData.title}
                 onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="speaker_name">Speaker Name (Optional)</Label>
+              <Input
+                id="speaker_name"
+                placeholder="e.g. Dr. Jane Doe (Tech Director at Acme Corp)"
+                value={formData.speaker_name || ""}
+                onChange={(e) => setFormData((p) => ({ ...p, speaker_name: e.target.value }))}
               />
             </div>
 

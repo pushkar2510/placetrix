@@ -61,9 +61,9 @@ export function FloatingSaveBar({
                                 className="h-9 px-4 gap-1.5"
                             >
                                 {isPending ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    <Loader2 className="animate-spin" />
                                 ) : (
-                                    <Save className="h-3.5 w-3.5" />
+                                    <Save />
                                 )}
                                 <span>Save</span>
                             </Button>
@@ -98,9 +98,9 @@ export function FloatingSaveBar({
                                 className="h-8 gap-1.5"
                             >
                                 {isPending ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    <Loader2 className="animate-spin" />
                                 ) : (
-                                    <Save className="h-3.5 w-3.5" />
+                                    <Save />
                                 )}
                                 Save changes
                             </Button>

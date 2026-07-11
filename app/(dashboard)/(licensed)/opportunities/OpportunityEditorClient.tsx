@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, Loader2, Save, Send, Building2, MapPin, IndianRupee, Calendar, Info, FileText } from "lucide-react"
 import { toast } from "sonner"
 import { createOpportunityAction, updateOpportunityAction } from "./actions"
@@ -51,6 +52,11 @@ export function OpportunityEditorClient({
     job_role: opportunity?.job_role || "",
     job_description: opportunity?.job_description || "",
     location: opportunity?.location || "",
+    job_type: opportunity?.job_type || "In-Office",
+    job_timing: opportunity?.job_timing || "Full-time",
+    roles_responsibilities: opportunity?.roles_responsibilities || "",
+    requirements: opportunity?.requirements || "",
+    perks: opportunity?.perks || "",
     compensation_type: opportunity?.compensation_type || "full_time",
     ctc_lpa: opportunity?.ctc_lpa || null,
     stipend_monthly: opportunity?.stipend_monthly || null,
@@ -60,7 +66,8 @@ export function OpportunityEditorClient({
       ? new Date(opportunity.deadline).toISOString().slice(0, 16)
       : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
     status: opportunity?.status || "Draft",
-    min_cgpa: opportunity?.min_cgpa || 0
+    min_cgpa: opportunity?.min_cgpa || 0,
+    collect_resume: opportunity ? opportunity.collect_resume : true
   })
 
   const handleSubmit = async (e?: React.FormEvent, overrideStatus?: "Draft" | "Published") => {
@@ -262,10 +269,44 @@ export function OpportunityEditorClient({
                   <Label htmlFor="location">Job Location</Label>
                   <Input 
                     id="location" 
-                    placeholder="e.g., Bangalore, Hybrid"
+                    placeholder="e.g., Bangalore"
                     value={formData.location || ""} 
                     onChange={e => setFormData({ ...formData, location: e.target.value })}
                   />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="job_type">Job Type (Work Mode) *</Label>
+                  <Select 
+                    value={formData.job_type} 
+                    onValueChange={v => setFormData({ ...formData, job_type: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Work Mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="In-Office">In-Office</SelectItem>
+                      <SelectItem value="Remote">Remote</SelectItem>
+                      <SelectItem value="Hybrid">Hybrid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="job_timing">Job Timing / Engagement *</Label>
+                  <Select 
+                    value={formData.job_timing} 
+                    onValueChange={v => setFormData({ ...formData, job_timing: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Engagement" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Full-time">Full-time</SelectItem>
+                      <SelectItem value="Internship">Internship</SelectItem>
+                      <SelectItem value="Part-time">Part-time</SelectItem>
+                      <SelectItem value="Freelance">Freelance</SelectItem>
+                      <SelectItem value="Project-based / Flexible">Project-based / Flexible</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>
@@ -401,6 +442,25 @@ export function OpportunityEditorClient({
                     </SelectContent>
                   </Select>
                 </div>
+                
+                <div className="space-y-1 pt-6">
+                  <div className="flex items-center gap-2.5">
+                    <Checkbox 
+                      id="collect_resume"
+                      checked={formData.collect_resume}
+                      onCheckedChange={checked => setFormData({ ...formData, collect_resume: checked === true })}
+                    />
+                    <label 
+                      htmlFor="collect_resume" 
+                      className="text-xs font-semibold leading-none cursor-pointer select-none"
+                    >
+                      Collect Resume
+                    </label>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground pl-6.5">
+                    Candidates must upload a PDF resume to apply.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -411,6 +471,39 @@ export function OpportunityEditorClient({
                   placeholder="Enter details about responsibilities, qualifications, Interview rounds, CTC structure, etc."
                   value={formData.job_description || ""} 
                   onChange={e => setFormData({ ...formData, job_description: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="roles_responsibilities">Roles & Responsibilities</Label>
+                <Textarea 
+                  id="roles_responsibilities" 
+                  rows={4}
+                  placeholder="Enter main responsibilities (one per line or as a paragraph)..."
+                  value={formData.roles_responsibilities || ""} 
+                  onChange={e => setFormData({ ...formData, roles_responsibilities: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="requirements">Requirements</Label>
+                <Textarea 
+                  id="requirements" 
+                  rows={4}
+                  placeholder="Enter requirements & required skills (one per line or as a paragraph)..."
+                  value={formData.requirements || ""} 
+                  onChange={e => setFormData({ ...formData, requirements: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="perks">Perks & Benefits</Label>
+                <Textarea 
+                  id="perks" 
+                  rows={4}
+                  placeholder="Enter additional perks, health cover, workspace benefits (one per line or as a paragraph)..."
+                  value={formData.perks || ""} 
+                  onChange={e => setFormData({ ...formData, perks: e.target.value })}
                 />
               </div>
             </CardContent>

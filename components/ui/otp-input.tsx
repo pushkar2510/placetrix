@@ -76,10 +76,10 @@ export function OTPInput({
           onFocus={(e) => e.target.select()}
           disabled={disabled}
           className={cn(
-            "h-11 w-10 rounded-md border border-input bg-background shadow-sm text-center font-mono text-base font-semibold text-foreground",
-            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring",
-            "disabled:cursor-not-allowed disabled:opacity-50",
-            "hover:bg-accent/20 transition-colors"
+            "h-11 w-10 rounded-md border border-input bg-transparent shadow-xs text-center font-mono text-base font-semibold text-foreground transition-[color,box-shadow] outline-none",
+            "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+            "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+            "dark:bg-input/30"
           )}
         />
       ))}

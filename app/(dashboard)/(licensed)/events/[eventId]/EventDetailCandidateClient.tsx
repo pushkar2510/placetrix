@@ -1,23 +1,20 @@
 "use client"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// app/(dashboard)/(licensed)/events/[eventId]/EventDetailCandidateClient.tsx
-// Candidate view: QR ticket, event info, live Q&A
-// ─────────────────────────────────────────────────────────────────────────────
-
-import { useState, useEffect, useTransition } from "react"
+import { useState, useEffect, useTransition, type ReactNode } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import QRCode from "qrcode"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog"
 import {
   AlertDialog,
@@ -39,6 +36,15 @@ import {
   Ticket,
   UserCheck,
   Loader2,
+  Calendar,
+  Users,
+  QrCode,
+  CalendarX,
+  FileText,
+  Info,
+  Image as ImageIcon,
+  X,
+  Mic,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -64,8 +70,6 @@ function formatTimeOnly(dtStr: string): string {
   }
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface EventInfo {
   id: string
   title: string
@@ -77,12 +81,35 @@ interface EventInfo {
   duration_minutes: number
   event_banner: string | null
   institute_name?: string | null
+  speaker_name: string | null
 }
 
 export interface TicketInfo {
   id: string
   status: TicketStatus
   attendance_status: AttendanceStatus
+}
+
+function MetaItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 shrink-0 text-muted-foreground">{icon}</span>
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </p>
+        <p className="mt-0.5 text-sm font-semibold text-foreground">{value}</p>
+      </div>
+    </div>
+  )
 }
 
 // ─── QR Ticket Card ──────────────────────────────────────────────────────────
@@ -168,22 +195,8 @@ interface Props {
 export function EventDetailCandidateClient({ event, agenda, ticket, candidateName }: Props) {
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
-  const [isLandscape, setIsLandscape] = useState<boolean>(true)
 
-  useEffect(() => {
-    if (event.event_banner) {
-      const img = new Image()
-      img.src = buildStorageUrl("event-banners", event.event_banner) || ""
-      img.onload = () => {
-        setIsLandscape(img.width >= img.height)
-      }
-      img.onerror = () => {
-        setIsLandscape(true)
-      }
-    } else {
-      setIsLandscape(true)
-    }
-  }, [event.event_banner])
+  const isPast = new Date(event.date) < new Date()
 
   const handleRSVP = () => {
     startTransition(async () => {
@@ -213,232 +226,319 @@ export function EventDetailCandidateClient({ event, agenda, ticket, candidateNam
     })
   }
 
-  const renderEventInfo = () => {
-    return (
-      <div className="space-y-4">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <Badge variant="outline" className={cn(
-              event.status === "Published" 
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" 
-                : "bg-muted text-muted-foreground"
-            )}>
-              {event.status}
-            </Badge>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground font-cirka">{event.title}</h1>
-        </div>
-
-        {event.description && (
-          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{event.description}</p>
-        )}
-
-        <div className="grid gap-3 text-sm text-muted-foreground border-y py-4">
-          <div className="flex items-center gap-2.5">
-            <Clock className="h-4 w-4 text-primary" />
-            <span>{formatDateTime(event.date)} ({event.duration_minutes} Minutes)</span>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <MapPin className="h-4 w-4 text-primary" />
-            <span>{event.venue}</span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const renderAgenda = () => {
-    if (!agenda || agenda.length === 0) return null
-    return (
-      <Card className="border">
-        <CardContent className="p-5 space-y-4">
-          <h3 className="font-semibold text-base text-foreground">Agenda</h3>
-          <div className="relative pl-6 border-l border-border/80 space-y-6">
-            {agenda.map((item, idx) => (
-              <div key={item.id || idx} className="relative space-y-1">
-                {/* Dot on Timeline */}
-                <div className="absolute -left-[31px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  <span className="text-[10px] font-bold text-primary font-mono bg-primary/5 border border-primary/10 px-1.5 py-0.5 rounded">
-                    {formatTimeOnly(item.start_time)}
-                  </span>
-                  <h4 className="text-sm font-semibold text-foreground">{item.title}</h4>
-                </div>
-                {item.description && (
-                  <p className="text-xs text-muted-foreground leading-relaxed pl-0.5">
-                    {item.description}
-                  </p>
-                )}
+  const renderActionCard = (isMobile = false) => {
+    if (ticket) {
+      const isConfirmed = ticket.status === "Confirmed"
+      return (
+        <Card className={cn(
+          "rounded-xl border shadow-sm overflow-hidden",
+          isMobile ? "bg-background/95 backdrop-blur-md" : "bg-muted/30 w-full"
+        )}>
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-start gap-2.5">
+              {isConfirmed ? (
+                <CheckCircle2 className="mt-0.5 h-4.5 w-4.5 shrink-0 text-emerald-600 dark:text-emerald-500" />
+              ) : (
+                <Hourglass className="mt-0.5 h-4.5 w-4.5 shrink-0 text-amber-600 dark:text-amber-500 animate-pulse" />
+              )}
+              <div>
+                <p className={cn("text-sm font-semibold", isConfirmed ? "text-emerald-800 dark:text-emerald-400" : "text-amber-800 dark:text-amber-400")}>
+                  {isConfirmed ? "RSVP Confirmed" : "RSVP Waitlisted"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isConfirmed ? "Your seat is confirmed. View your entry QR ticket." : "The event is full. You are in the registration queue."}
+                </p>
               </div>
-            ))}
+            </div>
+
+            {ticket.attendance_status === "Present" && (
+              <div className="flex items-center gap-2 text-xs text-emerald-600 font-semibold bg-emerald-50 dark:bg-emerald-950/20 px-2.5 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
+                <UserCheck className="h-4 w-4" /> Checked In Present
+              </div>
+            )}
+
+            <div className="space-y-2 pt-1">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="w-full gap-2 rounded-xl text-xs font-bold" size={isMobile ? "sm" : "lg"}>
+                    <QrCode className="h-4 w-4" /> View Ticket
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md p-0 border bg-card rounded-2xl">
+                  <DialogHeader className="p-4 border-b">
+                    <DialogTitle className="text-center font-bold">Your Entry Ticket</DialogTitle>
+                  </DialogHeader>
+                  <div className="p-4 bg-muted/10">
+                    <QRTicketCard
+                      ticket={ticket}
+                      candidateName={candidateName}
+                      eventTitle={event.title}
+                    />
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              {event.status !== "Concluded" && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full text-destructive hover:bg-destructive/5 hover:text-destructive border-destructive/20 rounded-xl text-xs font-bold h-10"
+                      size={isMobile ? "sm" : "lg"}
+                    >
+                      Cancel RSVP
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Cancel your RSVP?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        You will lose your spot. If the event is full, you'll need to rejoin the waitlist.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="rounded-xl">Keep My Spot</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleCancel}
+                        disabled={isPending}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer rounded-xl"
+                      >
+                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Cancel RSVP
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    if (isPast) {
+      return (
+        <Card className={cn(
+          "rounded-xl border shadow-sm overflow-hidden border-destructive/20 text-destructive",
+          isMobile ? "bg-background/95 backdrop-blur-md" : "bg-destructive/5 w-full"
+        )}>
+          <CardContent className="p-4">
+            <div className="flex items-start gap-2">
+              <CalendarX className="mt-0.5 h-4.5 w-4.5 shrink-0 text-destructive" />
+              <div>
+                <p className="text-sm font-semibold">Event Ended</p>
+                <p className="text-xs mt-0.5 opacity-90">
+                  Closed on {formatDateTime(event.date)}.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    return (
+      <Card className={cn(
+        "rounded-xl border shadow-sm overflow-hidden",
+        isMobile ? "bg-background/95 backdrop-blur-md" : "bg-muted/30 w-full"
+      )}>
+        <CardContent className={cn("p-4", isMobile ? "flex items-center justify-between gap-4" : "space-y-4")}>
+          {!isMobile && (
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-foreground">Confirm RSVP</h4>
+              <p className="text-xs text-muted-foreground">
+                Secure your attendance slot before capacity is reached.
+              </p>
+            </div>
+          )}
+
+          <div className={isMobile ? "flex-1" : "w-full"}>
+            <Button
+              onClick={handleRSVP}
+              disabled={isPending}
+              className="w-full gap-2 rounded-xl h-10 text-xs font-bold"
+              size={isMobile ? "sm" : "lg"}
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Ticket className="h-4 w-4" />
+              )}
+              RSVP to Event
+            </Button>
           </div>
         </CardContent>
       </Card>
     )
   }
 
-  const renderRSVPButtons = () => {
-    return (
-      <div className="pt-4 border-t mt-2 flex flex-col gap-2 w-full">
-        {ticket ? (
-          <>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button className="w-full gap-2 cursor-pointer" size="lg">
-                  <Ticket className="h-5 w-5" /> View Ticket
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md p-0 border bg-card">
-                <DialogHeader className="p-4 border-b">
-                  <DialogTitle className="text-center font-bold">Your Entry Ticket</DialogTitle>
-                </DialogHeader>
-                <div className="p-4 bg-muted/10">
-                  <QRTicketCard
-                    ticket={ticket}
-                    candidateName={candidateName}
-                    eventTitle={event.title}
-                  />
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            {event.status !== "Concluded" && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full text-destructive hover:bg-destructive/5 hover:text-destructive border-destructive/20 cursor-pointer animate-in fade-in duration-300"
-                    size="lg"
-                  >
-                    Cancel RSVP
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Cancel your RSVP?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      You will lose your spot. If the event is full, you'll need to rejoin the waitlist.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Keep My Spot</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleCancel}
-                      disabled={isPending}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
-                    >
-                      {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Cancel RSVP
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </>
-        ) : (
-          <Button
-            className="w-full gap-2 cursor-pointer"
-            size="lg"
-            onClick={handleRSVP}
-            disabled={isPending || event.status === "Concluded"}
-          >
-            {isPending ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Ticket className="h-5 w-5" />
-            )}
-            {event.status === "Concluded" ? "Event Ended" : "RSVP to Event"}
-          </Button>
-        )}
-      </div>
-    )
-  }
-
-  if (isLandscape) {
-    // Landscape Layout (same for mobile & desktop)
-    return (
-      <div className="flex flex-col gap-6 p-4 md:p-6 max-w-4xl mx-auto w-full">
-        {/* Back */}
-        <Link
-          href="/events"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to Events
-        </Link>
-
-        {/* Banner */}
-        {event.event_banner ? (
-          <img
-            src={buildStorageUrl("event-banners", event.event_banner) || ""}
-            alt={event.title}
-            className="w-full h-auto max-h-[450px] rounded-2xl border object-contain"
-          />
-        ) : (
-          <div className="w-full h-48 md:h-64 bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-pink-500/20 flex flex-col items-center justify-center p-6 text-center gap-2 rounded-2xl border">
-            <Ticket className="h-12 w-12 text-primary/40 animate-pulse" />
-            <span className="text-xs text-muted-foreground font-medium">
-              {event.institute_name ? `${event.institute_name} Campus Event` : "PlaceTrix Campus Event"}
-            </span>
-          </div>
-        )}
-
-        {/* Details and Agenda */}
-        <div className="space-y-6">
-          {renderEventInfo()}
-          {renderAgenda()}
-          {renderRSVPButtons()}
-        </div>
-      </div>
-    )
-  }
-
-  // Portrait/Square Layout
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6 max-w-5xl mx-auto w-full">
-      {/* Back */}
-      <Link
-        href="/events"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back to Events
-      </Link>
+    <div className="flex flex-col gap-6 px-4 py-8 md:px-8 w-full animate-in fade-in duration-500 pb-24 lg:pb-8">
+      {/* Back Button */}
+      <div>
+        <Button variant="ghost" asChild className="gap-1.5 -ml-3 hover:bg-muted/50 rounded-xl transition-all">
+          <Link href="/events">
+            <ArrowLeft className="h-4 w-4" /> Back to Events
+          </Link>
+        </Button>
+      </div>
 
-      {/* Desktop view: 2 Columns */}
-      <div className="hidden md:grid grid-cols-5 gap-8 items-start w-full">
-        {/* Left Column (60% width) */}
-        <div className="col-span-3 space-y-6">
-          {renderEventInfo()}
-          {renderAgenda()}
+      {/* Page Header */}
+      <div className="flex flex-col gap-1.5 min-w-0">
+          <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground break-words leading-tight">
+            {event.title}
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground">
+            <span>
+              {event.speaker_name && (
+                <span className="font-semibold text-foreground mr-1.5">by {event.speaker_name} ·</span>
+              )}
+              <span className="text-muted-foreground">{event.venue}</span>
+            </span>
+            {event.event_banner && (
+              <>
+                <span className="text-muted-foreground/45">•</span>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors cursor-pointer bg-primary/5 px-2.5 py-0.5 rounded-md border border-primary/10">
+                      <ImageIcon className="h-3.5 w-3.5" /> View Banner
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-3xl p-3 md:p-4 border overflow-hidden rounded-2xl bg-card" showCloseButton={false}>
+                    <div className="relative">
+                      <img
+                        src={buildStorageUrl("event-banners", event.event_banner) || ""}
+                        alt="Event Banner"
+                        className="w-full h-auto max-h-[85vh] object-contain rounded-xl md:rounded-2xl"
+                      />
+                      <DialogClose asChild>
+                        <Button className="absolute top-4 right-4 h-8 w-8 rounded-full bg-foreground text-background hover:bg-foreground/80 shadow-md flex items-center justify-center p-0 cursor-pointer">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </DialogClose>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Right Column (40% width) */}
-        <div className="col-span-2 space-y-6 flex flex-col">
-          {event.event_banner && (
-            <img
-              src={buildStorageUrl("event-banners", event.event_banner) || ""}
-              alt={event.title}
-              className="w-full h-auto max-h-[450px] rounded-2xl border object-contain"
-            />
+      {/* Two Column Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column (Details) */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Event Overview Card */}
+          <Card className="rounded-xl border bg-muted/30 w-full overflow-hidden">
+            <CardContent className="p-4">
+              <p className="pb-2.5 border-b mb-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Event Overview
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <MetaItem
+                  icon={<Clock className="h-4 w-4" />}
+                  label="Date & Time"
+                  value={formatDateTime(event.date)}
+                />
+                <MetaItem
+                  icon={<MapPin className="h-4 w-4" />}
+                  label="Venue"
+                  value={event.venue}
+                />
+                <MetaItem
+                  icon={<Users className="h-4 w-4" />}
+                  label="Capacity Limit"
+                  value={`${event.capacity} seats`}
+                />
+                <MetaItem
+                  icon={<Clock className="h-4 w-4" />}
+                  label="Duration"
+                  value={`${event.duration_minutes} minutes`}
+                />
+                <MetaItem
+                  icon={<Info className="h-4 w-4" />}
+                  label="Event Status"
+                  value={event.status}
+                />
+                {event.speaker_name && (
+                  <MetaItem
+                    icon={<Mic className="h-4 w-4" />}
+                    label="Guest Speaker"
+                    value={event.speaker_name}
+                  />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Description Card */}
+          {event.description && (
+            <Card className="rounded-xl border bg-muted/30 w-full overflow-hidden">
+              <CardContent className="p-4">
+                <p className="pb-2.5 border-b mb-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Description
+                </p>
+                <p className="overflow-hidden break-words whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                  {event.description}
+                </p>
+              </CardContent>
+            </Card>
           )}
-          {renderRSVPButtons()}
+
+          {/* Agenda Card */}
+          {agenda && agenda.length > 0 && (
+            <Card className="rounded-xl border bg-muted/30 w-full overflow-hidden">
+              <CardContent className="p-5">
+                <p className="pb-2.5 border-b mb-6 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Event Agenda
+                </p>
+                <div className="relative pl-6 md:pl-8 border-l border-primary/20 space-y-6">
+                  {agenda.map((item, idx) => (
+                    <div key={item.id || idx} className="relative group">
+                      {/* Timeline Dot Marker with glow */}
+                      <div className="absolute -left-[31px] md:-left-[39px] top-1.5 h-3.5 w-3.5 rounded-full border-2 border-primary bg-background ring-4 ring-primary/10 transition-all duration-300 group-hover:scale-110" />
+
+                      <div className="flex flex-col md:flex-row md:items-start gap-2 md:gap-4">
+                        {/* Time Badge */}
+                        <div className="shrink-0 flex items-center">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-primary font-mono bg-primary/5 dark:bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md shadow-2xs">
+                            <Clock className="h-3 w-3" />
+                            {formatTimeOnly(item.start_time)}
+                          </span>
+                        </div>
+
+                        {/* Content */}
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <h4 className="text-sm font-bold text-foreground leading-snug">
+                            {item.title}
+                          </h4>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Right Column (Desktop Sidebar CTA) */}
+        <div className="hidden lg:block lg:col-span-4 sticky top-6">
+          {renderActionCard(false)}
         </div>
       </div>
 
-      {/* Mobile view: Stacked */}
-      <div className="flex flex-col gap-6 md:hidden w-full">
-        {/* Banner on top */}
-        {event.event_banner && (
-          <img
-            src={buildStorageUrl("event-banners", event.event_banner) || ""}
-            alt={event.title}
-            className="w-full h-auto max-h-[350px] rounded-2xl border object-contain mx-auto max-w-sm"
-          />
-        )}
-        
-        {/* Info & Details */}
-        {renderEventInfo()}
-        {renderAgenda()}
-        {renderRSVPButtons()}
+      {/* Spacer to prevent mobile floating CTA from covering bottom content */}
+      <div className="h-28 lg:hidden shrink-0" />
+
+      {/* Floating Bottom Bar/Card for Mobile/Tablet */}
+      <div className="lg:hidden sticky bottom-4 z-40 animate-in slide-in-from-bottom duration-300">
+        {renderActionCard(true)}
       </div>
     </div>
   )

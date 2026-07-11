@@ -25,6 +25,11 @@ export interface OpportunityListItem {
   job_role: string
   job_description: string | null
   location: string | null
+  job_type: string | null
+  job_timing: string | null
+  roles_responsibilities: string | null
+  requirements: string | null
+  perks: string | null
   
   // Compensation details
   compensation_type: CompensationType
@@ -36,6 +41,7 @@ export interface OpportunityListItem {
   deadline: string // ISO string
   status: OpportunityStatus
   min_cgpa: number
+  collect_resume: boolean
   
   created_at: string
   updated_at: string
@@ -77,6 +83,11 @@ export interface OpportunityFormData {
   job_role: string
   job_description: string
   location: string
+  job_type: string
+  job_timing: string
+  roles_responsibilities: string
+  requirements: string
+  perks: string
   
   compensation_type: CompensationType
   ctc_lpa: number | null
@@ -87,4 +98,5 @@ export interface OpportunityFormData {
   deadline: string
   status: OpportunityStatus
   min_cgpa: number
+  collect_resume: boolean
 }

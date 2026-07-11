@@ -44,6 +44,7 @@ export async function createEventAction(data: EventFormData) {
       targeting_rules: data.targeting_rules,
       duration_minutes: data.duration_minutes,
       event_banner: data.event_banner || null,
+      speaker_name: data.speaker_name || null,
     })
     .select("id")
     .maybeSingle()
@@ -90,6 +91,7 @@ export async function updateEventAction(eventId: string, data: EventFormData) {
       targeting_rules: data.targeting_rules,
       duration_minutes: data.duration_minutes,
       event_banner: data.event_banner || null,
+      speaker_name: data.speaker_name || null,
     })
     .eq("id", eventId)
 

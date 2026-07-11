@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet"
 import { 
   Briefcase, Search, MapPin, Calendar, CheckCircle2, 
@@ -143,7 +144,19 @@ function OpportunityCard({
         </div>
 
         {/* Desktop Card View */}
-        <div className="hidden md:flex flex-row items-center justify-between gap-4 p-5">
+        <div className="hidden md:flex flex-row items-start justify-between gap-4 p-5">
+          <Avatar className="h-10 w-10 shrink-0 rounded-lg border bg-muted/20 p-0.5 shadow-2xs">
+            {opp.company?.logo_url && (
+              <AvatarImage
+                src={opp.company.logo_url}
+                alt={`${companyName} logo`}
+                className="object-cover rounded-lg"
+              />
+            )}
+            <AvatarFallback className="rounded-lg text-muted-foreground font-semibold text-xs flex items-center justify-center bg-muted">
+              {companyName.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 w-full min-w-0">
               <h3 className="min-w-0 flex-1 text-base font-semibold leading-tight text-foreground truncate">
