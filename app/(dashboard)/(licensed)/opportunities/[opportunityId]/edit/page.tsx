@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { OpportunityEditorClient } from "../../OpportunityEditorClient"
+import { getCohortOptionsAction } from "@/app/(dashboard)/(licensed)/cohorts/actions"
 
 interface PageProps {
   params: Promise<{
@@ -31,13 +32,25 @@ export default async function EditOpportunityPage(props: PageProps) {
 
   const supabase = await createClient()
 
-  // Fetch opportunity details
-  const { data: opp, error: oppErr } = await (supabase as any)
-    .from("opportunities")
-    .select("*, company:companies(*)")
-    .eq("id", opportunityId)
-    .eq("institute_id", instituteId)
-    .maybeSingle()
+  const [{ data: opp, error: oppErr }, { data: companies }, cohortOptions, { data: cohortRows }] =
+    await Promise.all([
+      (supabase as any)
+        .from("opportunities")
+        .select("*, company:companies(*)")
+        .eq("id", opportunityId)
+        .eq("institute_id", instituteId)
+        .maybeSingle(),
+      (supabase as any)
+        .from("companies")
+        .select("*")
+        .eq("institute_id", instituteId)
+        .order("name"),
+      getCohortOptionsAction(),
+      (supabase as any)
+        .from("opportunity_cohorts")
+        .select("cohort_id")
+        .eq("opportunity_id", opportunityId),
+    ])
 
   if (oppErr || !opp) {
     return (
@@ -47,17 +60,14 @@ export default async function EditOpportunityPage(props: PageProps) {
     )
   }
 
-  // Fetch list of saved companies for dropdown selection
-  const { data: companies } = await (supabase as any)
-    .from("companies")
-    .select("*")
-    .eq("institute_id", instituteId)
-    .order("name")
+  const initialCohortIds = (cohortRows ?? []).map((r: any) => r.cohort_id)
 
   return (
     <OpportunityEditorClient 
       opportunity={opp}
       companies={companies || []}
+      cohortOptions={cohortOptions}
+      initialCohortIds={initialCohortIds}
     />
   )
 }

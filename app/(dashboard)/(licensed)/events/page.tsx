@@ -36,12 +36,13 @@ async function fetchInstituteEvents(
     }
   }
 
-  // Fetch all events for the institute joining their tickets
+  // Fetch all events for the institute joining their tickets and cohorts
   const { data: rawEvents } = await (supabase as any)
     .from("events")
     .select(`
       *,
-      event_tickets(id, status, attendance_status)
+      event_tickets(id, status, attendance_status),
+      event_cohorts(cohort_id, cohorts(name))
     `)
     .eq("institute_id", instituteId)
     .order("date", { ascending: false })
@@ -100,41 +101,45 @@ async function fetchCandidateEvents(
     return { events: [] }
   }
 
-  // Get candidate academic details to enforce targeting rules
-  const { data: academic } = await (supabase as any)
-    .from("candidate_academic_details")
-    .select("passout_year, course:institute_courses(course_name)")
-    .eq("profile_id", userId)
-    .maybeSingle()
+  // 2. Find which cohorts this candidate belongs to
+  const { data: memberRows } = await (supabase as any)
+    .from("cohort_students")
+    .select("cohort_id")
+    .eq("student_id", userId)
 
-  const candidateBranch = academic?.course?.course_name
-  const candidateYear = academic?.passout_year
+  const cohortIds = (memberRows ?? []).map((r: any) => r.cohort_id)
 
-  // Query all published events for the institute, including all tickets
+  // If not in any cohort, show nothing
+  if (cohortIds.length === 0) {
+    return { events: [] }
+  }
+
+  // 3. Get event IDs targeted at these cohorts
+  const { data: eventCohortRows } = await (supabase as any)
+    .from("event_cohorts")
+    .select("event_id")
+    .in("cohort_id", cohortIds)
+
+  const eligibleEventIds = [...new Set((eventCohortRows ?? []).map((r: any) => r.event_id))]
+
+  if (eligibleEventIds.length === 0) {
+    return { events: [] }
+  }
+
+  // 4. Query published events from eligible set
   const { data: rawEvents } = await (supabase as any)
     .from("events")
     .select(`
-      id, title, description, date, venue, capacity, status, targeting_rules, duration_minutes, created_at, event_banner, speaker_name,
+      id, title, description, date, venue, capacity, status, duration_minutes, created_at, event_banner, speaker_name,
       event_tickets(id, status, attendance_status, candidate_id)
     `)
     .eq("status", "Published")
     .eq("institute_id", instituteId)
+    .in("id", eligibleEventIds)
     .order("date", { ascending: true })
 
-  // 2. Filter using targeting rules in JS
-  const filtered = (rawEvents ?? []).filter((event: any) => {
-    const rules = event.targeting_rules ?? { years: [], branches: [] }
-    if (rules.years && rules.years.length > 0 && (!candidateYear || !rules.years.includes(candidateYear))) {
-      return false
-    }
-    if (rules.branches && rules.branches.length > 0 && (!candidateBranch || !rules.branches.includes(candidateBranch))) {
-      return false
-    }
-    return true
-  })
-
-  // 3. Map to CandidateEventListItem
-  const candidateEvents: CandidateEventListItem[] = filtered.map((event: any) => {
+  // 5. Map to CandidateEventListItem
+  const candidateEvents: CandidateEventListItem[] = (rawEvents ?? []).map((event: any) => {
     const allTickets = event.event_tickets ?? []
     const myTicket = allTickets.find((t: any) => t.candidate_id === userId && t.status !== "Cancelled")
     return {

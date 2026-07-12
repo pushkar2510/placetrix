@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { OpportunityEditorClient } from "../../OpportunityEditorClient"
+import { getCohortOptionsAction } from "@/app/(dashboard)/(licensed)/cohorts/actions"
 
 export default async function NewOpportunityPage() {
   const profile = await getUserProfile()
@@ -23,17 +24,19 @@ export default async function NewOpportunityPage() {
   }
 
   const supabase = await createClient()
-
-  // Fetch list of saved companies for dropdown selection
-  const { data: companies } = await (supabase as any)
-    .from("companies")
-    .select("*")
-    .eq("institute_id", instituteId)
-    .order("name")
+  const [cohortOptions, { data: companies }] = await Promise.all([
+    getCohortOptionsAction(),
+    (supabase as any)
+      .from("companies")
+      .select("*")
+      .eq("institute_id", instituteId)
+      .order("name"),
+  ])
 
   return (
     <OpportunityEditorClient 
       companies={companies || []}
+      cohortOptions={cohortOptions}
     />
   )
 }

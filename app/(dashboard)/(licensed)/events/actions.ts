@@ -32,6 +32,11 @@ export async function createEventAction(data: EventFormData) {
   const profile = await requireStaff()
   const supabase = await createClient()
 
+  // Validate: published events must have at least one cohort
+  if (data.status === "Published" && (!data.cohort_ids || data.cohort_ids.length === 0)) {
+    throw new Error("Please select at least one cohort before publishing this event.")
+  }
+
   const { data: event, error } = await (supabase as any)
     .from("events")
     .insert({
@@ -72,13 +77,39 @@ export async function createEventAction(data: EventFormData) {
     }
   }
 
+  // Save cohort mappings
+  if (data.cohort_ids && data.cohort_ids.length > 0) {
+    const cohortRows = data.cohort_ids.map((cohortId) => ({ event_id: event.id, cohort_id: cohortId }))
+    const { error: cohortError } = await (supabase as any).from("event_cohorts").insert(cohortRows)
+    if (cohortError) {
+      console.error("Error saving event cohorts:", cohortError)
+      throw new Error("Failed to save event cohort targeting.")
+    }
+  }
+
   revalidatePath("/events")
   return { success: true, eventId: event.id }
 }
 
 export async function updateEventAction(eventId: string, data: EventFormData) {
-  await requireStaff()
+  const profile = await requireStaff()
   const supabase = await createClient()
+
+  // Verify ownership
+  const { data: existing } = await (supabase as any)
+    .from("events")
+    .select("institute_id")
+    .eq("id", eventId)
+    .maybeSingle()
+
+  if (profile.account_type !== "admin" && (!existing || existing.institute_id !== profile.institute_id)) {
+    throw new Error("Event not found or access denied.")
+  }
+
+  // Validate: published events must have at least one cohort
+  if (data.status === "Published" && (!data.cohort_ids || data.cohort_ids.length === 0)) {
+    throw new Error("Please select at least one cohort before publishing this event.")
+  }
 
   const { error } = await (supabase as any)
     .from("events")
@@ -128,14 +159,36 @@ export async function updateEventAction(eventId: string, data: EventFormData) {
     }
   }
 
+  // Replace cohort mappings
+  await (supabase as any).from("event_cohorts").delete().eq("event_id", eventId)
+  if (data.cohort_ids && data.cohort_ids.length > 0) {
+    const cohortRows = data.cohort_ids.map((cohortId) => ({ event_id: eventId, cohort_id: cohortId }))
+    const { error: cohortError } = await (supabase as any).from("event_cohorts").insert(cohortRows)
+    if (cohortError) {
+      console.error("Error saving event cohorts:", cohortError)
+      throw new Error("Failed to save event cohort targeting.")
+    }
+  }
+
   revalidatePath("/events")
   revalidatePath(`/events/${eventId}`)
   return { success: true }
 }
 
 export async function deleteEventAction(eventId: string) {
-  await requireStaff()
+  const profile = await requireStaff()
   const supabase = await createClient()
+
+  // Verify ownership
+  const { data: existing } = await (supabase as any)
+    .from("events")
+    .select("institute_id")
+    .eq("id", eventId)
+    .maybeSingle()
+
+  if (profile.account_type !== "admin" && (!existing || existing.institute_id !== profile.institute_id)) {
+    throw new Error("Event not found or access denied.")
+  }
 
   const { error } = await (supabase as any)
     .from("events")
@@ -152,8 +205,19 @@ export async function deleteEventAction(eventId: string) {
 }
 
 export async function concludeEventAction(eventId: string) {
-  await requireStaff()
+  const profile = await requireStaff()
   const supabase = await createClient()
+
+  // Verify ownership
+  const { data: existing } = await (supabase as any)
+    .from("events")
+    .select("institute_id")
+    .eq("id", eventId)
+    .maybeSingle()
+
+  if (profile.account_type !== "admin" && (!existing || existing.institute_id !== profile.institute_id)) {
+    throw new Error("Event not found or access denied.")
+  }
 
   const { error } = await (supabase as any)
     .from("events")
@@ -169,6 +233,7 @@ export async function concludeEventAction(eventId: string) {
   revalidatePath(`/events/${eventId}`)
   return { success: true }
 }
+
 
 export async function markAttendanceAction(ticketId: string) {
   await requireStaff()

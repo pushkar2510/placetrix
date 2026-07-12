@@ -99,4 +99,5 @@ export interface OpportunityFormData {
   status: OpportunityStatus
   min_cgpa: number
   collect_resume: boolean
+  cohort_ids?: string[]
 }

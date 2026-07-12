@@ -91,6 +91,29 @@ async function fetchCandidateTests(
     return { tests: [], count: 0, tabCounts: { all: 0, live: 0, upcoming: 0, past: 0 } }
   }
 
+  // 2a. Find candidate's cohorts and eligible test IDs
+  const { data: memberRows } = await (supabase as any)
+    .from("cohort_students")
+    .select("cohort_id")
+    .eq("student_id", userId)
+
+  const cohortIds = (memberRows ?? []).map((r: any) => r.cohort_id)
+
+  if (cohortIds.length === 0) {
+    return { tests: [], count: 0, tabCounts: { all: 0, live: 0, upcoming: 0, past: 0 } }
+  }
+
+  const { data: testCohortRows } = await (supabase as any)
+    .from("test_cohorts")
+    .select("test_id")
+    .in("cohort_id", cohortIds)
+
+  const eligibleTestIds = [...new Set((testCohortRows ?? []).map((r: any) => r.test_id))]
+
+  if (eligibleTestIds.length === 0) {
+    return { tests: [], count: 0, tabCounts: { all: 0, live: 0, upcoming: 0, past: 0 } }
+  }
+
   // 2. Fetch candidate's attempts to identify submitted vs in-progress tests
   const { data: attempts } = await (supabase as any)
     .from("test_attempts")
@@ -109,16 +132,18 @@ async function fetchCandidateTests(
     return q
   }
 
+  const cohortFilter = (q: any) => q.in("id", eligibleTestIds)
+
   // 3. Count parallel queries for each tab matching the search term
-  const allCountQuery = searchFilter(
+  const allCountQuery = cohortFilter(searchFilter(
     (supabase as any)
       .from("tests")
       .select("id", { count: "exact", head: true })
       .eq("status", "published")
       .eq("institute_id", profile.institute_id)
-  )
+  ))
 
-  const liveCountQuery = searchFilter(
+  const liveCountQuery = cohortFilter(searchFilter(
     (supabase as any)
       .from("tests")
       .select("id", { count: "exact", head: true })
@@ -126,28 +151,30 @@ async function fetchCandidateTests(
       .eq("institute_id", profile.institute_id)
       .lte("available_from", now)
       .or(`available_until.gt.${now},available_until.is.null`)
-  )
+  ))
   if (submittedTestIds.length > 0) {
     liveCountQuery.not("id", "in", `(${submittedTestIds.join(",")})`)
   }
 
-  const upcomingCountQuery = searchFilter(
+  const upcomingCountQuery = cohortFilter(searchFilter(
     (supabase as any)
       .from("tests")
       .select("id", { count: "exact", head: true })
       .eq("status", "published")
       .eq("institute_id", profile.institute_id)
       .gt("available_from", now)
-  )
+  ))
   if (submittedTestIds.length > 0) {
     upcomingCountQuery.not("id", "in", `(${submittedTestIds.join(",")})`)
   }
 
-  let pastCountQuery = (supabase as any)
-    .from("tests")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "published")
-    .eq("institute_id", profile.institute_id)
+  let pastCountQuery = cohortFilter(
+    (supabase as any)
+      .from("tests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "published")
+      .eq("institute_id", profile.institute_id)
+  )
 
   if (submittedTestIds.length > 0) {
     pastCountQuery = pastCountQuery.or(`available_until.lt.${now},id.in.(${submittedTestIds.join(",")})`)
@@ -185,6 +212,7 @@ async function fetchCandidateTests(
     .eq("status", "published")
     .eq("institute_id", profile.institute_id)
     .eq("test_attempts.candidate_id", userId)
+    .in("id", eligibleTestIds)
 
   if (activeTab === "live") {
     query = query

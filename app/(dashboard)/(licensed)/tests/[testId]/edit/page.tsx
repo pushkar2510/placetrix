@@ -7,6 +7,7 @@ import {
   generateQuestionsAction,
   loadTestAction,
 } from "./actions"
+import { getCohortOptionsAction } from "@/app/(dashboard)/(licensed)/cohorts/actions"
 
 interface Props {
   params: Promise<{ testId: string }>
@@ -33,9 +34,10 @@ export default async function TestEditorPage({ params }: Props) {
   // ── Parallel fetches: tags + test data are independent of each other ─────────
   const isNew = testId === "new"
 
-  const [{ data: tags }, initialData] = await Promise.all([
+  const [{ data: tags }, initialData, cohortOptions] = await Promise.all([
     (supabase as any).from("test_question_tags").select("id, name").order("name"),
     isNew ? Promise.resolve(null) : loadTestAction(testId),
+    getCohortOptionsAction(),
   ])
 
   // Bounce if editing a test that doesn't exist or belongs to someone else
@@ -49,6 +51,7 @@ export default async function TestEditorPage({ params }: Props) {
       generateQuestionsAction={generateQuestionsAction}
       onSaveDraft={saveDraftAction}
       onPublish={publishTestAction}
+      cohortOptions={cohortOptions}
     />
   )
 }

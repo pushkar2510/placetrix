@@ -27,6 +27,8 @@ import {
   Loader2, Save, Send, AlertCircle, AlertTriangle, BookOpen, CheckCircle2, Circle, Plus, Tag, X,
   PlusCircle, Sparkles, Upload, Trash2, Pencil, ChevronDown, ChevronUp, Info, FileJson, Image
 } from "lucide-react"
+import { CohortSelector } from "@/components/cohort-selector"
+import type { CohortOption } from "@/app/(dashboard)/(licensed)/cohorts/types"
 
 import type {
   SettingsForm,
@@ -45,6 +47,7 @@ interface Props {
   generateQuestionsAction: (input: AiGenerateForm) => Promise<GenerateQuestionsResult>
   onSaveDraft: (id: string, settings: SettingsForm, questions: LocalQuestion[]) => Promise<void>
   onPublish: (id: string, settings: SettingsForm, questions: LocalQuestion[]) => Promise<void>
+  cohortOptions?: CohortOption[]
 }
 
 const EMPTY_SETTINGS: SettingsForm = {
@@ -58,6 +61,7 @@ const EMPTY_SETTINGS: SettingsForm = {
   shuffle_options: true,
   strict_mode: true,
   pass_percentage: "",
+  cohort_ids: [],
 }
 
 // ── Timezone helpers ──────────────────────────────────────────────────────────
@@ -114,6 +118,7 @@ export function CreateTestClient({
   generateQuestionsAction,
   onSaveDraft,
   onPublish,
+  cohortOptions,
 }: Props) {
   const isEditMode = propTestId !== undefined
 
@@ -226,6 +231,7 @@ export function CreateTestClient({
         <SettingsFormComponent
           values={settings}
           onChange={setSettings}
+          cohortOptions={cohortOptions}
         />
 
         {/* ── Questions ── */}
@@ -246,9 +252,10 @@ export function CreateTestClient({
 interface SettingsFormProps {
   values: SettingsForm
   onChange: (values: SettingsForm) => void
+  cohortOptions?: CohortOption[]
 }
 
-function SettingsFormComponent({ values, onChange }: SettingsFormProps) {
+function SettingsFormComponent({ values, onChange, cohortOptions }: SettingsFormProps) {
   const set = useCallback(
     (key: keyof SettingsForm) =>
       (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -358,6 +365,23 @@ function SettingsFormComponent({ values, onChange }: SettingsFormProps) {
                 &quot;Available Until&quot; must be after &quot;Available From&quot;.
               </p>
             )}
+          </div>
+
+          {/* Cohort Targeting */}
+          <div className="space-y-2 border rounded-lg p-4 bg-muted/20">
+            <div>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Target Cohorts *
+              </Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Select which cohorts can take this test. At least one cohort is required to publish.
+              </p>
+            </div>
+            <CohortSelector
+              selectedCohortIds={values.cohort_ids || []}
+              onChange={(ids) => onChange({ ...values, cohort_ids: ids })}
+              cohorts={cohortOptions}
+            />
           </div>
 
         </CardContent>

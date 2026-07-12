@@ -20,6 +20,8 @@ import type {
   CompanyProfile,
   CompensationType
 } from "./types"
+import { CohortSelector } from "@/components/cohort-selector"
+import type { CohortOption } from "@/app/(dashboard)/(licensed)/cohorts/types"
 
 const COMPENSATION_TYPES: { value: CompensationType; label: string }[] = [
   { value: "full_time", label: "Full-Time Job" },
@@ -31,15 +33,21 @@ const COMPENSATION_TYPES: { value: CompensationType; label: string }[] = [
 interface OpportunityEditorClientProps {
   opportunity?: OpportunityListItem
   companies: CompanyProfile[]
+  cohortOptions?: CohortOption[]
+  initialCohortIds?: string[]
 }
 
 export function OpportunityEditorClient({
   opportunity,
-  companies
+  companies,
+  cohortOptions,
+  initialCohortIds = [],
 }: OpportunityEditorClientProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const isEditMode = opportunity !== undefined
+
+  const [selectedCohortIds, setSelectedCohortIds] = useState<string[]>(initialCohortIds)
 
   // Initialize form state
   const [formData, setFormData] = useState<OpportunityFormData>({
@@ -75,7 +83,8 @@ export function OpportunityEditorClient({
     
     const finalData = {
       ...formData,
-      status: overrideStatus || formData.status
+      status: overrideStatus || formData.status,
+      cohort_ids: selectedCohortIds,
     }
 
     if (finalData.company_id === "new" && !finalData.new_company_name) {
@@ -506,6 +515,23 @@ export function OpportunityEditorClient({
                   onChange={e => setFormData({ ...formData, perks: e.target.value })}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Cohort Targeting */}
+          <Card>
+            <CardContent className="p-5 space-y-3">
+              <div>
+                <h3 className="font-semibold text-sm text-foreground">Target Cohorts *</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Select which student cohorts can see this opportunity. At least one cohort is required to publish.
+                </p>
+              </div>
+              <CohortSelector
+                selectedCohortIds={selectedCohortIds}
+                onChange={setSelectedCohortIds}
+                cohorts={cohortOptions}
+              />
             </CardContent>
           </Card>
 

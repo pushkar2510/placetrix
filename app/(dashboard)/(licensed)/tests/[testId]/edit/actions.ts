@@ -18,6 +18,7 @@ export type SettingsForm = {
   shuffle_options: boolean
   strict_mode: boolean
   pass_percentage: string
+  cohort_ids?: string[]
 }
 
 export type OptionForm = {
@@ -128,23 +129,31 @@ export async function loadTestAction(
   }
   const supabase = await createClient()
 
-  const { data: test } = await (supabase as any)
-    .from("tests")
-    .select(`
-      title, description, instructions,
-      time_limit_seconds, available_from, available_until, status,
-      shuffle_questions, shuffle_options, strict_mode, pass_percentage,
-      test_questions (
-        id, question_text, question_type, marks, order_index, explanation,
-        test_question_options ( id, option_text, is_correct, order_index ),
-        question_tags ( test_question_tags ( id, name ) )
-      )
-    `)
-    .eq("id", testId)
-    .eq("institute_id", profile.institute_id)
-    .maybeSingle()
+  const [{ data: test }, { data: cohorts }] = await Promise.all([
+    (supabase as any)
+      .from("tests")
+      .select(`
+        title, description, instructions,
+        time_limit_seconds, available_from, available_until, status,
+        shuffle_questions, shuffle_options, strict_mode, pass_percentage,
+        test_questions (
+          id, question_text, question_type, marks, order_index, explanation,
+          test_question_options ( id, option_text, is_correct, order_index ),
+          question_tags ( test_question_tags ( id, name ) )
+        )
+      `)
+      .eq("id", testId)
+      .eq("institute_id", profile.institute_id)
+      .maybeSingle(),
+    (supabase as any)
+      .from("test_cohorts")
+      .select("cohort_id")
+      .eq("test_id", testId),
+  ])
 
   if (!test) return null
+
+  const cohortIds = (cohorts ?? []).map((c: any) => c.cohort_id)
 
   return {
     settings: {
@@ -160,6 +169,7 @@ export async function loadTestAction(
       shuffle_options: test.shuffle_options ?? false,
       strict_mode: test.strict_mode ?? false,
       pass_percentage: test.pass_percentage != null ? String(test.pass_percentage) : "",
+      cohort_ids: cohortIds,
     },
     status: test.status as "draft" | "published",
     questions: (test.test_questions ?? [])
@@ -185,13 +195,49 @@ export async function loadTestAction(
   }
 }
 
+async function requireTestManager() {
+  const profile = await getUserProfile()
+  if (!profile) throw new Error("Unauthorized: Please log in.")
+  if (
+    !["institute_primary", "institute_staff", "institute_placement_officer"].includes(
+      profile.account_type
+    )
+  ) {
+    throw new Error("Unauthorized: Only institute staff can manage tests.")
+  }
+  if (!profile.institute_id) throw new Error("No institute associated with your profile.")
+  return profile
+}
+
 export async function saveDraftAction(
   testId: string,
   settings: SettingsForm,
   questions: LocalQuestion[]
 ): Promise<void> {
-  const userSub = await requireAuth()
-  await saveTestToDb(testId, userSub, settings, questions, "draft")
+  const profile = await requireTestManager()
+  const supabase = await createClient()
+
+  // Verify cohort IDs belong to caller's institute
+  if (settings.cohort_ids && settings.cohort_ids.length > 0) {
+    const { data: cohorts, error: cohortError } = await (supabase as any)
+      .from("cohorts")
+      .select("id")
+      .in("id", settings.cohort_ids)
+      .eq("institute_id", profile.institute_id)
+
+    if (cohortError || !cohorts || cohorts.length !== settings.cohort_ids.length) {
+      throw new Error("Invalid cohorts selected.")
+    }
+  }
+
+  await saveTestToDb(testId, profile.id, settings, questions, "draft")
+  // Save cohort mappings for draft too (optional, replaces)
+  await (supabase as any).from("test_cohorts").delete().eq("test_id", testId)
+  if (settings.cohort_ids && settings.cohort_ids.length > 0) {
+    await (supabase as any).from("test_cohorts").insert(
+      settings.cohort_ids.map((cohortId) => ({ test_id: testId, cohort_id: cohortId }))
+    )
+  }
   revalidatePath("/tests")
 }
 
@@ -200,9 +246,25 @@ export async function publishTestAction(
   settings: SettingsForm,
   questions: LocalQuestion[]
 ): Promise<void> {
-  const userSub = await requireAuth()
+  const profile = await requireTestManager()
   if (!settings.title.trim()) throw new Error("Title is required.")
   if (questions.length === 0) throw new Error("Add at least one question.")
+  if (!settings.cohort_ids || settings.cohort_ids.length === 0) {
+    throw new Error("Please select at least one cohort before publishing this test.")
+  }
+
+  const supabase = await createClient()
+
+  // Verify cohort IDs belong to caller's institute
+  const { data: cohorts, error: cohortError } = await (supabase as any)
+    .from("cohorts")
+    .select("id")
+    .in("id", settings.cohort_ids)
+    .eq("institute_id", profile.institute_id)
+
+  if (cohortError || !cohorts || cohorts.length !== settings.cohort_ids.length) {
+    throw new Error("Invalid cohorts selected.")
+  }
 
   // Group G Correctness check: Ensure each question has at least one correct option
   for (let i = 0; i < questions.length; i++) {
@@ -213,7 +275,14 @@ export async function publishTestAction(
     }
   }
 
-  await saveTestToDb(testId, userSub, settings, questions, "published")
+  await saveTestToDb(testId, profile.id, settings, questions, "published")
+
+  // Replace test cohort mappings
+  await (supabase as any).from("test_cohorts").delete().eq("test_id", testId)
+  await (supabase as any).from("test_cohorts").insert(
+    settings.cohort_ids.map((cohortId) => ({ test_id: testId, cohort_id: cohortId }))
+  )
+
   revalidatePath("/tests")
   redirect(`/tests/${testId}`)
 }

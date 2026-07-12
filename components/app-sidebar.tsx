@@ -38,6 +38,7 @@ import {
   Code,
   BookOpen,
   Trophy,
+  UsersRound,
 } from "lucide-react"
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
@@ -105,17 +106,20 @@ const NAV_MAIN: Record<AccountType, NavItem[]> = {
   institute_primary: [
     { title: "Home", url: "/home", icon: Home },
     { title: "Users", url: "/users", icon: Users },
+    { title: "Cohorts", url: "/cohorts", icon: UsersRound },
     { title: "Opportunities", url: "/opportunities", icon: Briefcase },
     { title: "Companies", url: "/companies", icon: Building2 },
   ],
   institute_staff: [
     { title: "Home", url: "/home", icon: Home },
+    { title: "Cohorts", url: "/cohorts", icon: UsersRound },
     { title: "Tests", url: "/tests", icon: BarChart3 },
     { title: "Courses", url: "/courses", icon: BookOpen },
     { title: "Events", url: "/events", icon: Calendar },
   ],
   institute_placement_officer: [
     { title: "Home", url: "/home", icon: Home },
+    { title: "Cohorts", url: "/cohorts", icon: UsersRound },
     { title: "Opportunities", url: "/opportunities", icon: Briefcase },
     { title: "Companies", url: "/companies", icon: Building2 },
   ],

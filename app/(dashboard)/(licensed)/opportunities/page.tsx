@@ -134,12 +134,49 @@ export default async function OpportunitiesPage() {
     cgpa: candidateCgpa
   }
 
-  // Fetch published opportunities joining company profiles
+  // Find which cohorts this candidate belongs to
+  const { data: memberRows } = await (supabase as any)
+    .from("cohort_students")
+    .select("cohort_id")
+    .eq("student_id", profile.id)
+
+  const cohortIds = (memberRows ?? []).map((r: any) => r.cohort_id)
+
+  if (cohortIds.length === 0) {
+    return (
+      <OpportunitiesCandidateClient
+        opportunities={[]}
+        candidateAcademic={candidateAcademic}
+        profileId={profile.id}
+      />
+    )
+  }
+
+  // Get opportunity IDs targeted at these cohorts
+  const { data: oppCohortRows } = await (supabase as any)
+    .from("opportunity_cohorts")
+    .select("opportunity_id")
+    .in("cohort_id", cohortIds)
+
+  const eligibleOppIds = [...new Set((oppCohortRows ?? []).map((r: any) => r.opportunity_id))]
+
+  if (eligibleOppIds.length === 0) {
+    return (
+      <OpportunitiesCandidateClient
+        opportunities={[]}
+        candidateAcademic={candidateAcademic}
+        profileId={profile.id}
+      />
+    )
+  }
+
+  // Fetch published opportunities joining company profiles, filtered by eligible IDs
   const { data: opps } = await (supabase as any)
     .from("opportunities")
     .select("*, company:companies(*)")
     .eq("institute_id", instituteId)
     .eq("status", "Published")
+    .in("id", eligibleOppIds)
     .order("deadline", { ascending: true })
 
   const oppList: OpportunityListItem[] = opps || []

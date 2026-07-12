@@ -32,6 +32,19 @@ export async function createOpportunityAction(data: OpportunityFormData) {
   const profile = await requirePlacementStaff()
   const supabase = await createClient()
 
+  // Verify cohort IDs belong to caller's institute
+  if (data.cohort_ids && data.cohort_ids.length > 0) {
+    const { data: cohorts, error: cohortError } = await (supabase as any)
+      .from("cohorts")
+      .select("id")
+      .in("id", data.cohort_ids)
+      .eq("institute_id", profile.institute_id)
+
+    if (cohortError || !cohorts || cohorts.length !== data.cohort_ids.length) {
+      throw new Error("Invalid cohorts selected.")
+    }
+  }
+
   let finalCompanyId = data.company_id
 
   // 1. Handle New Company Upsert
@@ -89,6 +102,21 @@ export async function createOpportunityAction(data: OpportunityFormData) {
     throw new Error(error?.message || "Failed to create opportunity.")
   }
 
+  // Validate: published opportunities must have at least one cohort
+  if (data.status === "Published" && (!data.cohort_ids || data.cohort_ids.length === 0)) {
+    throw new Error("Please select at least one cohort before publishing this opportunity.")
+  }
+
+  // Save cohort mappings
+  if (data.cohort_ids && data.cohort_ids.length > 0) {
+    const cohortRows = data.cohort_ids.map((cohortId) => ({ opportunity_id: opp.id, cohort_id: cohortId }))
+    const { error: cohortError } = await (supabase as any).from("opportunity_cohorts").insert(cohortRows)
+    if (cohortError) {
+      console.error("Error saving opportunity cohorts:", cohortError)
+      throw new Error("Failed to save opportunity cohort targeting.")
+    }
+  }
+
   revalidatePath("/opportunities")
   return { success: true, opportunityId: opp.id }
 }
@@ -96,6 +124,30 @@ export async function createOpportunityAction(data: OpportunityFormData) {
 export async function updateOpportunityAction(oppId: string, data: OpportunityFormData) {
   const profile = await requirePlacementStaff()
   const supabase = await createClient()
+
+  // Verify ownership
+  const { data: existing } = await (supabase as any)
+    .from("opportunities")
+    .select("institute_id")
+    .eq("id", oppId)
+    .maybeSingle()
+
+  if (profile.account_type !== "admin" && (!existing || existing.institute_id !== profile.institute_id)) {
+    throw new Error("Opportunity not found or access denied.")
+  }
+
+  // Verify cohort IDs belong to caller's institute
+  if (data.cohort_ids && data.cohort_ids.length > 0) {
+    const { data: cohorts, error: cohortError } = await (supabase as any)
+      .from("cohorts")
+      .select("id")
+      .in("id", data.cohort_ids)
+      .eq("institute_id", profile.institute_id)
+
+    if (cohortError || !cohorts || cohorts.length !== data.cohort_ids.length) {
+      throw new Error("Invalid cohorts selected.")
+    }
+  }
 
   let finalCompanyId = data.company_id
 
@@ -152,13 +204,40 @@ export async function updateOpportunityAction(oppId: string, data: OpportunityFo
     throw new Error(error.message || "Failed to update opportunity.")
   }
 
+  // Validate: published opportunities must have at least one cohort
+  if (data.status === "Published" && (!data.cohort_ids || data.cohort_ids.length === 0)) {
+    throw new Error("Please select at least one cohort before publishing this opportunity.")
+  }
+
+  // Replace cohort mappings
+  await (supabase as any).from("opportunity_cohorts").delete().eq("opportunity_id", oppId)
+  if (data.cohort_ids && data.cohort_ids.length > 0) {
+    const cohortRows = data.cohort_ids.map((cohortId) => ({ opportunity_id: oppId, cohort_id: cohortId }))
+    const { error: cohortError } = await (supabase as any).from("opportunity_cohorts").insert(cohortRows)
+    if (cohortError) {
+      console.error("Error saving opportunity cohorts:", cohortError)
+      throw new Error("Failed to save opportunity cohort targeting.")
+    }
+  }
+
   revalidatePath("/opportunities")
   return { success: true }
 }
 
 export async function deleteOpportunityAction(oppId: string) {
-  await requirePlacementStaff()
+  const profile = await requirePlacementStaff()
   const supabase = await createClient()
+
+  // Verify ownership
+  const { data: existing } = await (supabase as any)
+    .from("opportunities")
+    .select("institute_id")
+    .eq("id", oppId)
+    .maybeSingle()
+
+  if (profile.account_type !== "admin" && (!existing || existing.institute_id !== profile.institute_id)) {
+    throw new Error("Opportunity not found or access denied.")
+  }
 
   const { error } = await (supabase as any)
     .from("opportunities")

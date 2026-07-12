@@ -85,5 +85,6 @@ export interface EventFormData {
   event_banner?: string | null
   speaker_name?: string | null
   agenda?: Omit<EventAgendaItem, "id" | "event_id">[]
+  cohort_ids?: string[]
 }
 

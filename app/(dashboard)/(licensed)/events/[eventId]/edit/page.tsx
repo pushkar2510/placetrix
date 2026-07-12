@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/supabase/profile"
 import { CreateEventClient } from "./CreateEventClient"
+import { getCohortOptionsAction } from "@/app/(dashboard)/(licensed)/cohorts/actions"
 
 interface Props {
   params: Promise<{ eventId: string }>
@@ -20,22 +21,35 @@ export default async function EventEditorPage({ params }: Props) {
 
   const isNew = eventId === "new"
   let initialData = null
+  let initialCohortIds: string[] = []
+
+  const [cohortOptions] = await Promise.all([getCohortOptionsAction()])
 
   if (!isNew) {
     const supabase = await createClient()
-    const { data: eventData, error } = await (supabase as any)
+    let eventQuery = (supabase as any)
       .from("events")
-      .select(`
-        *,
-        event_agenda(*)
-      `)
+      .select(`*, event_agenda(*)`)
       .eq("id", eventId)
-      .maybeSingle()
+
+    if (profile.account_type !== "admin") {
+      eventQuery = eventQuery.eq("institute_id", profile.institute_id)
+    }
+
+    const [{ data: eventData, error }, { data: cohortRows }] = await Promise.all([
+      eventQuery.maybeSingle(),
+      (supabase as any)
+        .from("event_cohorts")
+        .select("cohort_id")
+        .eq("event_id", eventId),
+    ])
 
     if (error || !eventData) {
       console.error("Error loading event for editing:", error)
       redirect("/events")
     }
+
+    initialCohortIds = (cohortRows ?? []).map((r: any) => r.cohort_id)
 
     initialData = {
       title: eventData.title,
@@ -48,6 +62,7 @@ export default async function EventEditorPage({ params }: Props) {
       duration_minutes: eventData.duration_minutes ?? 120,
       event_banner: eventData.event_banner ?? null,
       speaker_name: eventData.speaker_name ?? null,
+      cohort_ids: initialCohortIds,
       agenda: (eventData.event_agenda ?? [])
         .sort((a: any, b: any) => a.order_index - b.order_index)
         .map((item: any) => ({
@@ -63,6 +78,7 @@ export default async function EventEditorPage({ params }: Props) {
     <CreateEventClient
       eventId={isNew ? undefined : eventId}
       initialData={initialData ?? undefined}
+      cohortOptions={cohortOptions}
     />
   )
 }

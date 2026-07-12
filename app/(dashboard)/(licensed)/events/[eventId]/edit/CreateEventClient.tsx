@@ -27,6 +27,8 @@ import { createEventAction, updateEventAction } from "../../actions"
 import type { EventFormData, EventStatus, EventTargetingRules } from "../../types"
 import { createClient } from "@/lib/supabase/client"
 import { buildStorageUrl } from "@/lib/storage"
+import { CohortSelector } from "@/components/cohort-selector"
+import type { CohortOption } from "@/app/(dashboard)/(licensed)/cohorts/types"
 
 const BRANCHES = [
   "Computer Science",
@@ -44,6 +46,7 @@ const YEARS = [2024, 2025, 2026, 2027, 2028, 2029, 2030]
 interface Props {
   eventId?: string
   initialData?: EventFormData
+  cohortOptions?: CohortOption[]
 }
 
 const toLocalDatetimeString = (isoStr?: string) => {
@@ -62,9 +65,13 @@ const toLocalDatetimeString = (isoStr?: string) => {
   }
 }
 
-export function CreateEventClient({ eventId, initialData }: Props) {
+export function CreateEventClient({ eventId, initialData, cohortOptions }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+
+  const [selectedCohortIds, setSelectedCohortIds] = useState<string[]>(
+    initialData?.cohort_ids ?? []
+  )
 
   const [formData, setFormData] = useState<EventFormData>(
     initialData
@@ -255,6 +262,7 @@ export function CreateEventClient({ eventId, initialData }: Props) {
           event_banner: finalBannerPath,
           agenda: agendaPayload,
           speaker_name: formData.speaker_name || null,
+          cohort_ids: selectedCohortIds,
         }
 
         if (eventId) {
@@ -633,11 +641,11 @@ export function CreateEventClient({ eventId, initialData }: Props) {
           </CardContent>
         </Card>
 
-        {/* Audience & Capacity */}
+        {/* Audience, Capacity & Cohorts */}
         <Card>
           <CardContent className="p-5 space-y-4">
             <h3 className="font-semibold text-sm border-b pb-2 mb-2 text-foreground/90">
-              Audience & Capacity
+              Audience &amp; Capacity
             </h3>
             <div className="grid gap-2 max-w-xs">
               <Label htmlFor="capacity">Seating Capacity *</Label>
@@ -655,64 +663,21 @@ export function CreateEventClient({ eventId, initialData }: Props) {
               />
             </div>
 
-            {/* Targeting Rules */}
+            {/* Cohort Targeting */}
             <div className="grid gap-4 border rounded-lg p-4 bg-muted/20">
               <div>
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Target Cohort Restrictions
+                  Target Cohorts *
                 </Label>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Leave empty to show to all candidates. Select specific cohorts to restrict event access.
+                  Select which cohorts can see this event. At least one cohort is required to publish.
                 </p>
               </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs text-foreground/80">Passout Graduation Years</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {YEARS.map((year) => {
-                    const isSelected = formData.targeting_rules.years.includes(year)
-                    return (
-                      <button
-                        key={year}
-                        type="button"
-                        onClick={() => toggleYear(year)}
-                        className={cn(
-                          "px-3 py-1.5 text-xs rounded-lg border transition-all cursor-pointer font-medium",
-                          isSelected
-                            ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                            : "bg-background hover:bg-accent border-border/80"
-                        )}
-                      >
-                        {year}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs text-foreground/80">Branches / Fields of Study</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {BRANCHES.map((branch) => {
-                    const isSelected = formData.targeting_rules.branches.includes(branch)
-                    return (
-                      <button
-                        key={branch}
-                        type="button"
-                        onClick={() => toggleBranch(branch)}
-                        className={cn(
-                          "px-3 py-1.5 text-xs rounded-lg border transition-all cursor-pointer font-medium",
-                          isSelected
-                            ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                            : "bg-background hover:bg-accent border-border/80"
-                        )}
-                      >
-                        {branch}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
+              <CohortSelector
+                selectedCohortIds={selectedCohortIds}
+                onChange={setSelectedCohortIds}
+                cohorts={cohortOptions}
+              />
             </div>
           </CardContent>
         </Card>
