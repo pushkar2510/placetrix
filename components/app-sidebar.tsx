@@ -201,6 +201,7 @@ export function NavUser({ user }: { user: UserProfile | null }) {
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push("/auth/login")
+    router.refresh()
   }
 
   return (

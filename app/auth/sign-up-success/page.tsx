@@ -26,7 +26,7 @@ export default function SignUpSuccessPage() {
         </div>
       </div>
       <Button asChild className="w-full">
-        <Link href="/auth/sign-up">Enter Code</Link>
+        <Link href="/auth/login">Enter Code</Link>
       </Button>
       <Button asChild variant="outline" className="w-full">
         <Link href="/auth/login">Go to Sign In</Link>

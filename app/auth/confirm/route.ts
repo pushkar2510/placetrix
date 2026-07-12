@@ -74,9 +74,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Recovery tokens → change-password with mode flag so the page knows
-  // the session was established via a legitimate reset link.
-  if (type === "recovery") {
+  // Recovery and Invite tokens → change-password so the user can set their password.
+  // "invite" arrives when an admin provisions an account via inviteUserByEmail();
+  // without this, the invited user reaches /home with no password ever set.
+  if (type === "recovery" || type === "invite") {
     return NextResponse.redirect(
       `${baseUrl}/auth/change-password?mode=recovery`
     );

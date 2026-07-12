@@ -1,4 +1,4 @@
-﻿# PlaceTrix Email Templates
+# PlaceTrix Email Templates
 
 This folder contains all branded **Supabase Auth email templates** for the PlaceTrix platform.
 Each template is a self-contained HTML file with inline-compatible CSS, ready to be pasted directly into the Supabase Dashboard.
@@ -24,11 +24,17 @@ Supabase uses Go-style template variables. The following are used across the tem
 
 | Variable | Description |
 |---|---|
-| `{{ .ConfirmationURL }}` | The one-time action URL (confirm, reset, etc.) |
+| `{{ .SiteURL }}` | Your app's base URL (set in Supabase Auth Settings → Site URL) |
+| `{{ .TokenHash }}` | Opaque token hash — used in server-side `/auth/confirm` links |
+| `{{ .Token }}` | Human-readable 6–8 digit OTP code — displayed in email for copy-paste entry |
 | `{{ .Email }}` | The user's current email address |
 | `{{ .NewEmail }}` | The new email address (change-email only) |
 | `{{ .Data.institute_name }}` | Institute name (invite-user — set via user metadata) |
 | `{{ .Data.role_label }}` | Role label e.g. "Student / Candidate" (invite-user — set via user metadata) |
+
+> **Important:** Do NOT use `{{ .ConfirmationURL }}` directly. It redirects through Supabase's servers
+> and returns an `#access_token` hash fragment which Next.js server components cannot read.
+> Always use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=<type>` instead.
 
 ---
 
