@@ -134,3 +134,51 @@ export async function deleteAttemptAction(testId: string, attemptId: string): Pr
 
   revalidatePath(`/tests/${testId}`)
 }
+
+// ─── Fetch All Attempts for Export ────────────────────────────────────────────
+
+export async function fetchAllTestAttemptsForExportAction(testId: string) {
+  await requireAuth()
+  await assertOwner(testId)
+  const supabase = await createClient()
+
+  const { data, error } = await (supabase as any)
+    .from("test_attempts")
+    .select(
+      "id, tab_switch_count, status, score, total_marks, percentage, time_spent_seconds, started_at, submitted_at, profile:profiles!candidate_id(full_name, email, candidate_academic_details(passout_year, course:institute_courses(course_name)))"
+    )
+    .eq("test_id", testId)
+    .not("started_at", "is", null)
+    .order("started_at", { ascending: false })
+
+  if (error) {
+    throw new Error("Failed to fetch attempts for export: " + error.message)
+  }
+
+  // Format exactly like mapAttemptRow in page.tsx
+  return (data || []).map((a: any) => {
+    const cad = Array.isArray(a.profile?.candidate_academic_details)
+      ? a.profile?.candidate_academic_details[0]
+      : a.profile?.candidate_academic_details;
+    
+    const courseName = Array.isArray(cad?.course)
+      ? cad?.course[0]?.course_name
+      : cad?.course?.course_name;
+
+    return {
+      id: a.id,
+      student_name: a.profile?.full_name ?? "Unknown",
+      student_email: a.profile?.email ?? "Unknown",
+      status: a.status,
+      score: a.score ?? null,
+      total_marks: a.total_marks ?? null,
+      percentage: a.percentage ?? null,
+      time_spent_seconds: a.time_spent_seconds ?? null,
+      started_at: a.started_at,
+      submitted_at: a.submitted_at ?? null,
+      tab_switch_count: a.tab_switch_count ?? null,
+      branch: courseName ?? null,
+      passout_year: cad?.passout_year ?? null,
+    }
+  })
+}

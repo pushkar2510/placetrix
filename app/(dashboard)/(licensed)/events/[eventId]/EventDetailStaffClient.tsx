@@ -71,10 +71,10 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import * as XLSX from "xlsx"
 import { buildStorageUrl } from "@/lib/storage"
 import { markAttendanceAction, deleteEventAction, concludeEventAction } from "../actions"
 import type { EventTicket, EventStatus, TicketStatus, AttendanceStatus, EventAgendaItem } from "../types"
+import { ExportEventAttendeesModal } from "./ExportEventAttendeesModal"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -384,37 +384,6 @@ export function EventDetailStaffClient({ event, agenda, tickets: initialTickets 
     return items
   }, [initialTickets, filter, search])
 
-  const handleExport = () => {
-    try {
-      const exportData = filteredTickets.map((t) => ({
-        "Attendee Name": t.candidate_name ?? "Unknown",
-        "Email": t.candidate_email ?? "",
-        "Branch / Course": t.candidate_course ?? "—",
-        "Passout Year": t.candidate_passout_year ?? "—",
-        "RSVP Status": t.status,
-        "Attendance": t.attendance_status === "Present" ? "Present" : "Pending",
-        "Registration Date": new Date(t.created_at).toLocaleDateString("en-IN"),
-      }))
-
-      const worksheet = XLSX.utils.json_to_sheet(exportData)
-      const workbook = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Attendees")
-
-      // Auto-fit columns
-      const maxLens = Object.keys(exportData[0] || {}).map((key) => {
-        const lengths = exportData.map((row: any) => String(row[key] ?? "").length)
-        lengths.push(key.length)
-        return { wch: Math.max(...lengths) + 3 }
-      })
-      worksheet["!cols"] = maxLens
-
-      const fileName = `${event.title.replace(/[^a-zA-Z0-9]/g, "_")}_attendees.xlsx`
-      XLSX.writeFile(workbook, fileName)
-      toast.success("Excel sheet exported successfully!")
-    } catch (err: any) {
-      toast.error("Failed to export Excel sheet: " + err.message)
-    }
-  }
 
   return (
     <div className="flex flex-col gap-6 px-4 py-8 md:px-8 w-full animate-in fade-in duration-500">
@@ -694,10 +663,7 @@ export function EventDetailStaffClient({ event, agenda, tickets: initialTickets 
             <div className="flex items-center gap-2">
               <ManualCheckInDialog onCheckIn={onCheckIn} />
               {filteredTickets.length > 0 && (
-                <Button variant="outline" onClick={handleExport} className="gap-1.5 h-10 rounded-xl text-xs font-semibold cursor-pointer">
-                  <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
-                  Export to Excel
-                </Button>
+                <ExportEventAttendeesModal tickets={filteredTickets} eventName={event.title} />
               )}
             </div>
             <div className="relative w-full sm:w-64">

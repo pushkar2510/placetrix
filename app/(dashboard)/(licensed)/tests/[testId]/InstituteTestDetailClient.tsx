@@ -97,6 +97,7 @@ import { cn } from "@/lib/utils"
 import { MathText } from "@/components/ui/math-text"
 import type { InstituteTestDetail, InstituteQuestion, InstituteAttemptRow } from "./_types"
 import { formatDuration, formatDateTime, formatSeconds, resolvePct } from "./_types"
+import { ExportTestParticipantsModal } from "./ExportTestParticipantsModal"
 
 
 // ─── useDebounce ──────────────────────────────────────────────────────────────
@@ -786,122 +787,6 @@ function AttemptsTab({
       .finally(() => setIsLoadingPage(false))
   }, [debouncedSearch, statusFilter, scoreFilter, sortCol, sortDir, onFetchPage])
 
-  // ── Export helpers ───────────────────────────────────────────────────────
-  const buildExportRows = (rows: InstituteAttemptRow[]) => rows.map((a) => [
-    a.student_name || "Unknown",
-    a.student_email || "—",
-    a.branch || "—",
-    a.passout_year?.toString() || "—",
-    (a.status === "submitted" || a.status === "auto_submitted") ? "Submitted" : "In Progress",
-    a.score ?? "—",
-    a.total_marks ?? "—",
-    (a.status === "submitted" || a.status === "auto_submitted") ? resolvePct(a.percentage, a.score, a.total_marks).toFixed(2) : "—",
-    formatSeconds(a.time_spent_seconds),
-    a.tab_switch_count?.toString() ?? "0",
-    formatDateTime(a.started_at),
-    a.submitted_at ? formatDateTime(a.submitted_at) : "—",
-  ])
-
-  const handleExportCSV = useCallback(async () => {
-    setIsExporting(true)
-    try {
-      const allRows = await onFetchAllForExport({ search: debouncedSearch.trim(), statusFilter, scoreFilter, sortCol, sortDir })
-      const headers = ["Student Name","Email","Branch","Passout Year","Status","Score","Total Marks","Percentage (%)","Time Spent","Violations","Started At","Submitted At"]
-      const escapeCsv = (str: any) => `"${String(str).replace(/"/g, '""')}"`
-      const csvContent = [headers, ...buildExportRows(allRows)].map((row) => row.map(escapeCsv).join(",")).join("\n")
-      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.setAttribute("download", `${test.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_results.csv`)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-    } finally {
-      setIsExporting(false)
-    }
-  }, [debouncedSearch, statusFilter, scoreFilter, sortCol, sortDir, onFetchAllForExport, test.title])
-
-  const handleExportPDF = useCallback(async () => {
-    setIsExporting(true)
-    try {
-      const allRows = await onFetchAllForExport({ search: debouncedSearch.trim(), statusFilter, scoreFilter, sortCol, sortDir })
-      const { default: jsPDF } = await import("jspdf")
-      const { default: autoTable } = await import("jspdf-autotable")
-
-      const doc = new jsPDF("landscape", "mm", "a4")
-      const pageWidth = doc.internal.pageSize.width
-      let currentY = 14
-
-      if (test.institute_name) {
-        doc.setFont("helvetica", "bold")
-        doc.setFontSize(8)
-        doc.setTextColor(120, 120, 120)
-        doc.text(test.institute_name.toUpperCase(), 14, currentY)
-        currentY += 6
-      }
-
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(14)
-      doc.setTextColor(20, 20, 20)
-      doc.text(test.title, 14, currentY)
-      currentY += 5
-
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(8)
-      doc.setTextColor(100, 100, 100)
-      doc.text(`Test ID: ${test.id}   |   Duration: ${formatDuration(test.time_limit_seconds)}   |   Questions: ${test.questions.length}   |   Total Marks: ${totalMarks}`, 14, currentY)
-      currentY += 4.5
-      doc.text(`Total Attempts: ${stats.total}   |   ${stats.avg_pct != null ? `Average Score: ${stats.avg_pct.toFixed(2)}%   |   ` : ""}Exported On: ${getNowOnServer().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`, 14, currentY)
-      currentY += 8
-
-      const tableColumn = ["#", "Student", "Email", "Branch", "Grad", "Status", "Score", "Pct", "Time", "Viol", "Submitted"]
-      const tableRows = allRows.map((a, i) => [
-        String(i + 1),
-        a.student_name || "Unknown",
-        a.student_email || "—",
-        a.branch || "—",
-        a.passout_year?.toString() || "—",
-        (a.status === "submitted" || a.status === "auto_submitted") ? "Submitted" : "In Progress",
-        (a.status === "submitted" || a.status === "auto_submitted") ? `${a.score ?? "—"}/${a.total_marks ?? "—"}` : "—",
-        (a.status === "submitted" || a.status === "auto_submitted") ? `${resolvePct(a.percentage, a.score, a.total_marks).toFixed(2)}%` : "—",
-        formatSeconds(a.time_spent_seconds),
-        a.tab_switch_count?.toString() ?? "0",
-        a.submitted_at ? formatDateTime(a.submitted_at) : "—",
-      ])
-
-      autoTable(doc, {
-        startY: currentY,
-        head: [tableColumn],
-        body: tableRows,
-        theme: "grid",
-        styles: { font: "helvetica", fontSize: 7, cellPadding: 2.5, textColor: [33, 33, 33], lineWidth: 0.2, lineColor: [189, 189, 189], overflow: "linebreak" },
-        headStyles: { fontSize: 7.5, textColor: [255, 255, 255], fontStyle: "bold", fillColor: [55, 86, 35], lineWidth: 0.2, lineColor: [45, 70, 28], halign: "center", valign: "middle" },
-        bodyStyles: { lineWidth: 0.2, lineColor: [189, 189, 189], valign: "middle" },
-        alternateRowStyles: { fillColor: [234, 241, 228] },
-        columnStyles: {
-          0: { cellWidth: 12, halign: "center" }, 1: { cellWidth: 42 }, 2: { cellWidth: 48 },
-          3: { cellWidth: 35 }, 4: { halign: "center", cellWidth: 14 }, 5: { cellWidth: 20 },
-          6: { halign: "right", cellWidth: 18 }, 7: { halign: "right", cellWidth: 16 },
-          8: { halign: "right", cellWidth: 18 }, 9: { halign: "center", cellWidth: 12 }, 10: { halign: "right" },
-        },
-        didDrawPage: (data) => {
-          const pg = data.pageNumber
-          const pageHeight = doc.internal.pageSize.height
-          doc.setFontSize(6); doc.setFont("helvetica", "normal"); doc.setTextColor(180, 180, 180)
-          doc.text("Generated using Placetrix", 14, pageHeight - 8)
-          doc.setFontSize(7)
-          doc.text(`Page ${pg}`, pageWidth - 14, pageHeight - 8, { align: "right" })
-        },
-      })
-
-      const ts = getNowOnServer().toISOString().replace(/[:.]/g, "-").slice(0, 19)
-      doc.save(`${test.id}_${ts}.pdf`)
-    } finally {
-      setIsExporting(false)
-    }
-  }, [debouncedSearch, statusFilter, scoreFilter, sortCol, sortDir, onFetchAllForExport, test, totalMarks, stats, getNowOnServer])
 
   if (stats.total === 0) {
     return (
@@ -1025,24 +910,7 @@ function AttemptsTab({
             Refresh
           </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2" disabled={isExporting}>
-                {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                Export Data
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={handleExportCSV} disabled={isExporting}>
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Export as CSV (Excel)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportPDF} disabled={isExporting}>
-                <FileText className="mr-2 h-4 w-4" />
-                Export as PDF
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ExportTestParticipantsModal testId={test.id} testName={test.title} totalAttempts={stats.total} />
         </div>
       </div>
 

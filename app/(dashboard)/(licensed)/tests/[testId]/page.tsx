@@ -176,10 +176,18 @@ async function fetchCandidateView(
 const PAGE_SIZE = 20
 
 function mapAttemptRow(a: any): InstituteAttemptRow {
+  const cad = Array.isArray(a.profile?.candidate_academic_details)
+    ? a.profile?.candidate_academic_details[0]
+    : a.profile?.candidate_academic_details;
+  
+  const courseName = Array.isArray(cad?.course)
+    ? cad?.course[0]?.course_name
+    : cad?.course?.course_name;
+
   return {
-    id: a.attempt_id,
-    student_name: a.student_name ?? null,
-    student_email: a.student_email ?? null,
+    id: a.id,
+    student_name: a.profile?.full_name ?? "Unknown",
+    student_email: a.profile?.email ?? "Unknown",
     status: a.status as InstituteAttemptRow["status"],
     score: a.score ?? null,
     total_marks: a.total_marks ?? null,
@@ -188,8 +196,8 @@ function mapAttemptRow(a: any): InstituteAttemptRow {
     started_at: a.started_at,
     submitted_at: a.submitted_at ?? null,
     tab_switch_count: a.tab_switch_count ?? null,
-    branch: a.branch ?? null,
-    passout_year: a.passout_year ?? null,
+    branch: courseName ?? null,
+    passout_year: cad?.passout_year ?? null,
   }
 }
 
@@ -221,12 +229,11 @@ async function fetchInstituteView(
   // 2. Parallel fetches (SSR seed, 20 rows, newest first, stats, analytics, feedbacks)
   const [attemptsRes, statsRes, analyticsRes, feedbacksRes] = await Promise.all([
     (supabase as any)
-      .from("view_test_results_detailed")
+      .from("test_attempts")
       .select(
-        "attempt_id, student_name, student_email, branch, passout_year, tab_switch_count, status, score, total_marks, percentage, time_spent_seconds, started_at, submitted_at"
+        "id, tab_switch_count, status, score, total_marks, percentage, time_spent_seconds, started_at, submitted_at, profile:profiles!candidate_id(full_name, email, candidate_academic_details(passout_year, course:institute_courses(course_name)))"
       )
       .eq("test_id", testId)
-      .not("attempt_id", "is", null)
       .not("started_at", "is", null)
       .order("started_at", { ascending: false })
       .range(0, PAGE_SIZE - 1),
