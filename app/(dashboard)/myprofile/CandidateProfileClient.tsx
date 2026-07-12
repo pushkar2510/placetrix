@@ -2541,9 +2541,6 @@ export function CandidateProfileClient({
                   <div key={exp.id}>
                     <div className="flex gap-4 items-start py-4 justify-between">
                       <div className="flex gap-4 items-start flex-1 min-w-0">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
-                          <Briefcase className="h-5 w-5 text-muted-foreground" />
-                        </div>
                         <div className="space-y-1 flex-1 min-w-0">
                           <h4 className="text-sm font-semibold leading-none">{exp.title}</h4>
                           <p className="text-xs text-muted-foreground font-medium">
@@ -2602,9 +2599,6 @@ export function CandidateProfileClient({
                   <div key={proj.id}>
                     <div className="flex gap-4 items-start py-4 justify-between">
                       <div className="flex gap-4 items-start flex-1 min-w-0">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
-                          <FolderGit2 className="h-5 w-5 text-muted-foreground" />
-                        </div>
                         <div className="space-y-1 flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <h4 className="text-sm font-semibold leading-none">{proj.title}</h4>
@@ -2685,9 +2679,6 @@ export function CandidateProfileClient({
                   <div key={cert.id}>
                     <div className="flex gap-4 items-start py-4 justify-between">
                       <div className="flex gap-4 items-start flex-1 min-w-0">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
-                          <Award className="h-5 w-5 text-muted-foreground" />
-                        </div>
                         <div className="space-y-1 flex-1 min-w-0">
                           <h4 className="text-sm font-semibold leading-none">{cert.name}</h4>
                           <p className="text-xs text-muted-foreground font-medium">{cert.issuing_org}</p>
@@ -2756,9 +2747,6 @@ export function CandidateProfileClient({
                 {eventCertificates.map((cert, idx) => (
                   <div key={cert.ticketId}>
                     <div className="flex gap-4 items-start py-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
-                        <Award className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                      </div>
                       <div className="space-y-1 flex-1">
                         <h4 className="text-sm font-semibold leading-none">{cert.eventTitle}</h4>
                         <p className="text-xs text-muted-foreground font-medium">PlaceTrix Campus Event</p>
