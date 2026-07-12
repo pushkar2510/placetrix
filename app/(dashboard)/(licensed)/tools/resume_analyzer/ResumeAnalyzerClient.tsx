@@ -41,7 +41,7 @@ import { analyzeResumeAction, type AnalysisResult } from "./actions"
 // localStorage helpers
 // ─────────────────────────────────────────────
 const LS_KEY = "placetrix_resume_last"
-function saveResult(r: AnalysisResult) { try { localStorage.setItem(LS_KEY, JSON.stringify(r)) } catch {} }
+function saveResult(r: AnalysisResult) { try { localStorage.setItem(LS_KEY, JSON.stringify(r)) } catch { } }
 function loadResult(): AnalysisResult | null { try { const v = localStorage.getItem(LS_KEY); return v ? JSON.parse(v) : null } catch { return null } }
 
 // ─────────────────────────────────────────────
@@ -250,24 +250,21 @@ export function ResumeAnalyzerClient() {
 
   const handleReset = () => {
     setResult(null); setFile(null); setJobDescription("")
-    try { localStorage.removeItem(LS_KEY) } catch {}
+    try { localStorage.removeItem(LS_KEY) } catch { }
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   return (
-    <div className="flex flex-col gap-8 px-4 py-6 md:px-8 md:py-8 max-w-6xl mx-auto">
+    <div className="flex flex-col gap-8 px-4 py-6 md:px-8 md:py-8">
 
       {/* ── Page Header ── */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-violet-500/10">
-            <IconBrain className="size-5 text-violet-500" />
-          </div>
           <h1 className="text-3xl font-bold font-cirka tracking-tight text-foreground">Resume Analyzer</h1>
           <Badge variant="secondary" className="bg-violet-500/10 text-violet-600 dark:text-violet-400 text-xs ml-1">AI-Powered</Badge>
         </div>
-        <p className="text-sm text-muted-foreground ml-11">
-          Upload your resume for a deep AI audit — concrete before/after rewrites, keyword heatmap, quick wins, and more.
+        <p className="text-sm text-muted-foreground">
+          Upload your resume for a deep AI audit
         </p>
       </div>
 
@@ -579,8 +576,8 @@ export function ResumeAnalyzerClient() {
                   <div className="flex flex-wrap gap-2">
                     {(result.keywords ?? []).length > 0
                       ? result.keywords.map((k) => (
-                          <KeywordChip key={k.keyword} keyword={k.keyword} count={k.count} important={k.important} />
-                        ))
+                        <KeywordChip key={k.keyword} keyword={k.keyword} count={k.count} important={k.important} />
+                      ))
                       : <p className="text-xs text-muted-foreground">No keywords extracted.</p>
                     }
                   </div>
@@ -602,10 +599,10 @@ export function ResumeAnalyzerClient() {
                   <div className="flex flex-wrap gap-2">
                     {(result.suggestedKeywords ?? []).length > 0
                       ? result.suggestedKeywords.map((k) => (
-                          <Badge key={k} variant="secondary" className="text-xs gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-                            + {k}
-                          </Badge>
-                        ))
+                        <Badge key={k} variant="secondary" className="text-xs gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                          + {k}
+                        </Badge>
+                      ))
                       : <p className="text-xs text-muted-foreground">No additional keywords suggested — great coverage!</p>
                     }
                   </div>
