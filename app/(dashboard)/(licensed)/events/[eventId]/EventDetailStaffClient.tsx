@@ -662,7 +662,7 @@ export function EventDetailStaffClient({ event, agenda, tickets: initialTickets 
         <TabsContent value="attendees" className="m-0 space-y-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <QRCheckInScanner onCheckIn={onCheckIn} />
+              <QRCheckInScanner onCheckIn={onCheckIn} tickets={initialTickets} />
               <ManualCheckInDialog onCheckIn={onCheckIn} />
               {filteredTickets.length > 0 && (
                 <ExportEventAttendeesModal tickets={filteredTickets} eventName={event.title} />
