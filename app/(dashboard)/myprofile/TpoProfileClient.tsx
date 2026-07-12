@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { UserProfile } from "@/lib/supabase/profile"
 import { toast } from "sonner"
@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
-  Upload, Loader2, Camera, CheckCircle2, XCircle, AtSign,
+  Upload, Loader2, Camera, CheckCircle2, XCircle, AtSign, ShieldAlert,
   Pencil, X, CheckCircle, Info, Briefcase
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -105,8 +105,19 @@ function usernameStatusMessage(status: UsernameStatus): { text: string; classNam
 
 export function TpoProfileClient({ userProfile, initialData }: Props) {
   const supabase = createClient()
-  const { refresh } = useRouter()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { refresh } = router
   const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    if (searchParams.get("incomplete") === "true") {
+      toast.error("Profile Incomplete", {
+        description: "Please fill in all mandatory fields to unlock all features of Placetrix.",
+        id: "profile-incomplete-toast",
+      })
+    }
+  }, [searchParams])
 
   const isFirstTime = !initialData?.profile_updated
   const [editingSection, setEditingSection] = useState<SectionId | null>(
@@ -203,7 +214,11 @@ export function TpoProfileClient({ userProfile, initialData }: Props) {
 
   function validateAccount() {
     const e: Record<string, string> = {}
-    if (username && !USERNAME_REGEX.test(username)) e.username = "3–20 characters: letters, numbers, and underscores only."
+    if (!username.trim()) {
+      e.username = "Username is required."
+    } else if (!USERNAME_REGEX.test(username)) {
+      e.username = "3–20 characters: letters, numbers, and underscores only."
+    }
     if (usernameStatus === "taken") e.username = "This username is already taken."
     if (usernameStatus === "checking") e.username = "Please wait for username availability check."
     return e
@@ -404,6 +419,8 @@ export function TpoProfileClient({ userProfile, initialData }: Props) {
       </div>
 
       <div className="space-y-6">
+
+
         {/* Onboarding Banner */}
         {isFirstTime && !bannerDismissed && (
           <Alert className="border-primary/30 bg-primary/5">
@@ -434,17 +451,20 @@ export function TpoProfileClient({ userProfile, initialData }: Props) {
                 <CardTitle>Account Settings</CardTitle>
                 <CardDescription>Your unique username is used to identify you on the platform</CardDescription>
               </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {!editing("account") && <SectionIncomplete />}
               {!editing("account") && (
                 <Button variant="outline" size="sm" onClick={() => openSection("account")}>
                   <Pencil className="h-3.5 w-3.5 mr-1.5" />
                   Edit
                 </Button>
               )}
+            </div>
             </CardHeader>
             <CardContent>
               {editing("account") ? (
                 <div className="max-w-sm space-y-2">
-                  <Label htmlFor="username">Username</Label>
+                  <Label htmlFor="username">Username <span className="text-destructive font-bold">*</span></Label>
                   <div className="relative">
                     <AtSign className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input

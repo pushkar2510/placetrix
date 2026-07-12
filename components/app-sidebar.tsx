@@ -326,7 +326,13 @@ export function NavMain({ items }: { items: NavItem[] }) {
   const { setOpenMobile } = useSidebar()
   const { isActive: isLicenseActive, isAdmin, user } = useLicense()
 
-  const hasAccess = isAdmin || isLicenseActive
+  const isProfileComplete = !user || 
+    (user.account_type !== "institute_candidate" && 
+     user.account_type !== "institute_staff" && 
+     user.account_type !== "institute_placement_officer") || 
+    user.profile_updated === true
+
+  const hasAccess = isAdmin || (isLicenseActive && isProfileComplete)
 
   return (
     <SidebarGroup>
@@ -334,7 +340,12 @@ export function NavMain({ items }: { items: NavItem[] }) {
         <SidebarMenu>
           {items.map((item, index) => {
             const isPremium = item.url !== "/home"
-            const isLocked = isPremium && !hasAccess
+            const isLicenseLocked = isPremium && !isAdmin && !isLicenseActive
+            const isProfileLocked = isPremium && !isAdmin && !isProfileComplete
+            const isLocked = isLicenseLocked || isProfileLocked
+            const lockReason = isLicenseLocked 
+              ? "Your institution does not have an active license." 
+              : "Please complete your profile to unlock this feature."
 
             if (item.items && item.items.length > 0) {
               return (
@@ -360,9 +371,8 @@ export function NavMain({ items }: { items: NavItem[] }) {
                           if (isLocked) {
                             e.preventDefault()
                             e.stopPropagation()
-                            const reason = "Your institution does not have an active license."
                             toast.error(`Feature Locked`, {
-                              description: reason
+                              description: lockReason
                             })
                           }
                         }}
@@ -421,9 +431,8 @@ export function NavMain({ items }: { items: NavItem[] }) {
                   onClick={(e) => {
                     if (isLocked) {
                       e.preventDefault()
-                      const reason = "Your institution does not have an active license."
                       toast.error(`Feature Locked`, {
-                        description: reason
+                        description: lockReason
                       })
                     }
                   }}
