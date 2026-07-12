@@ -275,7 +275,7 @@
 
               <!-- CTA -->
               <div class="btn-wrap">
-                <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink&next=/home" class="btn">Sign In to PlaceTrix</a>
+                <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/home" class="btn">Sign In to PlaceTrix</a>
               </div>
               <p class="expire-note">Link expires in <strong>10 minutes</strong> &middot; Single-use only</p>
 
@@ -288,7 +288,7 @@
 
               <p style="font-size:13px;color:#888888;margin-bottom:8px;">If the button above doesn't work, copy and
                 paste this URL into your browser:</p>
-              <div class="link-box"><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink&next=/home">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink</a></div>
+              <div class="link-box"><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/home">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email</a></div>
             </div>
 
             <!-- Footer -->

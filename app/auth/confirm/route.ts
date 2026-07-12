@@ -65,7 +65,9 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({ type, token_hash });
+  // Map "magiclink" to "email" for GoTrue verification compatibility
+  const verifyType = type === "magiclink" ? "email" : type;
+  const { error } = await supabase.auth.verifyOtp({ type: verifyType, token_hash });
 
   if (error) {
     console.error("[auth/confirm] verifyOtp error:", error.message);

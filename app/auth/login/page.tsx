@@ -77,6 +77,7 @@ function LoginContent() {
   const next = searchParams.get("next") ?? "/home";
 
   const [pageState, setPageState] = useState<PageState>("login-form");
+  const [loginMethod, setLoginMethod] = useState<"password" | "magiclink">("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -86,6 +87,7 @@ function LoginContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const startCooldown = () => {
     setResendCooldown(RESEND_COOLDOWN);
@@ -106,6 +108,43 @@ function LoginContent() {
     },
     []
   );
+
+  const handleMagicLinkLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+    setIsLoading(true);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false, // Ensure public signups stay disabled
+          emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
+        },
+      });
+
+      if (error) {
+        // 504 / network timeout — auth server is under load, ask user to retry
+        if (
+          error.status === 504 ||
+          error.message?.toLowerCase().includes("timeout") ||
+          error.message?.toLowerCase().includes("fetch")
+        ) {
+          setError("The server is temporarily busy. Please wait a moment and try again.");
+          return;
+        }
+        throw error;
+      }
+
+      setSuccessMessage("We sent a sign-in link to your email address. Please check your inbox.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -421,9 +460,14 @@ function LoginContent() {
           <Separator className="flex-1" />
         </div>
 
-        <form className="space-y-2" onSubmit={handleLogin}>
+        <form
+          className="space-y-2"
+          onSubmit={loginMethod === "password" ? handleLogin : handleMagicLinkLogin}
+        >
           <p className="text-start text-muted-foreground text-xs">
-            Enter your credentials to sign in
+            {loginMethod === "password"
+              ? "Enter your credentials to sign in"
+              : "Enter your email to receive a secure login link"}
           </p>
 
           <InputGroup>
@@ -441,31 +485,39 @@ function LoginContent() {
             </InputGroupAddon>
           </InputGroup>
 
-          <InputGroup>
-            <InputGroupInput
-              placeholder="Password"
-              type={showPassword ? "text" : "password"}
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading || isGoogleLoading}
-            />
-            <InputGroupAddon align="inline-start">
-              <LockIcon />
-            </InputGroupAddon>
-            <InputGroupAddon
-              align="inline-end"
-              className="cursor-pointer"
-              onClick={() => setShowPassword((p) => !p)}
-            >
-              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-            </InputGroupAddon>
-          </InputGroup>
+          {loginMethod === "password" && (
+            <InputGroup>
+              <InputGroupInput
+                placeholder="Password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading || isGoogleLoading}
+              />
+              <InputGroupAddon align="inline-start">
+                <LockIcon />
+              </InputGroupAddon>
+              <InputGroupAddon
+                align="inline-end"
+                className="cursor-pointer"
+                onClick={() => setShowPassword((p) => !p)}
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </InputGroupAddon>
+            </InputGroup>
+          )}
 
           {error && (
             <p className="text-sm text-destructive rounded-md bg-destructive/10 px-3 py-2">
               {error}
+            </p>
+          )}
+
+          {successMessage && (
+            <p className="text-sm text-green-500 rounded-md bg-green-500/10 px-3 py-2">
+              {successMessage}
             </p>
           )}
 
@@ -477,22 +529,37 @@ function LoginContent() {
             {isLoading ? (
               <>
                 <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                Signing in…
+                {loginMethod === "password" ? "Signing in…" : "Sending link…"}
               </>
             ) : (
-              "Sign In"
+              loginMethod === "password" ? "Sign In" : "Send Magic Link"
             )}
           </Button>
 
-          <div className="flex justify-end">
-            <Link
-              href={isLoading || isGoogleLoading ? "#" : "/auth/reset-password"}
-              className={`text-xs text-muted-foreground underline underline-offset-4 hover:text-primary ${
-                isLoading || isGoogleLoading ? "pointer-events-none opacity-50" : ""
-              }`}
+          <div className="flex justify-between items-center text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMethod(loginMethod === "password" ? "magiclink" : "password");
+                setError(null);
+                setSuccessMessage(null);
+              }}
+              className="text-muted-foreground underline underline-offset-4 hover:text-primary transition-all"
+              disabled={isLoading || isGoogleLoading}
             >
-              Forgot password?
-            </Link>
+              {loginMethod === "password" ? "Sign in with Magic Link" : "Sign in with Password"}
+            </button>
+
+            {loginMethod === "password" && (
+              <Link
+                href={isLoading || isGoogleLoading ? "#" : "/auth/reset-password"}
+                className={`text-muted-foreground underline underline-offset-4 hover:text-primary ${
+                  isLoading || isGoogleLoading ? "pointer-events-none opacity-50" : ""
+                }`}
+              >
+                Forgot password?
+              </Link>
+            )}
           </div>
         </form>
 
