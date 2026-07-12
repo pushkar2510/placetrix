@@ -6,7 +6,7 @@ import { ResumeGeneratorClient } from "./ResumeGeneratorClient";
 import type { ResumeFormData } from "./ResumePDFDocument";
 
 export const metadata: Metadata = {
-  title: "Resume Generator | PlaceTrix",
+  title: "Resume Generator",
   description: "Build a professional LaTeX-style resume from your PlaceTrix profile and download it as a PDF.",
 };
 

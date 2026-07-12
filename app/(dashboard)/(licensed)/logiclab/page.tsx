@@ -5,7 +5,7 @@ import { LogicLabDashboardClient } from "./_components/LogicLabDashboardClient"
 import { getCachedPotd } from "./actions"
 
 export const metadata = {
-  title: "LogicLab — Coding Problems",
+  title: "LogicLab",
   description: "Solve coding challenges, practice algorithms, and sharpen your programming skills.",
 }
 
@@ -46,14 +46,14 @@ export default async function LogicLabPage() {
     p_tag: "All",
     p_sort_by: "number-asc"
   })
-  
+
   const enrichedProblems = initialProblemsData || []
   // Force POTD & Streaks to use IST (+5.5 hours)
   const istOffset = 5.5 * 60 * 60 * 1000
   const today = new Date()
   const istDate = new Date(today.getTime() + istOffset)
   const todayStr = istDate.toISOString().split("T")[0]
-  
+
   const yesterdayDate = new Date(istDate.getTime() - (24 * 60 * 60 * 1000))
   const yesterdayStr = yesterdayDate.toISOString().split("T")[0]
 
@@ -111,7 +111,7 @@ export default async function LogicLabPage() {
   }
 
   const sortedDates = Array.from(allActiveDates.keys()).sort((a, b) => b.localeCompare(a))
-  
+
   let currentStreak = 0
   let maxStreak = 0
 
@@ -121,7 +121,7 @@ export default async function LogicLabPage() {
     const ascDates = [...sortedDates].reverse()
     let prevDate: Date | null = null
     let tempStreak = 0
-    
+
     for (const dStr of ascDates) {
       const currentDate = new Date(dStr)
       if (!prevDate) {
@@ -143,7 +143,7 @@ export default async function LogicLabPage() {
     if (hasActiveStreak) {
       const checkDate = allActiveDates.has(todayStr) ? new Date(istDate) : new Date(yesterdayDate)
       let checkStr = checkDate.toISOString().split("T")[0]
-      
+
       while (allActiveDates.has(checkStr)) {
         currentStreak++
         checkDate.setUTCDate(checkDate.getUTCDate() - 1)
@@ -181,11 +181,11 @@ export default async function LogicLabPage() {
 
   // Fetch global user stats via RPC
   const { data: statsData } = await supabase.rpc('get_user_global_stats', { p_user_id: profile.id })
-  const globalStats = statsData || { 
-    total: 0, solved: 0, 
-    easy: { total: 0, solved: 0 }, 
-    medium: { total: 0, solved: 0 }, 
-    hard: { total: 0, solved: 0 } 
+  const globalStats = statsData || {
+    total: 0, solved: 0,
+    easy: { total: 0, solved: 0 },
+    medium: { total: 0, solved: 0 },
+    hard: { total: 0, solved: 0 }
   }
 
   const initialProblems = enrichedProblems
@@ -236,7 +236,7 @@ export default async function LogicLabPage() {
       .eq("problem_id", initialPotd.problem_id)
       .eq("status", "Accepted")
       .limit(1)
-    
+
     fullPotdProblem = {
       ...fullPotdProblem,
       solved_status: (potdSub && potdSub.length > 0) ? "Accepted" : null

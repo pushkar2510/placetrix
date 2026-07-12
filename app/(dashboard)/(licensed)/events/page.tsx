@@ -7,7 +7,7 @@ import { EventsCandidateClient } from "./EventsCandidateClient"
 import type { EventListItem, CandidateEventListItem } from "./types"
 
 export const metadata = {
-  title: "Events | PlaceTrix",
+  title: "Events",
   description: "Campus Events & Activities",
 }
 

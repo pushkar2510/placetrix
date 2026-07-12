@@ -7,7 +7,7 @@ import { OpportunitiesCandidateClient } from "./OpportunitiesCandidateClient"
 import type { OpportunityListItem, OpportunityApplication } from "./types"
 
 export const metadata = {
-  title: "Opportunities | PlaceTrix",
+  title: "Opportunities",
   description: "Campus Job Openings & Placement Drives",
 }
 

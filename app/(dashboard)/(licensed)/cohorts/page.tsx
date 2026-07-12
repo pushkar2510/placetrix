@@ -5,7 +5,7 @@ import { getCohortsAction } from "./actions"
 import { CohortsClient } from "./CohortsClient"
 
 export const metadata = {
-  title: "Cohorts | PlaceTrix",
+  title: "Cohorts",
   description: "Manage student groups (cohorts) for targeted placement activities.",
 }
 
