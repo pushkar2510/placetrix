@@ -36,6 +36,7 @@ import {
 import { toast } from "sonner"
 import { deleteOpportunityAction, updateApplicationStatusAction } from "../actions"
 import type { OpportunityListItem, OpportunityApplication, ApplicationStatus } from "../types"
+import { ExportApplicantsModal } from "./ExportApplicantsModal"
 
 interface InstituteOpportunityDetailClientProps {
   opportunity: OpportunityListItem
@@ -235,6 +236,7 @@ export function InstituteOpportunityDetailClient({
   // Search & Filter state for Applicants
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [exportModalOpen, setExportModalOpen] = useState(false)
 
   const deadlineDate = new Date(opportunity.deadline)
   const companyName = opportunity.company?.name || "Unknown Company"
@@ -540,8 +542,24 @@ export function InstituteOpportunityDetailClient({
                   ))}
                 </SelectContent>
               </Select>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => setExportModalOpen(true)}
+                className="h-10 gap-2 rounded-xl border-border/80 shadow-2xs hover:bg-muted/50 w-full sm:w-auto"
+              >
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
             </div>
           </div>
+
+          <ExportApplicantsModal 
+            open={exportModalOpen}
+            onOpenChange={setExportModalOpen}
+            applications={filteredApplications}
+            opportunityTitle={opportunity.title}
+          />
 
           {filteredApplications.length === 0 ? (
             <Card className="p-12 text-center border-2 border-dashed bg-card/50 rounded-2xl">
